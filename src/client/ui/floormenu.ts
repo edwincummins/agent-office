@@ -1,5 +1,6 @@
 import './floormenu.css';
 import { cloneLabel, floorPalette } from '../../shared/floors';
+import { mapChoices } from '../../shared/maps';
 import { ROOF, ROOF_NAME } from '../../shared/rooftop';
 import type { FloorInfo } from '../../shared/protocol';
 import { store } from '../state';
@@ -18,6 +19,8 @@ export interface FloorMenuOptions {
   elevator(): void;
   /** Up to the rooftop bar, by elevator; null on a map with no roof to go up to. */
   roof: (() => void) | null;
+  /** Switch the building to another office (a built-in map or one of your own), without going through Settings. */
+  pickMap?: (id: string) => void;
 }
 
 let current: { el: HTMLElement; close(): void } | null = null;
@@ -87,7 +90,32 @@ export function toggleFloorMenu(anchor: HTMLElement, opts: FloorMenuOptions): vo
       close();
       opts.roof?.();
     });
-    el.replaceChildren(h('div.floor-menu-head', {}, `🏢 ${floors.length} floor${floors.length === 1 ? '' : 's'}`), ...(floors.length && opts.roof ? [roof] : []), ...items, add);
+    // Your offices: the stock office, the castle, the station and your own maps (the L2 office, the loft...), one click
+    // away instead of Settings (Fetty, 11-05). It's the same for everyone in the building, as in Settings.
+    const offices = opts.pickMap
+      ? mapChoices(store.map.custom).map((m) => {
+          const isHere = store.map.pick === m.id;
+          const b = h(
+            'button.floor-item',
+            { type: 'button', role: 'menuitem', class: isHere ? 'here' : '', disabled: isHere || !!m.error, title: m.error ? `${m.name} won't load: ${m.error}` : isHere ? "You're in this office" : `Switch the building to ${m.name}` },
+            h('span.floor-no', { style: 'background:#3a3326' }, m.icon),
+            h('span.floor-text', {}, h('span.floor-name', {}, m.name), h('span.floor-sub', {}, isHere ? 'you are here' : m.error ? "won't load" : m.description)),
+          );
+          b.addEventListener('click', () => {
+            if (isHere || m.error) return;
+            close();
+            opts.pickMap?.(m.id);
+          });
+          return b;
+        })
+      : [];
+    el.replaceChildren(
+      h('div.floor-menu-head', {}, `🏢 ${floors.length} floor${floors.length === 1 ? '' : 's'}`),
+      ...(floors.length && opts.roof ? [roof] : []),
+      ...items,
+      add,
+      ...(offices.length ? [h('div.floor-menu-head', {}, `🗺️ Your offices`), ...offices] : []),
+    );
   };
 
   const place = () => {
@@ -103,7 +131,7 @@ export function toggleFloorMenu(anchor: HTMLElement, opts: FloorMenuOptions): vo
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') close();
   };
-  const offs = [store.on('floors', render), store.on('floor', render)];
+  const offs = [store.on('floors', render), store.on('floor', render), store.on('map', render)];
   const close = () => {
     if (current?.el !== el) return;
     current = null;
