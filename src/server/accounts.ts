@@ -11,6 +11,9 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const MAX_INVITES = 100;
 
 export interface Account {
+  passwordUnset?: boolean;
+  sessionEpoch?: number;
+  identity?: { issuer: string; subject: string; email: string };
   id: string;
   name: string;
   role: AccountRole;
@@ -23,6 +26,7 @@ export interface Account {
 }
 
 interface Saved {
+  ownerAccountId?: string;
   accounts: Account[];
   invites: AccountInvite[];
   /** Missing means on: offices from before accounts keep working with their password. */
@@ -80,6 +84,41 @@ export class Accounts {
     return this.data.accounts.length > 0;
   }
 
+  get ownerAccountId(): string | undefined { this.sync(); return this.data.ownerAccountId; }
+
+  byIdentity(identity: NonNullable<Account['identity']>): Account | undefined {
+    this.sync();
+    return this.data.accounts.find(a => a.identity?.issuer === identity.issuer && a.identity.subject === identity.subject);
+  }
+
+  linkIdentity(id:string, identity:NonNullable<Account['identity']>): boolean {
+    const a=this.get(id), linked=this.byIdentity(identity);
+    if(!a || (linked && linked.id!==id) || (a.identity && (a.identity.issuer!==identity.issuer || a.identity.subject!==identity.subject)))return false;
+    a.identity=identity; this.save(); return true;
+  }
+
+  /** First-run admission is rechecked after hashing, before the synchronous atomic save. */
+  async createFirst(name: string, password: string, identity?: Account['identity']): Promise<Account | string> {
+    if (this.any || this.unreadable || this.data.ownerAccountId) return 'This office already has an owner. Sign in instead.';
+    const n = cleanName(name);
+    if (!n || name.length > NAME_MAX) return 'Pick a name of 1 to 24 characters';
+    if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) return 'Pick a password of 8 to 512 characters';
+    const salt = randomBytes(16), derived = await hash(password, salt);
+    this.sync();
+    if (this.data.accounts.length || this.unreadable || this.data.ownerAccountId) return 'This office already has an owner. Sign in instead.';
+    const a: Account = {id: randomBytes(8).toString('hex'), name:n, role:'admin', hash:derived.toString('hex'), salt:salt.toString('hex'), createdAt:Date.now(), createdBy:'first-run', ...(identity ? {identity,passwordUnset:true} : {})};
+    this.data.accounts.push(a); this.data.ownerAccountId = a.id; this.data.sharedPassword = false;
+    this.save(); return a;
+  }
+
+  /** Local recovery or the authenticated first password for a Google-created account. */
+  async setPassword(id:string,password:string,onlyUnset=false,authorized:()=>boolean=()=>true):Promise<boolean>{
+    if(typeof password!=='string'||password.length<PASSWORD_MIN||password.length>PASSWORD_MAX)return false;
+    const salt=randomBytes(16),derived=await hash(password,salt),a=this.get(id);
+    if(!a||!authorized()||(onlyUnset&&a.passwordUnset!==true))return false;
+    a.salt=salt.toString('hex');a.hash=derived.toString('hex');delete a.passwordUnset;a.sessionEpoch=(a.sessionEpoch??0)+1;this.save();return true;
+  }
+
   get(id: string | undefined): Account | undefined {
     if (!id) return undefined;
     this.sync();
@@ -96,7 +135,7 @@ export class Accounts {
     this.sync();
     this.dropExpired();
     return {
-      accounts: this.data.accounts.map(({ hash: _h, salt: _s, ...a }) => ({ ...a, online: online.has(a.id) })),
+      accounts: this.data.accounts.map(({ hash: _h, salt: _s, identity: _i, ...a }) => ({ ...a, online: online.has(a.id) })),
       invites: this.data.invites,
       sharedPassword: this.data.sharedPassword !== false,
     };
@@ -105,9 +144,10 @@ export class Accounts {
   /** The account for a name and password, or undefined. Takes as long either way. */
   async check(name: string, password: string): Promise<Account | undefined> {
     const a = this.byName(name);
-    const pw = password.slice(0, PASSWORD_MAX);
-    const derived = await hash(pw, a ? Buffer.from(a.salt, 'hex') : randomBytes(16));
-    return a && timingSafeEqual(derived, Buffer.from(a.hash, 'hex')) ? a : undefined;
+    const pw = password.slice(0, PASSWORD_MAX), priorHash=a?.hash, priorSalt=a?.salt, epoch=a?.sessionEpoch??0;
+    const derived = await hash(pw, priorSalt ? Buffer.from(priorSalt, 'hex') : randomBytes(16));
+    const current=this.get(a?.id);
+    return current && current.hash===priorHash && current.salt===priorSalt && (current.sessionEpoch??0)===epoch && timingSafeEqual(derived,Buffer.from(current.hash,'hex')) ? {...current} : undefined;
   }
 
   invite(by: string, role: AccountRole, name?: string): AccountInvite | string {
@@ -154,7 +194,7 @@ export class Accounts {
   }
 
   /** Uses up an invite: makes the account and returns it, or says what's wrong. */
-  async join(token: string, name: string, password: string): Promise<Account | string> {
+  async join(token: string, name: string, password: string, identity?: Account['identity']): Promise<Account | string> {
     const invite = this.findInvite(token);
     if (!invite) return 'This invite link has expired or was already used. Ask for a new one.';
     const n = invite.name ?? cleanName(name);
@@ -167,6 +207,8 @@ export class Accounts {
     this.sync();
     const i = this.data.invites.findIndex((v) => v.id === invite.id);
     if (i < 0) return 'This invite link was just used. Ask for a new one.';
+    if (this.data.invites[i].expiresAt <= Date.now()) return 'This invite link expired. Ask for a new one.';
+    if (identity && this.byIdentity(identity)) return 'This Google account is already linked. Sign in instead.';
     const taken = this.nameTaken(n, invite.id);
     if (taken) return taken;
     const account: Account = {
@@ -177,6 +219,7 @@ export class Accounts {
       salt: salt.toString('hex'),
       createdAt: Date.now(),
       createdBy: invite.createdBy,
+      ...(identity ? {identity,passwordUnset:true} : {}),
     };
     this.data.invites.splice(i, 1);
     this.data.accounts.push(account);
@@ -248,9 +291,11 @@ export class Accounts {
     }
     try {
       const saved = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Saved>;
+      if(!Array.isArray(saved?.accounts)||!Array.isArray(saved.invites))throw Error('Invalid accounts store');
       this.data = {
         accounts: Array.isArray(saved.accounts) ? saved.accounts.filter((a) => a && typeof a.id === 'string' && typeof a.hash === 'string') : [],
         invites: Array.isArray(saved.invites) ? saved.invites.filter((v) => v && typeof v.token === 'string') : [],
+        ...(typeof saved.ownerAccountId === 'string' ? {ownerAccountId:saved.ownerAccountId} : {}),
         ...(saved.sharedPassword === false ? { sharedPassword: false } : {}),
       };
       this.unreadable = false;
@@ -262,8 +307,7 @@ export class Accounts {
 
   private save() {
     if (this.unreadable) {
-      console.error(`agent-office: not saving accounts over ${this.file}, which couldn't be read — fix or move it`);
-      return;
+      throw new Error('Accounts unavailable');
     }
     // Written whole and renamed into place, so the office and the `accounts` command never read half a file.
     const tmp = `${this.file}.${process.pid}.tmp`;
@@ -271,8 +315,8 @@ export class Accounts {
       writeFileSync(tmp, JSON.stringify(this.data, null, 2), { mode: 0o600 });
       renameSync(tmp, this.file);
     } catch (err) {
-      console.error(`agent-office: couldn't save ${this.file}: ${(err as Error).message}`);
-      return;
+      this.stamp = '\0'; this.data = {accounts:[],invites:[]}; this.sync();
+      throw new Error('Could not save accounts', {cause:err});
     }
     try {
       const st = statSync(this.file);
@@ -291,12 +335,14 @@ Usage:
                                                Make a single-use invite link (valid 7 days)
   agent-office accounts revoke <name>          Delete an account; it's signed out at once
   agent-office accounts role <name> admin|member
+  agent-office accounts password <name>        Set an account password from stdin (local recovery)
   agent-office accounts password on|off        Whether the shared office password still works
 
 Options:
   -d, --dir <dir>   The office's directory: the project it was started in, or its
                     home (default: the current directory if an office ran there,
                     else ~/agent-office or $AGENT_OFFICE_HOME)
+  --account        In password recovery, treat on/off as account names
   -h, --help        Show this help
 
 Works while the office runs: it picks up the changes within seconds.
@@ -305,10 +351,10 @@ Works while the office runs: it picks up the changes within seconds.
 const day = (t: number) => new Date(t).toISOString().slice(0, 16).replace('T', ' ');
 
 /** `agent-office accounts`: exits 0 when done, 1 when it couldn't, 2 for a usage error. */
-export function accountsCommand(argv: string[]): number {
+export async function accountsCommand(argv: string[]): Promise<number> {
   // An office started in this project keeps its accounts here; one started anywhere else, in its home.
   let dir = existsSync(path.join(process.cwd(), '.agent-office', 'config.json')) ? process.cwd() : officeHome();
-  let admin = false;
+  let admin = false, accountPassword = false;
   const args: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -318,7 +364,8 @@ export function accountsCommand(argv: string[]): number {
     } else if (a === '-d' || a === '--dir') {
       if (!argv[i + 1]) return usage('--dir needs a value');
       dir = path.resolve(argv[++i]);
-    } else if (a === '--admin') admin = true;
+    } else if (a === '--account') accountPassword = true;
+    else if (a === '--admin') admin = true;
     else if (a.startsWith('-')) return usage(`unknown option ${a}`);
     else args.push(a);
   }
@@ -370,7 +417,10 @@ export function accountsCommand(argv: string[]): number {
       return 0;
     }
     case 'password': {
-      if (arg !== 'on' && arg !== 'off') return usage('password takes on or off');
+      if(accountPassword)return (await import('./onboarding/password-cli.js')).recoverPassword(accounts,args.slice(1));
+      if((arg==='on'||arg==='off')&&accounts.byName(arg))return usage('ambiguous account name: use password --account <name> to reset its password');
+      if (arg !== 'on' && arg !== 'off') return (await import('./onboarding/password-cli.js')).recoverPassword(accounts,args.slice(1));
+      if(arg2)return usage('password never accepts a password argument');
       if (arg === 'off' && !accounts.state(new Set()).accounts.some((a) => a.role === 'admin')) {
         return fail('make an admin account first (`agent-office accounts invite <name> --admin`), or nobody could manage the office');
       }

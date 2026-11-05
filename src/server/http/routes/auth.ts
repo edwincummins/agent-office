@@ -3,7 +3,8 @@
 import type http from 'node:http';
 import type { Ctx } from '../../office/context.js';
 import { str } from '../../office/input.js';
-import { clientIp, isSecure, readBody, send } from '../util.js';
+import { clientIp, isSecure, readBody, send, sameOrigin } from '../util.js';
+import {authLimits,guessKey} from '../../onboarding/limits.js';
 import type { Route } from '../router.js';
 
 const TOO_MANY_ATTEMPTS = 'Too many attempts. Try again in a few minutes.';
@@ -13,18 +14,23 @@ const TOO_MANY_ATTEMPTS = 'Too many attempts. Try again in a few minutes.';
  * body. Undefined once it has already answered (rate limited, or a bad body).
  */
 async function readGuess(ctx: Ctx, req: http.IncomingMessage, res: http.ServerResponse): Promise<{ ip: string; body: Record<string, unknown> } | undefined> {
+  if(!sameOrigin(req,ctx.cfg))return void send(res,403,{error:'Open this form in the office.'});
   const ip = clientIp(req, ctx.cfg.trustProxy);
+  if(!authLimits(ctx).take(`ip:${ip}`))return void send(res,429,{error:TOO_MANY_ATTEMPTS});
   // Counted before the body is read, so parallel guesses can't all slip under the limit.
   if (!ctx.auth.allowAttempt(ip)) return void send(res, 429, { error: TOO_MANY_ATTEMPTS });
   try {
     const body = JSON.parse(await readBody(req, 4096));
-    if (body && typeof body === 'object') return { ip, body };
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      if(!authLimits(ctx).take(guessKey(req.url,body.name,body.token)))return void send(res,429,{error:TOO_MANY_ATTEMPTS});
+      return { ip, body };
+    }
   } catch {
     // answered below
   }
   send(res, 400, { error: 'Bad request' });
 }
-const signedIn = (ctx: Ctx, req: http.IncomingMessage, accountId?: string) => ({ 'set-cookie': ctx.auth.cookie(req, ctx.auth.issue(accountId), isSecure(req, ctx.cfg)) });
+const signedIn = (ctx: Ctx, req: http.IncomingMessage, accountId?: string, epoch?:number) => ({ 'set-cookie': ctx.auth.cookie(req, ctx.auth.issue(accountId,epoch), isSecure(req, ctx.cfg)) });
 
 /** With a name, that person's own account; without one, the shared office password (while it's on). */
 export async function login(ctx: Ctx, req: http.IncomingMessage, res: http.ServerResponse) {
@@ -37,13 +43,17 @@ export async function login(ctx: Ctx, req: http.IncomingMessage, res: http.Serve
     const account = await accounts.check(name, password);
     if (!account) return send(res, 401, { error: 'Wrong name or password' });
     auth.recordSuccess(guess.ip);
-    return send(res, 200, { ok: true }, signedIn(ctx, req, account.id));
+    authLimits(ctx).success(guessKey(req.url,guess.body.name));
+    authLimits(ctx).release(`ip:${guess.ip}`);
+    return send(res, 200, { ok: true }, signedIn(ctx, req, account.id, account.sessionEpoch??0));
   }
   if (!accounts.sharedPassword) return send(res, 401, { error: 'Sign in with your name and your own password' });
   if (!(await auth.checkPassword(password))) {
     return send(res, 401, { error: accounts.any ? 'Wrong password. With an account of your own, type your name too.' : 'Wrong password' });
   }
   auth.recordSuccess(guess.ip);
+  authLimits(ctx).success(guessKey(req.url,guess.body.name));
+  authLimits(ctx).release(`ip:${guess.ip}`);
   return send(res, 200, { ok: true }, signedIn(ctx, req));
 }
 /** Which fields the sign-in forms ask for. */
@@ -61,11 +71,13 @@ async function join(ctx: Ctx, req: http.IncomingMessage, res: http.ServerRespons
   const invite = accounts.findInvite(token);
   if (!invite) return send(res, 410, { error: 'This invite link has expired or was already used. Ask whoever sent it for a new one.' });
   auth.recordSuccess(guess.ip);
-  if (guess.body.peek === true) return send(res, 200, { name: invite.name, role: invite.role, by: invite.createdBy, project: ctx.officeName });
+  if (guess.body.peek === true) { authLimits(ctx).success(guessKey(req.url,guess.body.name,token)); authLimits(ctx).release(`ip:${guess.ip}`); return send(res, 200, { name: invite.name, role: invite.role, by: invite.createdBy, project: ctx.officeName }); }
   const r = await accounts.join(token, str(guess.body.name, 64), str(guess.body.password, 1024));
   if (typeof r === 'string') return send(res, 400, { error: r });
   console.log(`  ${r.name} joined the office with an invite from ${r.createdBy}`);
   ctx.accountsChanged();
+  authLimits(ctx).success(guessKey(req.url,guess.body.name,token));
+  authLimits(ctx).release(`ip:${guess.ip}`);
   return send(res, 200, { ok: true, name: r.name }, signedIn(ctx, req, r.id));
 }
 
@@ -90,6 +102,7 @@ export const authRoutes = {
       const password = cfg.password!;
       cfg.markClaimed();
       auth.recordSuccess(guess.ip);
+      authLimits(ctx).release(`ip:${guess.ip}`);
       console.log('  the office password was claimed — it will not be shown again');
       return send(res, 200, { password }, signedIn(ctx, req));
     },
@@ -106,9 +119,10 @@ export const authRoutes = {
         return send(res, 410, { error: 'That sign-in link was already used. Sign in with the office password.' });
       }
       ctx.auth.recordSuccess(guess.ip);
+      authLimits(ctx).release(`ip:${guess.ip}`);
       return send(res, 200, { ok: true }, signedIn(ctx, req));
     },
   },
-  logout: { method: 'POST', path: '/api/logout', auth: 'public', handle: (ctx, { req, res }) => send(res, 200, { ok: true }, { 'set-cookie': ctx.auth.clearCookie(req) }) },
+  logout: { method: 'POST', path: '/api/logout', auth: 'public', handle: (ctx, { req, res }) => sameOrigin(req,ctx.cfg)?send(res, 200, { ok: true }, { 'set-cookie': ctx.auth.clearCookie(req) }):send(res,403,{error:'Open this form in the office.'}) },
   whoami: { path: '/api/whoami', auth: 'session', handle: (ctx, { res, session }) => send(res, 200, { ok: true, me: ctx.meOf(session.account?.id) }) },
 } satisfies Record<string, Route>;

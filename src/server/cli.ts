@@ -12,7 +12,7 @@ if (argv[0] === 'prune') {
 }
 if (argv[0] === 'accounts') {
   const { accountsCommand } = await import('./accounts.js');
-  process.exit(accountsCommand(argv.slice(1)));
+  process.exit(await accountsCommand(argv.slice(1)));
 }
 if (argv[0] === 'setup') {
   const { setupCommand } = await import('./setup.js');

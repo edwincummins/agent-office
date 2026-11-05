@@ -9,9 +9,11 @@ import { githubRoutes } from './github.js';
 import { pageRoutes } from './pages.js';
 import { searchRoutes } from './search.js';
 import { serviceRoutes } from './services.js';
+import {onboardingRoutes} from '../../onboarding/routes.js';
 
 export const routes: readonly Route[] = [
   // Anyone.
+  ...onboardingRoutes(),
   authRoutes.login,
   authRoutes.loginOptions,
   authRoutes.join,

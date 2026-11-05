@@ -14,7 +14,7 @@ export function people(ctx: Ctx): People {
     return a ? { account: { name: a.name, role: a.role }, admin: a.role === 'admin' } : { admin: !accountId };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
-  const stillIn = (c: Client) => (c.accountId ? !!ctx.accounts.get(c.accountId) : ctx.accounts.sharedPassword);
+  const stillIn = (c: Client) => (c.accountId ? !!ctx.accounts.get(c.accountId) && (ctx.accounts.get(c.accountId)?.sessionEpoch??0)===(c.sessionEpoch??0) : ctx.accounts.sharedPassword);
   const signOut = (c: Client) => {
     c.out = true;
     c.ws.close(SIGNED_OUT, 'Signed out');

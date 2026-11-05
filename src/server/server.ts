@@ -14,12 +14,14 @@ import { startTimers } from './office/timers.js';
 import { findPublicDir } from './http/static.js';
 import { requestHandler } from './http/router.js';
 import { routes } from './http/routes/index.js';
+import type {Route} from './http/router.js';
 import { startHookServer } from './hooks/server.js';
 import { acceptWebSockets } from './ws/upgrade.js';
 
 /** What a test can set about how the office starts: the client bundle it serves, instead of the built one. */
 export interface StartOptions {
   publicDir?: string;
+  routes?: readonly Route[];
 }
 
 export async function startServer(cfg: Config, opts: StartOptions = {}) {
@@ -36,7 +38,7 @@ export async function startServer(cfg: Config, opts: StartOptions = {}) {
   Object.assign(ctx, createLateServices(ctx));
 
   // --- HTTP ------------------------------------------------------------------------------------
-  const handler = requestHandler(ctx, routes);
+  const handler = requestHandler(ctx, opts.routes ?? routes);
   const server = cfg.tls ? https.createServer({ cert: cfg.tls.cert, key: cfg.tls.key }, handler) : http.createServer(handler);
 
   // --- WebSocket -------------------------------------------------------------------------------
