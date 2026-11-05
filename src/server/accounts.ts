@@ -12,6 +12,7 @@ const MAX_INVITES = 100;
 
 export interface Account {
   passwordUnset?: boolean;
+  sessionEpoch?: number;
   identity?: { issuer: string; subject: string; email: string };
   id: string;
   name: string;
@@ -115,7 +116,7 @@ export class Accounts {
     if(typeof password!=='string'||password.length<PASSWORD_MIN||password.length>PASSWORD_MAX)return false;
     const salt=randomBytes(16),derived=await hash(password,salt),a=this.get(id);
     if(!a||!authorized()||(onlyUnset&&a.passwordUnset!==true))return false;
-    a.salt=salt.toString('hex');a.hash=derived.toString('hex');delete a.passwordUnset;this.save();return true;
+    a.salt=salt.toString('hex');a.hash=derived.toString('hex');delete a.passwordUnset;a.sessionEpoch=(a.sessionEpoch??0)+1;this.save();return true;
   }
 
   get(id: string | undefined): Account | undefined {
@@ -143,9 +144,10 @@ export class Accounts {
   /** The account for a name and password, or undefined. Takes as long either way. */
   async check(name: string, password: string): Promise<Account | undefined> {
     const a = this.byName(name);
-    const pw = password.slice(0, PASSWORD_MAX);
-    const derived = await hash(pw, a ? Buffer.from(a.salt, 'hex') : randomBytes(16));
-    return a && timingSafeEqual(derived, Buffer.from(a.hash, 'hex')) ? a : undefined;
+    const pw = password.slice(0, PASSWORD_MAX), priorHash=a?.hash, priorSalt=a?.salt, epoch=a?.sessionEpoch??0;
+    const derived = await hash(pw, priorSalt ? Buffer.from(priorSalt, 'hex') : randomBytes(16));
+    const current=this.get(a?.id);
+    return current && current.hash===priorHash && current.salt===priorSalt && (current.sessionEpoch??0)===epoch && timingSafeEqual(derived,Buffer.from(current.hash,'hex')) ? {...current} : undefined;
   }
 
   invite(by: string, role: AccountRole, name?: string): AccountInvite | string {

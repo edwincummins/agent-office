@@ -37,7 +37,7 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
   const colorParam = url.searchParams.get('color') ?? '';
   const intParam = (k: string) => (url.searchParams.get(k) ? Number(url.searchParams.get(k)) : undefined);
   const me = meOf(account?.id);
-  const client = newClient(id, ws, { accountId: account?.id, admin: me.admin }, {
+  const client = newClient(id, ws, { accountId: account?.id, admin: me.admin, sessionEpoch:session.sessionEpoch, sessionId:session.sessionId }, {
     id,
     name,
     color: COLOR_RE.test(colorParam) ? colorParam : '#4f86f7',
@@ -108,6 +108,7 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
       return;
     }
     if (!msg || typeof msg !== 'object' || client.out) return;
+    if(!ctx.stillIn(client)){ctx.signOut(client);return;}
     dispatch(ctx, client, msg);
   });
   ws.on('close', () => {

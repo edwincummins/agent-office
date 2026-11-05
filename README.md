@@ -428,3 +428,5 @@ Open the office locally to create its first owner account. After that, people jo
 The sign-in page explains blank-name entry when the shared office password is still enabled; first-owner signup disables that entry. See [sign-in setup](docs/google-signin.md).
 
 Google-first owners can add a password in **Your character → Set a password**, or recover locally with `agent-office accounts password <name>` using stdin, never a password argument. See [local recovery](docs/google-signin.md#local-password-recovery). First-owner creation requires direct loopback access without proxy headers.
+
+Password changes sign out that account's other sessions; the browser setting its first password stays signed in. Local recovery signs out all of the account's sessions.

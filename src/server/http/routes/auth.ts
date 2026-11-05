@@ -30,7 +30,7 @@ async function readGuess(ctx: Ctx, req: http.IncomingMessage, res: http.ServerRe
   }
   send(res, 400, { error: 'Bad request' });
 }
-const signedIn = (ctx: Ctx, req: http.IncomingMessage, accountId?: string) => ({ 'set-cookie': ctx.auth.cookie(req, ctx.auth.issue(accountId), isSecure(req, ctx.cfg)) });
+const signedIn = (ctx: Ctx, req: http.IncomingMessage, accountId?: string, epoch?:number) => ({ 'set-cookie': ctx.auth.cookie(req, ctx.auth.issue(accountId,epoch), isSecure(req, ctx.cfg)) });
 
 /** With a name, that person's own account; without one, the shared office password (while it's on). */
 export async function login(ctx: Ctx, req: http.IncomingMessage, res: http.ServerResponse) {
@@ -45,7 +45,7 @@ export async function login(ctx: Ctx, req: http.IncomingMessage, res: http.Serve
     auth.recordSuccess(guess.ip);
     authLimits(ctx).success(guessKey(req.url,guess.body.name));
     authLimits(ctx).release(`ip:${guess.ip}`);
-    return send(res, 200, { ok: true }, signedIn(ctx, req, account.id));
+    return send(res, 200, { ok: true }, signedIn(ctx, req, account.id, account.sessionEpoch??0));
   }
   if (!accounts.sharedPassword) return send(res, 401, { error: 'Sign in with your name and your own password' });
   if (!(await auth.checkPassword(password))) {

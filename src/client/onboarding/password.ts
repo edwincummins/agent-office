@@ -9,7 +9,7 @@ export function passwordOption(leaveProfile:()=>void):HTMLElement{
   const password=h('input',{type:'password',autocomplete:'new-password',minlength:8,maxlength:512,required:true,'aria-label':'New password'}) as HTMLInputElement;
   const confirm=h('input',{type:'password',autocomplete:'new-password',minlength:8,maxlength:512,required:true,'aria-label':'Confirm password'}) as HTMLInputElement;
   const status=h('p.note',{role:'status'}),save=h('button.btn.primary',{type:'submit'},'Set password') as HTMLButtonElement;
-  const form=h('form.modal',{role:'dialog','aria-label':'Set a password',style:'width:min(420px,100%)'},h('header',{},h('h2',{},'Set a password'),close),h('div.body',{},h('p',{},'Keep a way into your account if Google is unavailable.'),h('label',{},'New password',password),h('label',{},'Once more',confirm),status),h('footer',{},save)) as HTMLFormElement;
+  const form=h('form.modal',{role:'dialog','aria-label':'Set a password',style:'width:min(420px,100%)'},h('header',{},h('h2',{},'Set a password'),close),h('div.body',{},h('p',{},'Keep a way into your account if Google is unavailable.'),h('label',{},'New password',password),h('label',{style:'margin-top:12px'},'Once more',confirm),h('p.note',{},'8 characters or more.'),status),h('footer',{},save)) as HTMLFormElement;
   const modal=openModal(form);close.onclick=()=>modal.close();
   form.onsubmit=async e=>{
    e.preventDefault();if(password.value!==confirm.value){status.textContent='Those passwords do not match.';return;}

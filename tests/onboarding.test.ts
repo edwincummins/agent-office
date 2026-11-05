@@ -1,3 +1,8 @@
+import {PassThrough} from 'node:stream';
+import {watchSession} from '../src/server/onboarding/socket-session.js';
+import {people} from '../src/server/office/people.js';
+import {newClient} from '../src/server/office/client.js';
+import {startTimers} from '../src/server/office/timers.js';
 import {spawn} from 'node:child_process';
 import {request} from 'node:http';
 import {fileURLToPath} from 'node:url';
@@ -182,5 +187,50 @@ test('logout while a password request body is pending prevents recovery',async()
   });
   await new Promise(r=>setTimeout(r,30));await fetch(h.base+'/api/logout',{method:'POST',headers:{Origin:h.base,Cookie:cookie}});finish();
   assert.equal(await response,400);assert.equal(await h.ctx.accounts.check('Owner','new-password'),undefined);
+ }finally{await h.close();}
+});
+
+test('local password reset rejects all previously issued account cookies',async()=>{
+ const h=await harness();try{
+  const a=await h.ctx.accounts.createFirst('Owner','old-password') as any;
+  const old=h.ctx.auth.issue(a.id);assert.ok(h.ctx.auth.verify(old));
+  await h.ctx.accounts.setPassword(a.id,'new-password');assert.equal(h.ctx.auth.verify(old),undefined);assert.equal(h.ctx.auth.verify(h.ctx.auth.issue(a.id,0)),undefined);
+ }finally{await h.close();}
+});
+
+test('profile password renews its session, closes other account sockets and leaves other accounts alone',async()=>{
+ const h=await harness();try{
+  const a=await h.ctx.accounts.createFirst('Owner','old-random',{issuer:'test',subject:'one',email:'one@example.test'}) as any;
+  const invite=h.ctx.accounts.invite('Owner','member','Guest') as any,guest=await h.ctx.accounts.join(invite.token,'Guest','password1') as any;
+  const caller=h.ctx.auth.issue(a.id),other=h.ctx.auth.issue(a.id),guestCookie=h.ctx.auth.issue(guest.id);const closed:string[]=[];
+  h.ctx.clients=new Map();h.ctx.sendTo=()=>{};Object.assign(h.ctx,people(h.ctx));
+  const connect=(id:string,token:string)=>{const session=h.ctx.auth.verify(token)!;const c=newClient(id,{close:()=>closed.push(id)} as any,{accountId:session.account!.id,admin:true,sessionEpoch:session.sessionEpoch,sessionId:session.sessionId},{} as any);h.ctx.clients.set(id,c);return c;};
+  const callerSocket=connect('caller',caller);connect('other',other);connect('guest',guestCookie);
+  const r=await fetch(h.base+'/api/account/password',{method:'POST',headers:{Origin:h.base,Cookie:`ao_session_${h.ctx.cfg.port}=${caller}`,'content-type':'application/json'},body:JSON.stringify({password:'new-password',confirm:'new-password'})});
+  assert.equal(r.status,200);const renewed=r.headers.get('set-cookie')!.split(';')[0].split('=')[1];assert.ok(h.ctx.auth.verify(renewed));
+  assert.equal(h.ctx.auth.verify(caller),undefined);assert.equal(h.ctx.auth.verify(other),undefined);assert.ok(h.ctx.auth.verify(guestCookie));assert.deepEqual(closed,['other']);assert.ok(h.ctx.stillIn(callerSocket));
+  const restoredAuth=new Auth(Buffer.alloc(32),Buffer.alloc(16),'synthetic',new Accounts(h.dir));assert.equal(restoredAuth.verify(other),undefined);assert.ok(restoredAuth.verify(renewed));
+  h.ctx.accounts.revoke(a.id);h.ctx.accountsChanged();assert.equal(h.ctx.auth.verify(renewed),undefined);assert.ok(closed.includes('caller'));
+ }finally{await h.close();}
+});
+test('external CLI-style password reset closes an idle websocket on the next poll',async()=>{
+ const h=await harness();let stop:undefined|(()=>void);try{
+  const a=await h.ctx.accounts.createFirst('Owner','old-password') as any;const token=h.ctx.auth.issue(a.id),session=h.ctx.auth.verify(token)!;let closed=false;
+  h.ctx.clients=new Map();h.ctx.sendTo=()=>{};Object.assign(h.ctx,people(h.ctx));const c=newClient('idle',{close:()=>{closed=true;}} as any,{accountId:a.id,admin:true,sessionEpoch:session.sessionEpoch,sessionId:session.sessionId},{} as any);h.ctx.clients.set(c.id,c);
+  stop=startTimers(h.ctx);await new Accounts(h.dir).setPassword(a.id,'new-password');await new Promise(r=>setTimeout(r,1100));assert.equal(closed,true);assert.equal(c.out,true);assert.equal(h.ctx.auth.verify(token),undefined);
+ }finally{stop?.();await h.close();}
+});
+
+test('service tunnel socket closes when its original session is no longer valid',async()=>{
+ const socket=new PassThrough();let valid=true;watchSession(socket,()=>valid);assert.equal(socket.destroyed,false);valid=false;await new Promise(r=>setTimeout(r,1100));assert.equal(socket.destroyed,true);
+});
+
+test('a pending old-password check cannot mint a fresh session after external recovery',async()=>{
+ const h=await harness();try{
+  const {readFileSync}=await import('node:fs'),file=path.join(h.dir,'accounts.json');
+  const a=await h.ctx.accounts.createFirst('Owner','old-password') as any,old=readFileSync(file,'utf8');
+  await new Accounts(h.dir).setPassword(a.id,'new-password');const renewed=readFileSync(file,'utf8');writeFileSync(file,old);
+  const pending=h.ctx.accounts.check('Owner','old-password');writeFileSync(file,renewed);
+  assert.equal(await pending,undefined);assert.ok(await h.ctx.accounts.check('Owner','new-password'));
  }finally{await h.close();}
 });

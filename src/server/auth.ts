@@ -13,6 +13,8 @@ const MAX_LINKS = 8;
 /** A signed-in browser: with its own account, or (no account) with the shared office password. */
 export interface Session {
   account?: Account;
+  sessionEpoch?: number;
+  sessionId?: string;
 }
 
 export class Auth {
@@ -84,8 +86,8 @@ export class Auth {
   }
 
   /** A session cookie's value: for that account, or for the shared password when there's none. */
-  issue(accountId?: string): string {
-    const body = { exp: Date.now() + SESSION_TTL_MS, n: randomBytes(8).toString('hex'), ...(accountId ? { u: accountId } : {}) };
+  issue(accountId?: string, verifiedEpoch?: number): string {
+    const body = { exp: Date.now() + SESSION_TTL_MS, n: randomBytes(8).toString('hex'), ...(accountId ? { u: accountId, e: verifiedEpoch??this.accounts.get(accountId)?.sessionEpoch??0 } : {}) };
     const payload = Buffer.from(JSON.stringify(body)).toString('base64url');
     return `${payload}.${this.sign(payload, !!accountId)}`;
   }
@@ -101,7 +103,7 @@ export class Auth {
     const dot = token.indexOf('.');
     if (dot < 1) return undefined;
     const payload = token.slice(0, dot);
-    let body: { exp?: unknown; u?: unknown };
+    let body: { exp?: unknown; u?: unknown; e?: unknown; n?: unknown };
     try {
       body = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     } catch {
@@ -114,7 +116,7 @@ export class Auth {
     if (typeof body.exp !== 'number' || body.exp <= Date.now()) return undefined;
     if (!accountId) return this.accounts.sharedPassword ? {} : undefined;
     const account = this.accounts.get(accountId);
-    return account ? { account } : undefined;
+    return account && (body.e??0)===(account.sessionEpoch??0) ? { account, sessionEpoch:account.sessionEpoch??0, sessionId:typeof body.n==='string'?body.n:undefined } : undefined;
   }
 
   fromRequest(req: IncomingMessage): Session | undefined {
@@ -125,11 +127,11 @@ export class Auth {
    * Signed in to this office on any port of this host. A service tunnel (localhost:5173) carries
    * the cookie you got on the office's own tunnel (localhost:4600), since cookies ignore ports.
    */
-  fromAnyCookie(req: IncomingMessage): boolean {
-    for (const [name, value] of Object.entries(parseCookies(req.headers.cookie))) {
-      if (OFFICE_COOKIE.test(name) && this.verify(value)) return true;
+  fromAnyCookie(req: IncomingMessage): boolean { return !!this.sessionFromAnyCookie(req); }
+  sessionFromAnyCookie(req: IncomingMessage): Session | undefined {
+    for(const [name,value] of Object.entries(parseCookies(req.headers.cookie))){
+      const session=OFFICE_COOKIE.test(name)?this.verify(value):undefined;if(session)return session;
     }
-    return false;
   }
 
   cookie(req: IncomingMessage, token: string, secure: boolean): string {
