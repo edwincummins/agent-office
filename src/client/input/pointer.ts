@@ -213,13 +213,19 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
     return { x: hit.point.x, y: hit.point.y, z: hit.point.z };
   }
   /** Puts you at (x, z) if you fit there on this level; a quick fade so it reads as a jump, not a glitch. */
-  function teleport(x: number, z: number, floorY = player.pos.y): boolean {
+  function teleport(x: number, z: number, floorY = player.pos.y, look?: { x: number; z: number }): boolean {
     // The open floor isn't a collider (furniture and steps are): stand on whichever is higher.
     const y = Math.max(groundAt(player.colliders, x, z, floorY + 1), floorY);
     if (Math.abs(y - player.pos.y) > 0.6) return false;
     const body = { pos: new THREE.Vector3(x, y, z), colliders: player.colliders, grounded: true, stepOffset: 0 };
     if (blockerAt(body, x, z, y)) return false;
     if (player.seat) player.stand();
+    // Face the way you jumped (or toward what you jumped to), with the camera swung round behind you (Fetty, 11-05).
+    const lx = (look?.x ?? x) - player.pos.x, lz = (look?.z ?? z) - player.pos.z;
+    if (Math.hypot(lx, lz) > 0.3) {
+      player.facing = Math.atan2(lx, lz);
+      player.camYaw = player.facing - Math.PI;
+    }
     player.pos.set(x, y, z);
     player.vy = 0;
     canvas.animate?.([{ opacity: 0.35 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
@@ -229,7 +235,8 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
   function hopToward(point: THREE.Vector3, reach: number): boolean {
     const dx = player.pos.x - point.x, dz = player.pos.z - point.z, len = Math.hypot(dx, dz) || 1;
     for (let d = Math.max(0.9, Math.min(reach * 0.7, 2.2)); d <= reach + 0.3; d += 0.3) {
-      if (teleport(point.x + (dx / len) * d, point.z + (dz / len) * d)) return true;
+      // Facing the thing itself (not the way you came), once you land beside it.
+      if (teleport(point.x + (dx / len) * d, point.z + (dz / len) * d, player.pos.y, { x: point.x + (point.x - player.pos.x) * 10, z: point.z + (point.z - player.pos.z) * 10 })) return true;
     }
     return false;
   }
