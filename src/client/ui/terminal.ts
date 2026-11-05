@@ -1,5 +1,5 @@
 import './terminal.css';
-import {canWork} from '../shared/owner-workers';
+import {canWork,ownerName} from '../shared/owner-workers';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -153,8 +153,8 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   // The keypad has an Esc of its own, and a 🎤 on its prompt box.
   const el = h('div.modal.term', { role: 'dialog', 'aria-label': `${info.name} terminal` }, h('header', {}, dot, title, pill, cost, viewers, typed, modelsBtn, keypad ? null : mic.button, keypad ? null : escBtn, onChanges ? changesBtn : null, hideBtn, closeBtn), tabs.bar, host, tabs.pages, keypad);
 
-  const readOnly=h('div', {style:'padding:8px 14px;background:#262b31;color:#eee8db;border-radius:4px'},`Read-only · Owner controls`);
-  if(!writable()){el.append(readOnly);el.append(h('p.note',{style:'padding:8px 14px;color:#eee8db'},`Only the office owner can type here`));keypad?.remove();changesBtn.remove();tabs.bar.remove();}
+  const readOnly=h('div', {style:'padding:8px 14px;background:#262b31;color:#eee8db;border-radius:4px'},`Read-only · ${ownerName()}'s`);
+  if(!writable()){el.append(readOnly);el.append(h('p.note',{style:'padding:8px 14px;color:#eee8db'},`Only ${ownerName()} can type here`));keypad?.remove();changesBtn.remove();tabs.bar.remove();}
   const term = new Terminal({
     disableStdin:!writable(),
     fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',

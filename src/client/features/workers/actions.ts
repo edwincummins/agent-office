@@ -4,7 +4,7 @@
  * at a desk; and what the hint bar says at a desk or a board agent's kiosk. Also what the boards'
  * buttons do with a worker.
  */
-import {canWork,requireOwner} from '../../shared/owner-workers';
+import {canWork,requireOwner,ownerName} from '../../shared/owner-workers';
 import { STATION_AGENT, deskSeat, type DeskDef } from '../../../shared/layout';
 import { canLabel } from '../../../shared/floorplan';
 import { officeFull, pressureNote } from '../../../shared/machine';
@@ -350,7 +350,7 @@ export function installWorkerActions(ctx: Ctx, core: CoreState, parts: WorkerAct
 
   function deskHint(deskId: string): Hint {
     const w = store.workerAtDesk(deskId);
-    if(!canWork())return {k:'visitor'+(w?.id??deskId),parts:[h('span.title',{},w?.name??'Empty desk'),w?key('E','View'):aside('Only the owner can hire here')]};
+    if(!canWork())return {k:'visitor'+(w?.id??deskId),parts:[h('span.title',{},w?.name??'Empty desk'),w?key('E','View'):aside(`Only ${ownerName()} hires workers here`)]};
     if (!w && plan().byId.get(deskId)?.room) return { k: 'room', parts: [h('span.title', {}, `🤝 ${plan().byId.get(deskId)!.label} · free`), key('E', 'Call a meeting')] };
     // The sign over it, if it has one, and L to hang one (or change it).
     const sign = store.floorPlan.labels[deskId]?.text;
@@ -417,7 +417,7 @@ export function installWorkerActions(ctx: Ctx, core: CoreState, parts: WorkerAct
   }
 
   function stationHint(deskId: string): Hint {
-    if(!canWork()){const w=store.workerAtDesk(deskId);return {k:'visitor'+deskId,parts:[h('span.title',{},w?.name??'Station'),w?key('E','View'):aside('Only the owner can ask this station')]};}
+    if(!canWork()){const w=store.workerAtDesk(deskId);return {k:'visitor'+deskId,parts:[h('span.title',{},w?.name??'Station'),w?key('E','View'):aside(`Only ${ownerName()} can ask here`)]};}
     const kind = plan().byId.get(deskId)?.station;
     if (!kind) return { k: '', parts: [] };
     const w = store.workerAtDesk(deskId);

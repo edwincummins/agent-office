@@ -3,6 +3,7 @@
  * requests, issues and services, and the people in it. Enter does it; Shift+Enter walks you over to
  * where it's done first.
  */
+import {canWork} from '../../shared/owner-workers';
 import { DESK_BY_ID, DESKS, WING_DESKS, deskSeat, type DeskDef } from '../../../shared/layout';
 import { isPaletteKey } from '../../../shared/palette';
 import type { Ctx } from '../../core/context';
@@ -84,7 +85,7 @@ export function installPalette(ctx: Ctx, parts: PaletteParts) {
 
     const free = nearestFreeDesk();
     const hireAt = (d: DeskDef) => () => actions.hireAtDesk(d.id);
-    out.push({
+    if(canWork())out.push({
       icon: '✨',
       kind: 'Action',
       title: 'Hire a worker',

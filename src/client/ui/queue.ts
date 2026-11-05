@@ -1,5 +1,5 @@
 import './queue.css';
-import {canWork} from '../shared/owner-workers';
+import {canWork,ownerName} from '../shared/owner-workers';
 import type { AgentProvider, QueueTask, Usage } from '../../shared/protocol';
 import type { Net } from '../net';
 import { store } from '../state';
@@ -175,7 +175,7 @@ export function openQueue(net: Net, actions: QueueActions) {
       running.length + queued.length + done.length ? null : h('div.queue-empty', {}, 'Nothing on the queue yet.'),
     ];
     list.replaceChildren(...parts.filter((n): n is HTMLElement => n !== null));
-    if(!canWork()){form.remove();limit.remove();const note=list.querySelector('p.note');if(note)note.textContent='Watch the office owner’s queued work here. Only the owner can add, reorder or run tasks.';for(const b of list.querySelectorAll<HTMLButtonElement>('button:not([data-read-only])'))b.disabled=true;el.querySelector('footer')!.textContent='Read-only · Only the office owner can change the queue';}
+    if(!canWork()){form.remove();limit.remove();const note=list.querySelector('p.note');if(note)note.textContent='Watch the office owner’s queued work here. Only the owner can add, reorder or run tasks.';for(const b of list.querySelectorAll<HTMLButtonElement>('button:not([data-read-only])'))b.disabled=true;el.querySelector('footer')!.textContent=`Only ${ownerName()} can ask here`;}
   };
 
   // The machine reports every few seconds; only a change to whether the office is full shows here.
