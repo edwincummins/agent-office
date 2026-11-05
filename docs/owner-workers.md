@@ -27,3 +27,9 @@ Visitors see the configured owner's display name in desk hints and read-only foo
 Read-only terminal windows use one owner-labelled header badge and one footer; unused terminal space keeps the terminal background. Visitor worker rows omit prompt/edit controls.
 
 Visitor worker rows also show the office owner's name beside the worker name.
+
+## Stacked sign-up integration
+
+This PR is based on `feat/account-signup` (PR #4), and must land after it; retarget to main after PR #4 merges. Both checks apply: non-owners cannot control workers or access service tunnels even with a valid session, and stale owner sessions are refused after a password reset. Existing service sockets recheck owner eligibility and the session epoch every second. `/api/docs` stays readable to every signed-in session.
+
+Combined regression: `node --import tsx --import=#tests/css --test tests/owner-session-stack.test.ts tests/onboarding.test.ts tests/owner-workers.test.ts tests/auth.test.ts tests/client-structure.test.ts tests/size.test.ts`.
