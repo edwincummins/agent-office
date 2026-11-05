@@ -1,4 +1,5 @@
 export {}; // a module, so its names don't clash with the other pages' scripts
+import {googleButton} from './features/onboarding/google.js';
 
 // An invite link, /join#<token>: make your own account, then walk in. The token rides in the
 // fragment, so it never reaches a server log or a Referer header.
@@ -45,6 +46,8 @@ async function peek() {
       name.title = 'The name you were invited under';
     }
     form.hidden = false;
+    const options=await fetch('/api/onboarding').then(r=>r.json());
+    if(options.google){const box=document.createElement('div');form.after(box);await googleButton(box,{signup:true,invite:token},error);}
     (invited ? password : name).focus();
   } catch {
     fail('Server unreachable.');

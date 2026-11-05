@@ -11,6 +11,7 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const MAX_INVITES = 100;
 
 export interface Account {
+  identity?: { issuer: string; subject: string; email: string };
   id: string;
   name: string;
   role: AccountRole;
@@ -23,6 +24,7 @@ export interface Account {
 }
 
 interface Saved {
+  ownerAccountId?: string;
   accounts: Account[];
   invites: AccountInvite[];
   /** Missing means on: offices from before accounts keep working with their password. */
@@ -80,6 +82,33 @@ export class Accounts {
     return this.data.accounts.length > 0;
   }
 
+  get ownerAccountId(): string | undefined { this.sync(); return this.data.ownerAccountId; }
+
+  byIdentity(identity: NonNullable<Account['identity']>): Account | undefined {
+    this.sync();
+    return this.data.accounts.find(a => a.identity?.issuer === identity.issuer && a.identity.subject === identity.subject);
+  }
+
+  linkIdentity(id:string, identity:NonNullable<Account['identity']>): boolean {
+    const a=this.get(id), linked=this.byIdentity(identity);
+    if(!a || (linked && linked.id!==id) || (a.identity && (a.identity.issuer!==identity.issuer || a.identity.subject!==identity.subject)))return false;
+    a.identity=identity; this.save(); return true;
+  }
+
+  /** First-run admission is rechecked after hashing, before the synchronous atomic save. */
+  async createFirst(name: string, password: string, identity?: Account['identity']): Promise<Account | string> {
+    if (this.any || this.unreadable || this.data.ownerAccountId) return 'This office already has an owner. Sign in instead.';
+    const n = cleanName(name);
+    if (!n || name.length > NAME_MAX) return 'Pick a name of 1 to 24 characters';
+    if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) return 'Pick a password of 8 to 512 characters';
+    const salt = randomBytes(16), derived = await hash(password, salt);
+    this.sync();
+    if (this.data.accounts.length || this.unreadable || this.data.ownerAccountId) return 'This office already has an owner. Sign in instead.';
+    const a: Account = {id: randomBytes(8).toString('hex'), name:n, role:'admin', hash:derived.toString('hex'), salt:salt.toString('hex'), createdAt:Date.now(), createdBy:'first-run', ...(identity ? {identity} : {})};
+    this.data.accounts.push(a); this.data.ownerAccountId = a.id; this.data.sharedPassword = false;
+    this.save(); return a;
+  }
+
   get(id: string | undefined): Account | undefined {
     if (!id) return undefined;
     this.sync();
@@ -96,7 +125,7 @@ export class Accounts {
     this.sync();
     this.dropExpired();
     return {
-      accounts: this.data.accounts.map(({ hash: _h, salt: _s, ...a }) => ({ ...a, online: online.has(a.id) })),
+      accounts: this.data.accounts.map(({ hash: _h, salt: _s, identity: _i, ...a }) => ({ ...a, online: online.has(a.id) })),
       invites: this.data.invites,
       sharedPassword: this.data.sharedPassword !== false,
     };
@@ -154,7 +183,7 @@ export class Accounts {
   }
 
   /** Uses up an invite: makes the account and returns it, or says what's wrong. */
-  async join(token: string, name: string, password: string): Promise<Account | string> {
+  async join(token: string, name: string, password: string, identity?: Account['identity']): Promise<Account | string> {
     const invite = this.findInvite(token);
     if (!invite) return 'This invite link has expired or was already used. Ask for a new one.';
     const n = invite.name ?? cleanName(name);
@@ -167,6 +196,8 @@ export class Accounts {
     this.sync();
     const i = this.data.invites.findIndex((v) => v.id === invite.id);
     if (i < 0) return 'This invite link was just used. Ask for a new one.';
+    if (this.data.invites[i].expiresAt <= Date.now()) return 'This invite link expired. Ask for a new one.';
+    if (identity && this.byIdentity(identity)) return 'This Google account is already linked. Sign in instead.';
     const taken = this.nameTaken(n, invite.id);
     if (taken) return taken;
     const account: Account = {
@@ -177,6 +208,7 @@ export class Accounts {
       salt: salt.toString('hex'),
       createdAt: Date.now(),
       createdBy: invite.createdBy,
+      ...(identity ? {identity} : {}),
     };
     this.data.invites.splice(i, 1);
     this.data.accounts.push(account);
@@ -248,9 +280,11 @@ export class Accounts {
     }
     try {
       const saved = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Saved>;
+      if(!Array.isArray(saved?.accounts)||!Array.isArray(saved.invites))throw Error('Invalid accounts store');
       this.data = {
         accounts: Array.isArray(saved.accounts) ? saved.accounts.filter((a) => a && typeof a.id === 'string' && typeof a.hash === 'string') : [],
         invites: Array.isArray(saved.invites) ? saved.invites.filter((v) => v && typeof v.token === 'string') : [],
+        ...(typeof saved.ownerAccountId === 'string' ? {ownerAccountId:saved.ownerAccountId} : {}),
         ...(saved.sharedPassword === false ? { sharedPassword: false } : {}),
       };
       this.unreadable = false;
@@ -262,8 +296,7 @@ export class Accounts {
 
   private save() {
     if (this.unreadable) {
-      console.error(`agent-office: not saving accounts over ${this.file}, which couldn't be read — fix or move it`);
-      return;
+      throw new Error('Accounts unavailable');
     }
     // Written whole and renamed into place, so the office and the `accounts` command never read half a file.
     const tmp = `${this.file}.${process.pid}.tmp`;
@@ -271,8 +304,8 @@ export class Accounts {
       writeFileSync(tmp, JSON.stringify(this.data, null, 2), { mode: 0o600 });
       renameSync(tmp, this.file);
     } catch (err) {
-      console.error(`agent-office: couldn't save ${this.file}: ${(err as Error).message}`);
-      return;
+      this.stamp = '\0'; this.data = {accounts:[],invites:[]}; this.sync();
+      throw new Error('Could not save accounts', {cause:err});
     }
     try {
       const st = statSync(this.file);

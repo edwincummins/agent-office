@@ -16,6 +16,7 @@ export interface Session {
 }
 
 export class Auth {
+  private revoked = new Map<string,number>();
   private attempts = new Map<string, { count: number; resetAt: number }>();
   /** Hashes of the one-time sign-in links' keys that haven't been used yet. */
   private links = new Set<string>();
@@ -95,6 +96,8 @@ export class Auth {
    */
   verify(token: string | undefined): Session | undefined {
     if (!token) return undefined;
+    for(const [key,expires] of this.revoked)if(expires<=Date.now())this.revoked.delete(key);
+    if(this.revoked.has(linkHash(token)))return undefined;
     const dot = token.indexOf('.');
     if (dot < 1) return undefined;
     const payload = token.slice(0, dot);
@@ -134,6 +137,8 @@ export class Auth {
   }
 
   clearCookie(req: IncomingMessage): string {
+    const token=parseCookies(req.headers.cookie)[cookieName(req)];
+    if(token && this.verify(token))this.revoked.set(linkHash(token),Date.now()+SESSION_TTL_MS);
     return `${cookieName(req)}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
   }
 

@@ -27,4 +27,13 @@ button.mini { width: auto; margin: 0; padding: 6px 10px; font-size: 13px; box-sh
 a { color: var(--ink); font-weight: 800; }
 label + label { margin-top: 12px; }
 .note { text-align: left; color: var(--muted); font-size: 13px; margin: 8px 0 0; }
-.role { display: inline-block; background: #fff3c4; border: 2px solid var(--border); border-radius: 999px; padding: 0 8px; font-size: 13px; font-weight: 800; }
+.role { display: inline-block; background: #fff3c4; border: 2px solid var(--border); border-radius: 6px; padding: 0 8px; font-size: 13px; font-weight: 800; }
+.google-button { display:flex; align-items:center; justify-content:center; gap:12px; height:44px; padding:0 12px; border:1px solid #747775; background:#fff; color:#1f1f1f; font:500 14px system-ui; box-shadow:none; }
+.google-button:hover { background:#f8f9fa; }
+.google-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.google-button:active { transform:none; box-shadow:none; }
+.google-mark { font:bold 20px Arial; color:#4285f4; }
+.auth-divider { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:13px; }
+.auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--muted); opacity:.4; }
+.invite-hint { border-top:1px solid #d7c9bc; padding-top:14px; color:var(--muted); font-size:14px; white-space:pre-line; text-align:left; }
+.confirm-row { margin-top:12px; }

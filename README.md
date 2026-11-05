@@ -420,3 +420,7 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+### First account and Google sign-in
+
+Open the office locally to create its first owner account. After that, people join by invite. Optional Google sign-in uses a locally configured Web client; password sign-in remains available. See [sign-up and Google setup](docs/google-signin.md) for the exact callback, credential keys, local bootstrap boundary and QA harness.
