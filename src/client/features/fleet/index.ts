@@ -5,7 +5,7 @@ import { boardModes } from '../../core/board-modes';
 import { hintTitle,key } from '../../core/hint';
 import { store } from '../../state';
 import { boardKey,readMode,writeMode } from './memory';
-import { drawFleet,boardSignature } from './draw';
+import { drawFleet,boardSignature,cadreLogo } from './draw';
 import { openFleet } from './panel';
 import type { Interactable } from '../../world/types';
 import type { Modal } from '../../ui/dom';
@@ -13,16 +13,19 @@ import type { Modal } from '../../ui/dom';
 declare module '../../world/types' { interface InteractKinds { fleetmode: true; } }
 
 export function installFleet(ctx:Ctx) {
-  const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1024;
-  const paint=canvas.getContext('2d')!;
+  // 3072×1536 (1.5× the layout's 2048×1024 drawing space) so the terminal text on the bigger wall stays sharp.
+  const canvas=document.createElement('canvas');canvas.width=3072;canvas.height=1536;
+  const paint=canvas.getContext('2d')!;paint.setTransform(1.5,0,0,1.5,0,0);
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.anisotropy=ctx.renderer.capabilities.getMaxAnisotropy();
   let state:FleetSnapshot|null=null,last='',selected=false,scope='',base:THREE.Texture|undefined,mesh:THREE.Mesh|undefined;
   let panel:Modal|undefined;
   const labelMaps=new WeakMap<THREE.Mesh,THREE.Texture>();
   const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=128;
   const labelPaint=labelCanvas.getContext('2d')!;labelPaint.fillStyle='#111214';labelPaint.fillRect(0,0,512,128);
-  labelPaint.fillStyle='#F0643B';labelPaint.fillRect(30,40,48,48);labelPaint.fillStyle='#ece6d6';labelPaint.font='600 76px Segoe UI';labelPaint.fillText('Cadre',110,91);
+  labelPaint.fillStyle='#ece6d6';labelPaint.font='600 76px Segoe UI';labelPaint.fillText('Cadre',110,91);
   const labelTexture=new THREE.CanvasTexture(labelCanvas);labelTexture.colorSpace=THREE.SRGBColorSpace;
+  // Cadre's own logo on the sign (and on the board's header, see draw.ts), once the image has loaded.
+  cadreLogo.then(img=>{labelPaint.drawImage(img,26,28,72,72);labelTexture.needsUpdate=true;last='';draw(state);}).catch(()=>{labelPaint.fillStyle='#F0643B';labelPaint.fillRect(30,40,48,48);labelTexture.needsUpdate=true;});
   let authorized=false,permissionRequest=0;
   const allowed=()=>authorized&&store.me.account?.role==='admin';
   const header=document.createElement('canvas');header.width=1024;header.height=250;

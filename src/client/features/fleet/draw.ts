@@ -14,9 +14,13 @@ export function boardSignature(state:FleetSnapshot|null){
   return JSON.stringify(state&&{status:state.status,count:state.seats.length,needs:[state.needs.length,state.needs[0]?.summary],seats:state.seats.slice(0,9).map(({session,name,rig,state,reason,tail})=>({session,name,rig,state,reason:state==='stuck'?reason:undefined,tail:tail?.slice(-(screenGrid(stateCount).rows===3?9:15))}))});
 }
 const sans='"Segoe UI", sans-serif';
+const logoUrl=new URL('./cadre-logo.png',import.meta.url).href;
+let logo:HTMLImageElement|undefined;
+/** Cadre's logo (the framed lead tile over four seats), shared by the board and its sign. */
+export const cadreLogo:Promise<HTMLImageElement>=typeof Image==='undefined'?new Promise(()=>{}):new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{logo=img;resolve(img);};img.onerror=reject;img.src=logoUrl;});
 export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
   g.globalAlpha=1;g.textBaseline='top';g.textAlign='left';g.fillStyle='#08090a';g.fillRect(0,0,2048,1024);
-  g.fillStyle='#F0643B';g.fillRect(24,22,24,24);g.fillStyle='#ece6d6';g.font=`600 36px ${sans}`;g.fillText('Cadre',64,12);
+  if(logo)g.drawImage(logo,16,12,44,44);else{g.fillStyle='#F0643B';g.fillRect(24,22,24,24);}g.fillStyle='#ece6d6';g.font=`600 36px ${sans}`;g.fillText('Cadre',64,12);
   g.fillStyle='#8b8676';g.font=`24px ${sans}`;
   g.fillText(state?`${state.seats.length} seats${state.seats.length>9?` · +${state.seats.length-9} more in the panel`:''}${state.status==='stale'?' · STALE — feed unavailable':` · live · ${new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',second:'2-digit'})}`}`:'Feed is off',220,24);
   if(!state||!state.seats.length){g.font=`30px ${sans}`;g.fillText(state?'No teams or seats yet':'Cadre feed is off. Set cadre.fleetCommand',24,150);return;}

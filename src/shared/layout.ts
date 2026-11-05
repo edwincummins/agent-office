@@ -250,7 +250,8 @@ export const BOARDS = {
   queue: { x: -3.9, y: 2.1, z: FLOOR.minZ + 0.08, rotY: 0, width: 6, height: 3, label: '📋 Task queue' },
   pulls: { x: 3.9, y: 2.1, z: FLOOR.minZ + 0.08, rotY: 0, width: 6, height: 3, label: 'Pull Requests' },
   // East wall, north of the lounge TV.
-  services: { x: FLOOR.maxX - 0.08, y: 2.1, z: -8.2, rotY: -Math.PI / 2, width: 6, height: 3, label: '🌐 Services' },
+  // Bigger than the north-wall boards (it doubles as the Cadre wall): it takes the room toward the TV (Fetty, 11-05).
+  services: { x: FLOOR.maxX - 0.08, y: 2.4, z: -7.6, rotY: -Math.PI / 2, width: 7.6, height: 3.8, label: '🌐 Services' },
 } as const;
 
 /** The big TV on the east wall that shows whoever is screen sharing. */
