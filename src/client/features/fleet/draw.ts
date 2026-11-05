@@ -18,7 +18,7 @@ export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
   g.globalAlpha=1;g.textBaseline='top';g.textAlign='left';g.fillStyle='#08090a';g.fillRect(0,0,2048,1024);
   g.fillStyle='#F0643B';g.fillRect(24,22,24,24);g.fillStyle='#ece6d6';g.font=`600 36px ${sans}`;g.fillText('Cadre',64,12);
   g.fillStyle='#8b8676';g.font=`24px ${sans}`;
-  g.fillText(state?`${state.seats.length} seats${state.seats.length>9?` · +${state.seats.length-9} more in the panel`:''}${state.status==='stale'?' · STALE — feed unavailable':''}`:'Feed is off',220,24);
+  g.fillText(state?`${state.seats.length} seats${state.seats.length>9?` · +${state.seats.length-9} more in the panel`:''}${state.status==='stale'?' · STALE — feed unavailable':` · live · ${new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',second:'2-digit'})}`}`:'Feed is off',220,24);
   if(!state||!state.seats.length){g.font=`30px ${sans}`;g.fillText(state?'No teams or seats yet':'Cadre feed is off. Set cadre.fleetCommand',24,150);return;}
   const top=88+(state.needs.length?56:0);
   if(state.needs.length){
