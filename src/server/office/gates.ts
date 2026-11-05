@@ -1,3 +1,4 @@
+import {isOwner,OWNER_ONLY} from '../owner-workers/access.js';
 import { WebSocket } from 'ws';
 import type { GhAs } from '../signins.js';
 import type { Floor } from '../floor.js';
@@ -27,10 +28,11 @@ export function gates(ctx: Ctx): Gates {
   const withSignIn = (c: Client, which: SignInKind | undefined, go: () => void, refused?: (why: string) => void) => {
     const { signins } = ctx;
     const id = c.accountId;
+    if(!isOwner(ctx,id)){if(refused)refused(OWNER_ONLY);else ctx.warn(c,OWNER_ONLY);return;}
     const ready = (a: string) => (which === 'claude' ? signins.claudeReady(a) : signins.githubReady(a));
     if (!which || !id || ready(id)) return go();
     void signins.look(id, true).then(() => {
-      if (c.out || c.ws.readyState !== WebSocket.OPEN) return;
+      if (c.out || !isOwner(ctx,c.accountId) || c.ws.readyState !== WebSocket.OPEN) return;
       if (ready(id)) return go();
       const why = signins.why(which);
       if (refused) refused(why);
@@ -48,7 +50,7 @@ export function gates(ctx: Ctx): Gates {
     const fetching = all.map((f) => f.workers.fetchBase()).filter((p) => p !== undefined);
     if (!fetching.length) return go();
     void Promise.all(fetching).then(() => {
-      if (c.out || c.ws.readyState !== WebSocket.OPEN || all.some((f) => ctx.floors.get(f.id) !== f)) return;
+      if (c.out || !isOwner(ctx,c.accountId) || c.ws.readyState !== WebSocket.OPEN || all.some((f) => ctx.floors.get(f.id) !== f)) return;
       go();
     });
   };

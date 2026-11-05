@@ -127,10 +127,11 @@ export class Auth {
    * Signed in to this office on any port of this host. A service tunnel (localhost:5173) carries
    * the cookie you got on the office's own tunnel (localhost:4600), since cookies ignore ports.
    */
-  fromAnyCookie(req: IncomingMessage): boolean { return !!this.sessionFromAnyCookie(req); }
-  sessionFromAnyCookie(req: IncomingMessage): Session | undefined {
+  fromAnyCookie(req: IncomingMessage,accept:(session:Session)=>boolean=()=>true): boolean { return !!this.sessionFromAnyCookie(req,accept); }
+  sessionFromAnyCookie(req: IncomingMessage,accept:(session:Session)=>boolean=()=>true): Session | undefined {
     for(const [name,value] of Object.entries(parseCookies(req.headers.cookie))){
-      const session=OFFICE_COOKIE.test(name)?this.verify(value):undefined;if(session)return session;
+      const session=OFFICE_COOKIE.test(name)?this.verify(value):undefined;
+      if(session&&accept(session))return session;
     }
   }
 

@@ -143,26 +143,23 @@ export class WorkerManager {
 
   /**
    * Picks every worker whose terminal outlived the last office (a dev-server reload, an upgrade)
-   * back up where it is, mid-turn or not. Whoever else was at a desk when the office stopped (a
-   * restart, a crash) gets straight back to work, carrying on with whatever it was in the middle of.
-   * Call once, before anyone can walk in.
+   * back up before anyone arrives, subject to the current run policy.
    */
   async start() {
     await this.host.connect();
     await Promise.all(
       [...this.workers.values()].map(async (w) => {
+        if(this.runAs?.canRun?.(w.owner)===false){w.saved=undefined;w.info.status="offline";return;}
         const saved = w.saved;
         w.saved = undefined;
         const adopted = saved && (await this.host.attach(saved.ptyId));
         if (adopted) this.adopt(w, adopted, saved);
       }),
     );
-    // Terminals nobody saved a claim on (their worker was sent home as the office went down).
     this.host.killUnclaimed();
     // Whoever's worktree was deleted while the office was down stays asleep, marked lost, rather than failing to start.
     for (const w of this.workers.values()) this.worktrees.checkLost(w);
     this.wakeAll();
-    // It may have switched branches while the office was down, its terminal still going.
     void this.syncBranches();
   }
 
@@ -244,6 +241,7 @@ export class WorkerManager {
       if (paused) return paused;
     }
     const signIn = providerAdapter(selectedProvider)?.signIn;
+    if(this.runAs?.canRun?.(owner)===false)return 'Only the office owner can hire workers';
     if (owner && signIn && this.runAs && !this.runAs.claudeReady(owner)) return this.runAs.why(signIn);
     const full = this.capacity?.full();
     if (full) return full;
@@ -309,6 +307,7 @@ export class WorkerManager {
   resume(id: string, prompt?: string): string | undefined {
     const w = this.workers.get(id);
     if (!w) return 'No such worker';
+    if(this.runAs?.canRun?.(w.owner)===false)return 'Legacy worker is stopped: hire a new worker as the office owner';
     if (w.pty || w.dsh) return 'Worker is already running';
     if (this.worktrees.checkLost(w, true)) return lostMessage(w.info);
     clockWork(w.info, 'starting');
@@ -415,12 +414,12 @@ export class WorkerManager {
     return this.worktrees.rebuild(id);
   }
 
-  attach(id: string, clientId: string, name: string): { data: string; cols: number; rows: number } | undefined {
+  attach(id: string, clientId: string, name: string, acknowledge=true): { data: string; cols: number; rows: number } | undefined {
     const w = this.workers.get(id);
     if (!w) return undefined;
     w.viewers.set(clientId, name);
     let changed = this.syncViewers(w);
-    if (!w.info.acked && w.info.status !== 'needs_input') {
+    if (acknowledge && !w.info.acked && w.info.status !== 'needs_input') {
       w.info.acked = true;
       changed = true;
     }
@@ -687,6 +686,7 @@ export class WorkerManager {
     // A workspace isn't a repository, but it's inside this floor's checkout: git run in it must not
     // find that checkout (and switch its branch, say) instead of saying it's no repository.
     if (info.repos?.length) env.GIT_CEILING_DIRECTORIES = [path.dirname(cwd), env.GIT_CEILING_DIRECTORIES].filter(Boolean).join(path.delimiter);
+    if(this.runAs?.canRun?.(w.owner)===false){this.startFailed(w,"Only the office owner can run workers");return;}
     if (w.owner && this.runAs) {
       if (adapter?.signIn && !this.runAs.claudeReady(w.owner)) {
         this.startFailed(w, `whoever hired ${info.name} (${info.createdBy}) isn't signed in to Claude — they can sign in under ☰ → 🔐 Your sign-ins, then press R here`);

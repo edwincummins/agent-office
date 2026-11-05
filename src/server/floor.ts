@@ -237,6 +237,7 @@ export class Floor {
         return typeof as === 'string' ? Promise.resolve(as) : this.github.claim(issue, as);
       },
       refreshGitHub: () => void this.github.refresh(),
+      mayRun: owner=>ctx.runAs?.canRun?.(owner)!==false,
       hiringPaused: () => ctx.ledger.hiringPaused,
       room: () => ctx.capacity.room(),
       emptied: () => {

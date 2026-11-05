@@ -1,4 +1,5 @@
 import './signins.css';
+import {canWork,visitorTools} from '../shared/owner-workers';
 import type { SignInKind, SignInState } from '../../shared/protocol';
 import type { Net } from '../net';
 import { store } from '../state';
@@ -17,6 +18,7 @@ let open: { modal: Modal; say(why?: string): void } | null = null;
  * `why` says what sent you here (hiring a worker before signing in, say).
  */
 export function openSignIns(net: Net, why?: string) {
+  if(!canWork())return visitorTools();
   if (open) return open.say(why);
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const banner = h('p.team-status', { hidden: true });

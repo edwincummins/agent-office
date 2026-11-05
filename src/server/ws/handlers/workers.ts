@@ -1,3 +1,4 @@
+import {isOwner} from '../../owner-workers/access.js';
 // Workers at their desks and the board agents at their kiosks: hiring them, their terminals, their
 // worktrees and pull requests.
 import { MAX_REPOS, type RepoSource } from '../../workers.js';
@@ -101,7 +102,7 @@ export const workerHandlers = {
   'worker.attach'(ctx, c, msg) {
     const who = c.peer.name;
     const w = workerOf(ctx, msg.workerId);
-    const snap = w?.floor.workers.attach(w.wid, c.id, who);
+    const snap = w?.floor.workers.attach(w.wid, c.id, who,isOwner(ctx,c.accountId));
     if (w && snap) {
       c.attached.add(w.wid);
       ctx.sendTo(c, { t: 'term.snapshot', workerId: w.wid, ...snap });

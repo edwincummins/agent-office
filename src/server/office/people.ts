@@ -1,3 +1,4 @@
+import {isOwner} from '../owner-workers/access.js';
 import type { Accounts } from '../accounts.js';
 import type { Me } from '../../shared/protocol.js';
 import type { Ctx, People } from './context.js';
@@ -11,7 +12,7 @@ export function people(ctx: Ctx): People {
   /** Who a connection is: its account's current name and role, or an admin guest on the shared password. */
   const meOf = (accountId: string | undefined): Me => {
     const a = ctx.accounts.get(accountId);
-    return a ? { account: { name: a.name, role: a.role }, admin: a.role === 'admin' } : { admin: !accountId };
+    return a ? { account: { name: a.name, role: a.role }, admin: a.role === 'admin', owner:isOwner(ctx,accountId) } : { admin: !accountId, owner:false };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
   const stillIn = (c: Client) => (c.accountId ? !!ctx.accounts.get(c.accountId) && (ctx.accounts.get(c.accountId)?.sessionEpoch??0)===(c.sessionEpoch??0) : ctx.accounts.sharedPassword);
@@ -30,7 +31,7 @@ export function people(ctx: Ctx): People {
         continue;
       }
       const me = meOf(c.accountId);
-      if (me.admin !== c.admin) {
+      {
         c.admin = me.admin;
         ctx.sendTo(c, { t: 'me', me });
       }

@@ -1,3 +1,4 @@
+import {allowAction,syncVisitorControls} from './shared/owner-workers';
 import type { ClientMsg, ServerMsg } from '../shared/protocol';
 import { lastFloor, store, type Profile, type Spot } from './state';
 
@@ -61,7 +62,7 @@ export class Net {
       } catch {
         return;
       }
-      for (const h of this.handlers) h(msg);
+      for (const h of this.handlers) h(msg); syncVisitorControls();
     };
     ws.onclose = async () => {
       if (this.ws !== ws) return;
@@ -88,6 +89,7 @@ export class Net {
   }
 
   send(msg: ClientMsg) {
+    if(!allowAction(msg.t))return;
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
   }
 }

@@ -4,6 +4,8 @@ export type AccountRole = 'admin' | 'member';
 
 /** Who this browser is signed in as. */
 export interface Me {
+  /** Explicit local owner identity, never implied by admin. */
+  owner?: boolean;
   /** Your own account; missing when you came in with the shared office password. */
   account?: { name: string; role: AccountRole };
   /** May invite, list and revoke accounts. */

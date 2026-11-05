@@ -1,4 +1,5 @@
 import './queue.css';
+import {canWork} from '../shared/owner-workers';
 import type { AgentProvider, QueueTask, Usage } from '../../shared/protocol';
 import type { Net } from '../net';
 import { store } from '../state';
@@ -105,7 +106,7 @@ export function openQueue(net: Net, actions: QueueActions) {
       if (t.startedAt) meta.push(`started ${timeAgo(t.startedAt)}`);
       meta.push(`by ${t.addedBy}`);
       if (w) {
-        buttons.push(h('button.btn', { type: 'button', onclick: () => actions.openTerminal(w.id) }, '🖥️ Terminal'));
+        buttons.push(h('button.btn', { type: 'button', 'data-read-only': 'true', onclick: () => actions.openTerminal(w.id) }, '🖥️ Terminal'));
         buttons.push(
           h('button.btn', {
             type: 'button',
@@ -130,7 +131,7 @@ export function openQueue(net: Net, actions: QueueActions) {
       if (t.branch) meta.push(`🌿 ${t.branch}`);
       if (t.finishedAt) meta.push(timeAgo(t.finishedAt));
       if (t.pr) buttons.push(h('a.btn', { href: t.pr.url, target: '_blank', rel: 'noopener', title: t.pr.title }, `🔀 PR #${t.pr.number}${t.pr.state === 'MERGED' ? ' ✓' : t.pr.state === 'DRAFT' ? ' (draft)' : ''}`));
-      if (w) buttons.push(h('button.btn', { type: 'button', onclick: () => actions.openTerminal(w.id) }, '🖥️ Terminal'));
+      if (w) buttons.push(h('button.btn', { type: 'button', 'data-read-only': 'true', onclick: () => actions.openTerminal(w.id) }, '🖥️ Terminal'));
       buttons.push(h('button.btn', { type: 'button', title: 'Put it back on the queue', onclick: () => net.send({ t: 'queue.retry', taskId: t.id }) }, '↻ Requeue'));
       buttons.push(h('button.btn', { type: 'button', title: 'Forget it', 'aria-label': 'Remove', onclick: () => net.send({ t: 'queue.remove', taskId: t.id }) }, '✕'));
     }
@@ -174,6 +175,7 @@ export function openQueue(net: Net, actions: QueueActions) {
       running.length + queued.length + done.length ? null : h('div.queue-empty', {}, 'Nothing on the queue yet.'),
     ];
     list.replaceChildren(...parts.filter((n): n is HTMLElement => n !== null));
+    if(!canWork()){form.remove();limit.remove();const note=list.querySelector('p.note');if(note)note.textContent='Watch the office owner’s queued work here. Only the owner can add, reorder or run tasks.';for(const b of list.querySelectorAll<HTMLButtonElement>('button:not([data-read-only])'))b.disabled=true;el.querySelector('footer')!.textContent='Read-only · Only the office owner can change the queue';}
   };
 
   // The machine reports every few seconds; only a change to whether the office is full shows here.

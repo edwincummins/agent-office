@@ -430,3 +430,4 @@ The sign-in page explains blank-name entry when the shared office password is st
 Google-first owners can add a password in **Your character → Set a password**, or recover locally with `agent-office accounts password <name>` using stdin, never a password argument. See [local recovery](docs/google-signin.md#local-password-recovery). First-owner creation requires direct loopback access without proxy headers.
 
 Password changes sign out that account's other sessions; the browser setting its first password stays signed in. Local recovery signs out all of the account's sessions.
+Worker execution and tool sign-ins are [owner-only](docs/owner-workers.md). Other accounts—including other admins—can explore, chat and watch terminals. Existing offices must set a local owner account ID; first-run offices use their recorded owner. Terminal output is visible to all signed-in visitors.

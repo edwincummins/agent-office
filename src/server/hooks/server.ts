@@ -1,6 +1,7 @@
 // The loopback-only server for the workers' own calls: their agents' hook events, and the office's
 // queue and workers for the board agents and the office-workers command.
 import http from 'node:http';
+import {hookRequest,ownerHook} from '../owner-workers/hooks.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Ctx } from '../office/context.js';
@@ -13,6 +14,7 @@ import type { AgentProvider } from '../../shared/providers.js';
 /** Starts the hook server, and says which port it listens on. */
 export async function startHookServer(ctx: Ctx): Promise<{ hookServer: http.Server; hookPort: number }> {
   const hookServer = http.createServer(async (req, res) => {
+    if(!hookRequest(req))return send(res,403,{});
     let url: URL;
     try {
       url = new URL(req.url ?? '/', 'http://127.0.0.1');
@@ -36,7 +38,7 @@ export async function startHookServer(ctx: Ctx): Promise<{ hookServer: http.Serv
     const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
     const workerId = url.searchParams.get('worker') ?? '';
     const workers = ctx.workerFloor(workerId)?.workers;
-    if (!workers) return send(res, 401, {});
+    if (!workers||!ownerHook(ctx,workerId,token)) return send(res, 401, {});
     const event = url.searchParams.get('event') ?? '';
     const ok = workers.handleProviderHook(route as AgentProvider, workerId, token, event, payload);
     send(res, ok ? 200 : 401, {});
