@@ -10,6 +10,7 @@ import { pageRoutes } from './pages.js';
 import { searchRoutes } from './search.js';
 import { serviceRoutes } from './services.js';
 import { cadreWebRoute } from '../../fleet/web.js';
+import { mapModelRoute } from './map-model.js';
 
 export const routes: readonly Route[] = [
   // Anyone.
@@ -29,6 +30,7 @@ export const routes: readonly Route[] = [
   // Signed in.
   authRoutes.whoami,
   cadreWebRoute,
+  mapModelRoute,
   agentRoutes.models,
   fileRoutes.image,
   fileRoutes.whiteboardFile,
