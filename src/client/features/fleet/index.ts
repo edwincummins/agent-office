@@ -5,7 +5,7 @@ import { boardModes } from '../../core/board-modes';
 import { hintTitle,key } from '../../core/hint';
 import { store } from '../../state';
 import { boardKey,readMode,writeMode } from './memory';
-import { drawFleet } from './draw';
+import { drawFleet,boardSignature } from './draw';
 import { openFleet } from './panel';
 import type { Interactable } from '../../world/types';
 import type { Modal } from '../../ui/dom';
@@ -15,7 +15,7 @@ declare module '../../world/types' { interface InteractKinds { fleetmode: true; 
 export function installFleet(ctx:Ctx) {
   const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1024;
   const paint=canvas.getContext('2d')!;
-  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.anisotropy=ctx.renderer.capabilities.getMaxAnisotropy();
   let state:FleetSnapshot|null=null,last='',selected=false,scope='',base:THREE.Texture|undefined,mesh:THREE.Mesh|undefined;
   let panel:Modal|undefined;
   const labelMaps=new WeakMap<THREE.Mesh,THREE.Texture>();
@@ -30,7 +30,7 @@ export function installFleet(ctx:Ctx) {
   const switchMesh=new THREE.Group();
   switchMesh.name='cadre-board-switch';switchMesh.userData.drawCalls=2;
   const segments=[false,true].map((cadre,i)=>{
-    const geometry=new THREE.PlaneGeometry(.45,.22),uv=geometry.attributes.uv;
+    const geometry=new THREE.PlaneGeometry(.45,.16),uv=geometry.attributes.uv;
     for(let j=0;j<uv.count;j++)uv.setX(j,(uv.getX(j)+i)/2);
     const part=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({map:headerTexture,toneMapped:false}));
     part.material.userData.outlineParameters={visible:false};
@@ -59,15 +59,15 @@ export function installFleet(ctx:Ctx) {
     else {authorized=false;panel?.close();apply();}
   };
   const draw=(next:FleetSnapshot|null)=>{
-    state=next;const value=JSON.stringify(next);if(value===last)return;
-    last=value;drawFleet(paint,next);texture.needsUpdate=true;switchMesh.userData.redraws=(switchMesh.userData.redraws??0)+1;
+    state=next;const value=boardSignature(next);if(value===last)return;
+    last=value;const started=performance.now();drawFleet(paint,next);switchMesh.userData.paintMs=performance.now()-started;texture.needsUpdate=true;const upload=performance.now();ctx.renderer.initTexture(texture);switchMesh.userData.uploadMs=performance.now()-upload;switchMesh.userData.redraws=(switchMesh.userData.redraws??0)+1;
   };
   const mount=(original:THREE.Texture,target:THREE.Mesh)=>{
     base=original;mesh=target;
     const next=boardKey(store.floor,ctx.plan().id);
     if(next!==scope){scope=next;try{selected=readMode(localStorage,scope);}catch{selected=false;}}
     mesh.geometry.computeBoundingBox();const box=mesh.geometry.boundingBox!;
-    switchMesh.position.set(box.max.x-.53,box.max.y-.19,.02);
+    switchMesh.position.set(box.max.x-.53,box.max.y-.10,.02);
     const board=ctx.plan().boards.services;for(const it of segments){it.x=board.x;it.z=board.z;}
     mesh.add(switchMesh);apply();
     return selected&&allowed()?texture:base;

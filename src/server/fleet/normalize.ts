@@ -1,9 +1,16 @@
+import { stripVTControlCharacters } from 'node:util';
 import type { FleetNeed, FleetSeat, FleetSnapshot, FleetStatus } from '../../shared/protocol/fleet.js';
 
 export const STUCK_AFTER_MS = 20 * 60_000;
 const obj = (v:unknown):v is Record<string,unknown> => !!v && typeof v==='object' && !Array.isArray(v);
 const text = (v:unknown,limit=240) => typeof v==='string'?v.replace(/[\u0000-\u001f\u007f]/g,' ').slice(0,limit):'';
-interface Seen { signature:string; since:number; working:boolean; stateKey?:string; stateSince?:number }
+interface Seen { signature:string; since:number; working:boolean; stateKey?:string; stateSince?:number; tail?:string[] }
+
+/** Screen content is owner-only, bounded to the latest 24 lines of 160 code points. */
+export function screenTail(value:unknown):string[]{
+  if(!Array.isArray(value))return [];
+  return value.slice(-24).filter((line):line is string=>typeof line==='string').map(line=>Array.from(stripVTControlCharacters(line.slice(0,8192)).replace(/[\u0000-\u001f\u007f]/g,' ')).slice(0,160).join(''));
+}
 
 /** Only a small display projection leaves the server; raw tasks, paths and inbox fields do not. */
 export class FleetNormalizer {
@@ -39,11 +46,12 @@ export class FleetNormalizer {
       }
       const stateKey=JSON.stringify([state,reason]);
       const stateSince=previous?.stateKey===stateKey?previous.stateSince??now:now;
-      next.set(session,{signature,since,working,stateKey,stateSince});
+      const currentTail=screenTail(s.tail),tail=state==='stopped'&&!currentTail.length?previous?.tail??[]:currentTail;
+      next.set(session,{signature,since,working,stateKey,stateSince,tail});
       if(!teams.includes(rig))teams.push(rig);
-      return {session,rig,name:text(s.member,60)||session,state,activity:line,...(reason?{reason}:{}),...(['stuck','waiting'].includes(state)?{since:stateSince}:{})};
-    }).sort((a,b)=>a.session.localeCompare(b.session,undefined,{numeric:true}));
+      return {session,rig,name:text(s.member,60)||session,state,activity:line,tail,...(reason?{reason}:{}),...(['stuck','waiting'].includes(state)?{since:stateSince}:{})};
+    });
     this.seen=next;
-    return {status:'ready',teams:[...new Set(teams)].sort(),seats,needs};
+    return {status:'ready',teams:[...new Set(teams)],seats,needs};
   }
 }

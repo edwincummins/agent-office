@@ -105,3 +105,18 @@ test('owner health probe reports unhealthy and stopped upstream without issuing 
   assert.equal((await cadreGateway(ctx)).grants.size,0);
  }finally{await close(office);stopCadreGateway(ctx);if(upstream.listening)await close(upstream);await new Promise(r=>setTimeout(r,20));rmSync(dir,{recursive:true,force:true});}
 });
+
+test('screen content is sent only to the allow-listed owner, including subsequent polls',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'cadre-tail-access-'));
+ const account={id:'owner',name:'Synthetic owner',role:'admin'},other={id:'other',name:'Other admin',role:'admin'};
+ const raw={teams:[{rig:'demo'}],seats:[{session:'lead@demo',rig:'demo',member:'lead',status:'running',tail:['OWNER SCREEN ONLY']}],needs:[],tasks:{}};
+ writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:[{id:'owner'}],fleetCommand:[process.execPath,'-e',`console.log(${JSON.stringify(JSON.stringify(raw))})`]}}));
+ const received:{id:string|undefined;message:unknown}[]=[];
+ const ctx={cfg:{dataDir:dir},accounts:{get:(id:string)=>id==='owner'?account:other},sendTo:(c:Client,message:unknown)=>received.push({id:c.accountId,message})} as unknown as Ctx;
+ const stop=installFleet(ctx);
+ try{
+  for(const id of ['owner','other',undefined])subscribeFleet(ctx,{accountId:id} as Client);
+  for(let i=0;i<100&&!JSON.stringify(received).includes('OWNER SCREEN ONLY');i++)await new Promise(r=>setTimeout(r,20));
+  assert.ok(JSON.stringify(received).includes('OWNER SCREEN ONLY'));assert.ok(received.every(r=>r.id==='owner'));
+ }finally{stop();rmSync(dir,{recursive:true,force:true});}
+});

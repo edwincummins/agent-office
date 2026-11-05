@@ -14,20 +14,20 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
     h('header',{},h('h2',{},'Cadre'),h('div.cadre-modes',{},h('button',{onclick:()=>{modal.close();services();}},'Services'),h('span.selected',{},'Cadre'))),body);
   let closed=false,key='',frame:HTMLIFrameElement|undefined,lastAlive=0;
   const render=()=>{
-    const state=snapshot(),next=JSON.stringify(state);if(next===key)return;key=next;rows.replaceChildren();
+    const state=snapshot(),next=JSON.stringify(state);if(next===key)return;key=next;
+    const scroll=new Map(Array.from(rows.querySelectorAll<HTMLElement>('.cadre-tail'),el=>[el.dataset.seat,{top:el.scrollTop,left:el.scrollLeft,bottom:el.scrollTop+el.clientHeight>=el.scrollHeight-4}]));
+    rows.replaceChildren();
     if(!state){rows.append(h('p',{},'Cadre feed is off. Set cadre.fleetCommand'));return;}
     if(state.status==='stale')rows.append(h('p.cadre-notice',{},'Feed unavailable — showing the last received snapshot.'));
     if(!state.teams.length)rows.append(h('p',{},'No teams or seats yet.'));
     for(const need of state.needs)rows.append(h('p.cadre-gate',{},`${need.rig} · ${need.summary}`));
     const grid=h('div.cadre-grid');rows.append(grid);
-    for(const team of state.teams){
-      const seats=state.seats.filter(s=>s.rig===team);
-      const status=(['needs-you','stuck','waiting','unknown','working','idle','stopped'] as const).find(s=>seats.some(seat=>seat.state===s))??'idle';
-      const tile=h('section.cadre-team',{style:`border-color:${fleetColors[status]}`},h('h3',{},team,h('small',{style:`color:${fleetColors[status]}`},status.replace('-',' '))));
-      for(const seat of state.seats.filter(s=>s.rig===team))tile.append(h('details.cadre-seat',{},
-        h('summary',{},h('span',{style:`color:${seat.state==='stopped'?'#8b8676':fleetColors[seat.state]}`},`${seat.name} · ${seat.state.replace('-',' ')}`)),
-        ...(seat.reason?[h('p',{},`${seat.state==='waiting'?'Waiting ':''}${seat.reason}${seat.since!==undefined?` · seen ${seat.state} since ${new Date(seat.since).toLocaleString()}`:''}`)]:[]),h('p',{},seat.activity||'No activity reported')));
-      grid.append(tile);
+    for(const seat of state.seats){
+      const tile=h('section.cadre-team',{style:`border-color:${fleetColors[seat.state]}`},
+        h('h3',{},`${seat.rig} · ${seat.name}`,h('small',{style:`color:${fleetColors[seat.state]}`},seat.state.replace('-',' '))));
+      if(seat.reason)tile.append(h('p.cadre-reason',{style:`color:${fleetColors[seat.state]}`},`${seat.reason}${seat.since!==undefined?` · seen ${seat.state} since ${new Date(seat.since).toLocaleString()}`:''}`));
+      const tail=h('pre.cadre-tail',{'data-seat':seat.session,style:seat.state==='stopped'?'opacity:.4':''},seat.tail?.length?seat.tail.join('\n'):'no output yet');
+      tile.append(tail);grid.append(tile);const position=scroll.get(seat.session);tail.scrollTop=position&&!position.bottom?position.top:tail.scrollHeight;tail.scrollLeft=position?.left??0;
     }
   };
   const load=()=>{frame?.remove();lastAlive=Date.now();frame=h('iframe',{title:'Cadre connection',src:'/api/cadre/embed',sandbox:'allow-scripts allow-same-origin allow-forms',referrerpolicy:'no-referrer',hidden:true});content.append(frame);};

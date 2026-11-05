@@ -7,51 +7,37 @@ export function fitText(ctx:Pick<CanvasRenderingContext2D,'measureText'>,value:s
   while(chars.length&&ctx.measureText(chars.join('')+'…').width>width)chars.pop();
   return chars.length?chars.join('')+'…':'';
 }
-const sans='"Segoe UI", sans-serif';
-function activityLines(g:CanvasRenderingContext2D,value:string,width:number):string[] {
-  const text=value.replace(/[\u0000-\u001f\u007f]/g,' ');
-  if(g.measureText(text).width<=width)return [text];
-  const chars=Array.from(text);let end=0;
-  while(end<chars.length&&g.measureText(chars.slice(0,end+1).join('')).width<=width)end++;
-  const space=chars.slice(0,end).lastIndexOf(' ');
-  if(space>end/2)end=space;
-  return [chars.slice(0,end).join(''),fitText(g,chars.slice(end).join('').trimStart(),width)];
+export function screenGrid(count:number){return {columns:count<=4?2:3,rows:count<=6?2:3,visible:Math.min(9,count)};}
+/** Excludes activity/since: invisible metadata changes must not upload the wall texture. */
+export function boardSignature(state:FleetSnapshot|null){
+  const stateCount=state?.seats.length??0;
+  return JSON.stringify(state&&{status:state.status,count:state.seats.length,needs:[state.needs.length,state.needs[0]?.summary],seats:state.seats.slice(0,9).map(({session,name,rig,state,reason,tail})=>({session,name,rig,state,reason:state==='stuck'?reason:undefined,tail:tail?.slice(-(screenGrid(stateCount).rows===3?9:15))}))});
 }
-const urgency:FleetStatus[]=['needs-you','stuck','waiting','unknown','working','idle','stopped'];
+const sans='"Segoe UI", sans-serif';
 export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
   g.globalAlpha=1;g.textBaseline='top';g.textAlign='left';g.fillStyle='#08090a';g.fillRect(0,0,2048,1024);
-  g.fillStyle='#F0643B';g.fillRect(28,36,24,24);g.fillStyle='#ece6d6';g.font=`600 40px ${sans}`;g.fillText('Cadre',70,25);
-  g.fillStyle='#8b8676';g.font=`24px ${sans}`;g.fillText(state?`${state.teams.length} teams · ${state.seats.length} seats${state.status==='stale'?' · STALE — feed unavailable':''}`:'Feed is off',230,37);
-  if(!state){g.font=`30px ${sans}`;g.fillText('Cadre feed is off. Set cadre.fleetCommand',28,150);return;}
-  let top=110;
+  g.fillStyle='#F0643B';g.fillRect(24,22,24,24);g.fillStyle='#ece6d6';g.font=`600 36px ${sans}`;g.fillText('Cadre',64,12);
+  g.fillStyle='#8b8676';g.font=`24px ${sans}`;
+  g.fillText(state?`${state.seats.length} seats${state.seats.length>9?` · +${state.seats.length-9} more in the panel`:''}${state.status==='stale'?' · STALE — feed unavailable':''}`:'Feed is off',220,24);
+  if(!state||!state.seats.length){g.font=`30px ${sans}`;g.fillText(state?'No teams or seats yet':'Cadre feed is off. Set cadre.fleetCommand',24,150);return;}
+  const top=88+(state.needs.length?56:0);
   if(state.needs.length){
-    g.fillStyle='#211c11';g.fillRect(28,top,1992,78);g.strokeStyle='#c9a24a';g.lineWidth=2;g.strokeRect(28,top,1992,78);
-    g.font=`600 30px ${sans}`;g.fillStyle='#e8cd85';g.fillText(fitText(g,`${state.needs.length} need you · ${state.needs[0].summary}`,1940),48,top+23);top+=98;
+    g.fillStyle='#211c11';g.fillRect(24,64,2000,56);g.strokeStyle='#c9a24a';g.lineWidth=2;g.strokeRect(24,64,2000,56);
+    g.font=`600 28px ${sans}`;g.fillStyle='#e8cd85';g.fillText(fitText(g,`${state.needs.length} need you · ${state.needs[0].summary}`,1968),40,77);
   }
-  if(!state.teams.length){g.font=`30px ${sans}`;g.fillStyle='#8b8676';g.fillText('No teams or seats yet',28,top+30);return;}
-  const columns=Math.min(4,state.teams.length),rows=state.teams.length>4?2:1;
-  const w=(1992-(columns-1)*20)/columns,h=(996-top-(rows-1)*20)/rows;
-  state.teams.slice(0,8).forEach((team,i)=>{
-    const x=28+(i%columns)*(w+20),y=top+Math.floor(i/columns)*(h+20);
-    const seats=state.seats.filter(s=>s.rig===team),status=urgency.find(s=>seats.some(seat=>seat.state===s))??'idle';
-    g.fillStyle='#0b0c0d';g.beginPath();g.roundRect(x,y,w,h,14);g.fill();g.strokeStyle=status==='waiting'?'#7fb2ff8c':fleetColors[status];g.lineWidth=2;g.stroke();
-    g.fillStyle=status==='waiting'?'#1a2533':'#17191c';g.fillRect(x+2,y+2,w-4,72);
-    g.font=`600 40px ${sans}`;g.fillStyle='#ece6d6';g.fillText(fitText(g,team,w*.57),x+16,y+13);
-    g.font=`600 22px ${sans}`;g.fillStyle=fleetColors[status];g.fillText(status==='working'?`${seats.filter(s=>s.state==='working').length} working`:status.replace('-',' '),x+w*.62,y+18);
-    if(i===7&&state.teams.length>8){g.fillStyle='#8b8676';g.fillText(`+${state.teams.length-7} more teams`,x+16,y+80);return;}
-    const rowHeight=86;
-    const capacity=Math.max(1,Math.floor((h-94)/rowHeight));
-    const visible=seats.length>capacity?seats.slice(0,capacity-1):seats;
-    visible.forEach((seat,j)=>{
-      const sy=y+90+j*rowHeight;g.globalAlpha=seat.state==='stopped'?.45:1;
-      g.beginPath();g.arc(x+20,sy+12,6,0,Math.PI*2);g.fillStyle=fleetColors[seat.state];g.strokeStyle='#2c3036';seat.state==='stopped'?g.stroke():g.fill();
-      g.font=`32px ${sans}`;g.fillStyle='#c9c3b3';g.fillText(fitText(g,seat.name,w-52),x+36,sy);
-      g.font='24px "Cascadia Mono", Consolas, monospace';g.fillStyle=seat.state==='waiting'||seat.state==='stuck'?fleetColors[seat.state]:'#8b8676';
-      const detail=seat.state==='unknown'?`unknown · ${seat.activity||'state unavailable'}`:seat.state==='waiting'?`waiting ${seat.reason||'on a teammate'}`:seat.state==='stuck'?`stuck · ${seat.reason||'unchanged activity'}`:seat.activity||seat.state;
-      (seat.state==='stuck'?[fitText(g,detail,w-52)]:activityLines(g,detail,w-52)).forEach((line,k)=>g.fillText(line,x+36,sy+32+k*24));
-      g.globalAlpha=1;
-    });
-    if(seats.length>visible.length){g.font=`24px ${sans}`;g.fillStyle='#8b8676';g.fillText(`+${seats.length-visible.length} more`,x+18,y+90+visible.length*rowHeight);}
-    if(!seats.length){g.font=`24px ${sans}`;g.fillStyle='#8b8676';g.fillText('No seats',x+18,y+80);}
+  const {columns,rows,visible}=screenGrid(state.seats.length),w=(2000-(columns-1)*16)/columns,h=(1000-top-(rows-1)*16)/rows;
+  state.seats.slice(0,visible).forEach((seat,i)=>{
+    const x=24+(i%columns)*(w+16),y=top+Math.floor(i/columns)*(h+16);
+    g.fillStyle='#0b0c0d';g.beginPath();g.roundRect(x,y,w,h,10);g.fill();g.strokeStyle=fleetColors[seat.state];g.lineWidth=3;g.stroke();
+    g.font=`600 28px ${sans}`;g.fillStyle='#ece6d6';g.fillText(fitText(g,`${seat.rig} · ${seat.name}`,w*.57-24),x+16,y+8);
+    g.font=`22px ${sans}`;g.fillStyle=fleetColors[seat.state];
+    const chip=seat.state==='stuck'?`stuck · ${seat.reason||'unchanged activity'}`:seat.state==='waiting'?'waiting':seat.state.replace('-',' ');
+    g.fillText(fitText(g,chip,w*.43-24),x+w*.57,y+11);
+    const capacity=Math.min(rows===3?9:15,Math.floor((h-56)/24)),lines=(seat.tail??[]).slice(-capacity);
+    g.save();g.beginPath();g.rect(x+16,y+44,w-32,h-56);g.clip();
+    g.font='20px "Cascadia Mono", Consolas, monospace';g.fillStyle='#d8d3c4';
+    if(!lines.length){g.fillStyle='#8b8676';g.textAlign='center';g.fillText('no output yet',x+w/2,y+h/2);}
+    else lines.forEach((line,j)=>{g.globalAlpha=(seat.state==='stopped'?.4:1)*(j<2?.45:1);g.fillText(line,x+16,y+h-12-(lines.length-j)*24);});
+    g.restore();
   });
 }
