@@ -70,6 +70,7 @@ export const boards: Fixture<'boardMeshes'> = (site) => {
     site.group.add(bg);
     boardMeshes[key] = face;
     const label = textPlane(b.label, { bg: '#fffaf3', size: 64 });
+    face.userData.boardLabel = label;
     label.scale.multiplyScalar(1.3);
     label.position.set(b.x + nx * 0.04, b.y + b.height / 2 + 0.5, b.z + nz * 0.04);
     label.rotation.y = b.rotY;
