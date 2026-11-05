@@ -3,7 +3,6 @@ import { STREAM } from '../../../shared/jukebox';
 import type { AudioCore } from '../../sound/core';
 import { biquad, rms } from '../../sound/dsp';
 import { TunePlayer } from '../../sound/music';
-import { YouTubeStream, youTubeOf } from './youtube';
 
 // ---- The jukebox ------------------------------------------------------------------------------
 
@@ -33,7 +32,7 @@ export class Jukebox {
   private musicMuted = false;
   private jukebox: JukeboxPlay | null = null;
   private tune: TunePlayer | null = null;
-  private stream: HTMLAudioElement | YouTubeStream | null = null;
+  private stream: HTMLAudioElement | null = null;
   private musicTimer = 0;
 
   /** `onError` hears about a stream that won't play here. */
@@ -73,7 +72,7 @@ export class Jukebox {
     // The same play, sent again after a reconnect or timed better once the clocks are compared: carry on
     // (a tune lines itself up again as it goes; an audio file jumps to the right spot).
     if (was && play && was.startedAt === play.startedAt && was.track === play.track && was.url === play.url) {
-      if (this.stream && Math.abs(was.since - play.since) > 250) this.resync(this.stream);
+      if (this.stream && Math.abs(was.since - play.since) > 250) this.seekStream(this.stream);
       return;
     }
     this.applyJukebox(true);
@@ -114,13 +113,12 @@ export class Jukebox {
     if (!ctx || (!changed && (this.tune || this.stream))) return;
     this.tune?.stop();
     this.tune = null;
-    if (this.stream instanceof YouTubeStream) this.stream.stop();
-    else if (this.stream) {
+    if (this.stream) {
       this.stream.pause();
       this.stream.removeAttribute('src');
       this.stream.load();
+      this.stream = null;
     }
-    this.stream = null;
     clearInterval(this.musicTimer);
     const j = this.jukebox;
     if (!j) return;
@@ -134,17 +132,6 @@ export class Jukebox {
   }
 
   private startStream(url: string) {
-    const yt = youTubeOf(url);
-    if (!yt && /(^|.)(youtube.com|youtu.be)$/i.test((() => { try { return new URL(url).hostname; } catch { return ''; } })())) {
-      this.onError('📻 Paste a link to a song or playlist, not the YouTube home page');
-      return;
-    }
-    if (yt) {
-      this.stream = new YouTubeStream(yt, () => this.musicAt(), (text) => this.onError(text));
-      this.hearStream();
-      this.a.count('stream');
-      return;
-    }
     const a = new Audio();
     a.preload = 'auto';
     a.loop = true;
@@ -157,11 +144,6 @@ export class Jukebox {
     this.hearStream();
     void a.play().catch(() => {});
     this.a.count('stream');
-  }
-
-  private resync(st: HTMLAudioElement | YouTubeStream) {
-    if (st instanceof YouTubeStream) st.sync();
-    else this.seekStream(st);
   }
 
   /** An audio file (not live radio) picks up where everyone else is. */
