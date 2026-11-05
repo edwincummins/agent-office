@@ -282,6 +282,8 @@ A map without a dungeon can still have a script: a guard who walks each worker t
 
 ## Local model maps
 
+For glass materials, names containing `glass` and either `interior` or `partition` (case-insensitive) use neutral tint at 0.13 opacity so stacked interior panes stay clear. Other material names containing `glass` use a faint blue tint at 0.3 opacity for facade glazing. Keep these materials distinct when merging meshes.
+
 The `model` style places the office's working furniture inside a local architectural GLB. Keep licensed models and their map configurations outside the source repository. Put the model at `<project>/.agent-office/maps/assets/room.glb` and the map JSON directly in `<project>/.agent-office/maps/`. Start the office with that project, then select the map in Settings → Building → Map. The authenticated server serves that file locally; it does not upload it.
 
 Use the common `id`, `name`, `hall`, `spawn`, `door`, `stations`, `council` and `boards` fields described below. Set `style` to `model`, `tables` to `[]`, and add a `model` object:
