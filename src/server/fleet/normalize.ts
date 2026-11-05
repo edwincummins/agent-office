@@ -9,7 +9,7 @@ interface Seen { signature:string; since:number; working:boolean; stateKey?:stri
 /** Screen content is owner-only, bounded to the latest 24 lines of 160 code points. */
 export function screenTail(value:unknown):string[]{
   if(!Array.isArray(value))return [];
-  return value.slice(-24).filter((line):line is string=>typeof line==='string').map(line=>Array.from(stripVTControlCharacters(line.slice(0,8192)).replace(/[\u0080-\u009f\u2028-\u202e\u2066-\u2069]/g,'').replace(/[\u0000-\u001f\u007f]/g,' ')).slice(0,160).join(''));
+  return value.slice(-24).filter((line):line is string=>typeof line==='string').map(line=>Array.from(stripVTControlCharacters(line.slice(0,8192)).replace(/[\u0080-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g,'').replace(/[\u0000-\u001f\u007f]/g,' ')).slice(0,160).join(''));
 }
 
 /** Only a small display projection leaves the server; raw tasks, paths and inbox fields do not. */
