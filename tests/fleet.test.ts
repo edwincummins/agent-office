@@ -85,10 +85,11 @@ test('only current named admins qualify; shared guests, members and signed-out c
     assert.notEqual(typeof invite,'string');if(typeof invite==='string')throw Error(invite);
     const admin=await accounts.join(invite.token,'Demo admin','sample-password');
     assert.notEqual(typeof admin,'string');if(typeof admin==='string')throw Error(admin);
-    assert.equal(maySeeFleet({accounts},{accountId:admin.id}),true);
-    assert.equal(maySeeFleet({accounts},{}),false);
-    assert.equal(maySeeFleet({accounts},{accountId:admin.id,out:true}),false);
-    admin.role='member';assert.equal(maySeeFleet({accounts},{accountId:admin.id}),false);
+    writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:[{id:admin.id}]}}));
+    assert.equal(maySeeFleet({accounts,cfg:{dataDir:dir} as Ctx['cfg']},{accountId:admin.id}),true);
+    assert.equal(maySeeFleet({accounts,cfg:{dataDir:dir} as Ctx['cfg']},{}),false);
+    assert.equal(maySeeFleet({accounts,cfg:{dataDir:dir} as Ctx['cfg']},{accountId:admin.id,out:true}),false);
+    admin.role='member';assert.equal(maySeeFleet({accounts,cfg:{dataDir:dir} as Ctx['cfg']},{accountId:admin.id}),false);
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -125,7 +126,7 @@ test('installed feed denies guests, removes demoted subscribers, and can resubsc
   const dir=mkdtempSync(path.join(tmpdir(),'fleet-hub-'));
   let stop=()=>{};
   try{
-    writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{fleetCommand:[process.execPath,'-e',`console.log(${JSON.stringify(JSON.stringify(fleetFixture()))})`]}}));
+    writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:[{name:'Hub demo'}],fleetCommand:[process.execPath,'-e',`console.log(${JSON.stringify(JSON.stringify(fleetFixture()))})`]}}));
     const accounts=new Accounts(dir),invite=accounts.invite('test','admin');if(typeof invite==='string')throw Error(invite);
     const account=await accounts.join(invite.token,'Hub demo','sample-password');if(typeof account==='string')throw Error(account);
     const received:{client:Client;state:unknown}[]=[];
@@ -180,4 +181,10 @@ test('unknown engine states stay local to the seat while other live seats contin
     await poller.poll(2);assert.equal(poller.state.status,'ready');assert.equal(poller.state.seats[0].state,'working');
     raw=next;await poller.poll(3);assert.equal(poller.state.seats[0].state,'working');poller.stop();
   }
+});
+
+test('an open need wins over unknown state on that seat',()=>{
+ const raw=fleetFixture();const source={...raw,seats:raw.seats.map(seat=>({...seat,state:{key:'future'}}))};
+ const parsed=new FleetNormalizer().parse(source,0);
+ assert.equal(parsed.seats[1].state,'needs-you');assert.equal(parsed.seats[0].state,'unknown');assert.equal(parsed.seats[4].state,'stopped');
 });

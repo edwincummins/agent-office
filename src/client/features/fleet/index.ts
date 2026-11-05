@@ -23,7 +23,8 @@ export function installFleet(ctx:Ctx) {
   const labelPaint=labelCanvas.getContext('2d')!;labelPaint.fillStyle='#111214';labelPaint.fillRect(0,0,512,128);
   labelPaint.fillStyle='#F0643B';labelPaint.fillRect(30,40,48,48);labelPaint.fillStyle='#ece6d6';labelPaint.font='600 76px Segoe UI';labelPaint.fillText('Cadre',110,91);
   const labelTexture=new THREE.CanvasTexture(labelCanvas);labelTexture.colorSpace=THREE.SRGBColorSpace;
-  const allowed=()=>store.me.account?.role==='admin';
+  let authorized=false,permissionRequest=0;
+  const allowed=()=>authorized&&store.me.account?.role==='admin';
   const header=document.createElement('canvas');header.width=1024;header.height=250;
   const headerTexture=new THREE.CanvasTexture(header);headerTexture.colorSpace=THREE.SRGBColorSpace;
   const switchMesh=new THREE.Group();
@@ -52,6 +53,11 @@ export function installFleet(ctx:Ctx) {
     ctx.hint.invalidate();
   };
   const toggle=()=>{if(!allowed())return;selected=!selected;try{writeMode(localStorage,scope,selected);}catch{}apply();};
+  const open=async()=>{
+    const response=await fetch('/api/cadre/open',{method:'POST'}).catch(()=>null);
+    if(response?.ok&&allowed()){panel?.close();panel=openFleet(()=>state,()=>{toggle();});}
+    else {authorized=false;panel?.close();apply();}
+  };
   const draw=(next:FleetSnapshot|null)=>{
     state=next;const value=JSON.stringify(next);if(value===last)return;
     last=value;drawFleet(paint,next);texture.needsUpdate=true;switchMesh.userData.redraws=(switchMesh.userData.redraws??0)+1;
@@ -69,15 +75,22 @@ export function installFleet(ctx:Ctx) {
   boardModes.set('services',{
     texture:mount,
     hint:()=>({k:`fleet:${selected}:${allowed()}`,parts:[hintTitle(selected&&allowed()?'Cadre':'Services'),key('E','Open'),...(allowed()?[key('B','Services | Cadre')]:[])]}),
-    use:k=>{if(k==='B'){toggle();return true;}if(k==='E'&&selected&&allowed()){panel?.close();panel=openFleet(()=>state,()=>{toggle();});return true;}return false;},
+    use:k=>{if(k==='B'){toggle();return true;}if(k==='E'&&selected&&allowed()){void open();return true;}return false;},
   });
   ctx.interactions.define('fleetmode',{reach:9,hint:()=>({k:'switch',parts:[hintTitle('Services | Cadre'),key('E','Switch')]}),use:(it,k)=>{if(k==='E'&&allowed()&&selected!==(it.label==='Cadre'))toggle();}});
   draw(null);
-  const sync=()=>{if(!allowed()){panel?.close();draw(null);apply();return;}ctx.net.send({t:'fleet.subscribe'});apply();};
+  const sync=()=>{
+    const request=++permissionRequest;authorized=false;panel?.close();draw(null);apply();
+    if(store.me.account?.role!=='admin')return;
+    void fetch('/api/cadre/web',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
+      if(request!==permissionRequest)return;
+      authorized=config?.allowed===true;if(allowed())ctx.net.send({t:'fleet.subscribe'});apply();
+    }).catch(()=>{});
+  };
   let watching=false;
-  ctx.messages.on('welcome',()=>{draw(null);sync();if(!watching){watching=true;ctx.net.onStatus(up=>{if(!up){panel?.close();draw(null);}});}});
+  ctx.messages.on('welcome',()=>{draw(null);sync();if(!watching){watching=true;ctx.net.onStatus(up=>{if(!up){permissionRequest++;authorized=false;panel?.close();draw(null);apply();}});}});
   store.on('me',sync);
-  ctx.messages.on('fleet',m=>{if(allowed())draw(m.state);});
+  ctx.messages.on('fleet',m=>{if(m.state===null)sync();else if(allowed())draw(m.state);});
   store.on('floor',()=>{if(mesh&&base)mount(base,ctx.world().boardMeshes.services);});
   const initial=ctx.office.boardMeshes.services;
   mount((initial.material as THREE.MeshBasicMaterial).map!,initial);
