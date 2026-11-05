@@ -29,7 +29,8 @@ export function installJukebox(ctx: Ctx, deps: JukeboxDeps) {
   }
   store.on('jukebox', playJukebox);
   ctx.interactions.define('jukebox', {
-    reach: 4,
+    // Anywhere in the lounge, beanbags and sofa included (Fetty, 11-05: 4 m meant walking over every time).
+    reach: 14,
     hint: () => {
       const j = store.jukebox;
       const what = j.on ? trackTitle(j) : '';
