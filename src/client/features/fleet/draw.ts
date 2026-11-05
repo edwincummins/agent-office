@@ -32,7 +32,7 @@ export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
     g.font=`600 28px ${sans}`;g.fillStyle='#ece6d6';g.fillText(fitText(g,`${seat.rig} · ${seat.name}`,w*.57-24),x+16,y+8);
     g.font=`22px ${sans}`;g.fillStyle=fleetColors[seat.state];
     const chip=seat.state==='stuck'?`stuck · ${seat.reason||'unchanged activity'}`:seat.state==='waiting'?'waiting':seat.state.replace('-',' ');
-    g.fillText(fitText(g,chip,w*.43-24),x+w*.57,y+11);
+    g.textAlign='right';g.fillText(fitText(g,chip,w*.43-24),x+w-16,y+11);g.textAlign='left';
     const capacity=Math.min(rows===3?9:15,Math.floor((h-56)/24)),lines=(seat.tail??[]).slice(-capacity);
     g.save();g.beginPath();g.rect(x+16,y+44,w-32,h-56);g.clip();
     g.font='20px "Cascadia Mono", Consolas, monospace';g.fillStyle='#d8d3c4';
