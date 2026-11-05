@@ -1,0 +1,22 @@
+.cadre-panel{position:fixed;inset:4%;width:auto!important;max-width:none!important;height:92%;max-height:none!important;background:#08090a;color:#ece6d6;border:1px solid #2c3036;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.cadre-panel>header{min-height:44px;background:#111214;color:#ece6d6;border-bottom:1px solid #22252a;display:flex;gap:12px;align-items:center;padding:8px 16px}
+.cadre-panel>header h2{flex:1;font:600 20px 'Segoe UI',sans-serif}
+.cadre-panel button{border-radius:6px;background:#17191c;color:#ece6d6;border:1px solid #2c3036;padding:6px 12px;cursor:pointer}
+.cadre-panel button:hover{background:#2c3036}.cadre-panel button:active{transform:translateY(1px)}
+.cadre-panel .cadre-body{overflow:auto;padding:18px;flex:1;min-height:0}
+.cadre-notice{padding:12px;color:#e3a948;border:1px dashed #80602d;margin:0 0 16px;font:16px 'Segoe UI',sans-serif}
+.cadre-team{background:#0b0c0d;border:1px solid #22252a;border-radius:10px;margin:14px 0;padding:16px}
+.cadre-team h3{margin:0 0 12px;font:600 22px 'Segoe UI',sans-serif}
+.cadre-seat{border-top:1px solid #22252a;padding:8px 0;font:15px 'Segoe UI',sans-serif;overflow-wrap:anywhere}
+.cadre-seat summary{cursor:pointer;display:list-item}.cadre-seat p{font:14px Consolas,monospace;color:#c9c3b3;white-space:pre-wrap}
+.cadre-panel iframe{border:0;flex:1;width:100%;height:100%;background:#08090a}.cadre-panel [hidden]{display:none!important}
+.cadre-modes{display:flex;border:1px solid #22252a;border-radius:6px;padding:3px;align-items:center}
+.cadre-modes button{background:none;border:0}.cadre-modes .selected{background:#17191c;padding:6px 12px;border-radius:4px}
+.cadre-gate{border:2px solid #c9a24a;background:#211c11;color:#e8cd85;padding:14px;font:600 18px 'Segoe UI',sans-serif}
+.cadre-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:16px}
+.cadre-team h3{display:flex;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid #22252a}.cadre-team h3 small{font-size:14px}
+@media(max-width:600px){.cadre-panel{inset:2%;height:96%}.cadre-panel>header{gap:6px;padding:6px}.cadre-panel .cadre-body{padding:10px}}
+
+.cadre-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cadre-team{min-width:0}.cadre-tail{overflow:auto;max-height:420px;white-space:pre;font:16px/24px 'Cascadia Mono',Consolas,monospace;color:#d8d3c4;margin:0}.cadre-reason{color:#e2605f;overflow-wrap:anywhere}
+@media(max-width:700px){.cadre-grid{grid-template-columns:1fr}}

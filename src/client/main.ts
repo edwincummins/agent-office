@@ -39,6 +39,7 @@ import { installCars } from './features/cars';
 import { installChat } from './features/chat';
 import { installClimbing } from './features/climbing';
 import { installCoffee } from './features/coffee';
+import { installFleet } from './features/fleet';
 import { installDictation } from './features/dictation';
 import { installDog } from './features/dog';
 import { installEmotes } from './features/emotes';
@@ -181,6 +182,7 @@ installChat(ctx);
 parts.talk = installVoice(ctx, { tv: parts.tv });
 installDictation(ctx);
 parts.hud = installHud(ctx, core, parts);
+installFleet(ctx);
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);
