@@ -35,4 +35,15 @@ export const jukeboxHandlers = {
     jukeboxChanged(ctx, floor);
     ctx.toastFloor(floor, `🔇 ${who} turned the jukebox off`);
   },
+  'jukebox.save'(ctx, c, msg) {
+    const floor = here(ctx, c);
+    if (!floor) return;
+    const err = floor.jukebox.saveLink(msg.name, msg.url);
+    if (err) return ctx.warn(c, err.error);
+    jukeboxChanged(ctx, floor);
+  },
+  'jukebox.forget'(ctx, c, msg) {
+    const floor = here(ctx, c);
+    if (floor?.jukebox.forget(msg.url)) jukeboxChanged(ctx, floor);
+  },
 } satisfies HandlerMap<JukeboxClientMsg>;

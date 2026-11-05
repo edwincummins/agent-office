@@ -30,6 +30,8 @@ export interface JukeboxState {
   startedAt: number;
   /** How far into the track it was when this was sent, in ms, for until the clocks are compared. */
   elapsed: number;
+  /** Links saved on this jukebox (a YouTube Music playlist, a radio station...), one click to put on again. */
+  saved?: { name: string; url: string }[];
 }
 
 export const tuneById = (id: string): JukeboxTune | undefined => JUKEBOX_TUNES.find((t) => t.id === id);

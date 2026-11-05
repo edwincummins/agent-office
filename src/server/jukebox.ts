@@ -9,6 +9,7 @@ interface Saved {
   by?: string;
   /** When the track started, on this machine's clock. */
   startedAt: number;
+  saved?: { name: string; url: string }[];
 }
 
 /**
@@ -25,8 +26,8 @@ export class Jukebox {
   }
 
   state(): JukeboxState {
-    const { on, track, url, by, startedAt } = this.s;
-    return { on, track, ...(url && track === STREAM ? { url } : {}), ...(by ? { by } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt) };
+    const { on, track, url, by, startedAt, saved } = this.s;
+    return { on, track, ...(url && track === STREAM ? { url } : {}), ...(by ? { by } : {}), startedAt, elapsed: Math.max(0, Date.now() - startedAt), saved: saved ?? [] };
   }
 
   /** What's on, for toasts: “Rainy Window”, or where a stream comes from. */
@@ -56,6 +57,24 @@ export class Jukebox {
     this.set({ on: true, track: JUKEBOX_TUNES[(i + 1) % JUKEBOX_TUNES.length].id, by });
   }
 
+  /** Keeps a link under a name (newest first, at most 24); the same link again just renames it. */
+  saveLink(name: unknown, url: unknown): { error: string } | undefined {
+    const u = checkStreamUrl(url);
+    if ('error' in u) return u;
+    const label = (typeof name === 'string' ? name.trim().slice(0, 60) : '') || trackTitle({ track: STREAM, url: u.url });
+    this.s.saved = [{ name: label, url: u.url }, ...(this.s.saved ?? []).filter((x) => x.url !== u.url)].slice(0, 24);
+    this.save();
+    return undefined;
+  }
+
+  forget(url: unknown): boolean {
+    const before = this.s.saved?.length ?? 0;
+    this.s.saved = (this.s.saved ?? []).filter((x) => x.url !== url);
+    if (this.s.saved.length === before) return false;
+    this.save();
+    return true;
+  }
+
   stop(by: string): boolean {
     if (!this.s.on) return false;
     this.s = { ...this.s, on: false, by };
@@ -64,7 +83,7 @@ export class Jukebox {
   }
 
   private set(s: Omit<Saved, 'startedAt'>) {
-    this.s = { ...s, startedAt: Date.now() };
+    this.s = { ...s, saved: this.s.saved, startedAt: Date.now() };
     this.save();
   }
 
@@ -80,6 +99,7 @@ export class Jukebox {
         ...(url && 'url' in url ? { url: url.url } : {}),
         ...(typeof s.by === 'string' ? { by: s.by.slice(0, 24) } : {}),
         startedAt: typeof s.startedAt === 'number' && Number.isFinite(s.startedAt) ? s.startedAt : Date.now(),
+        saved: Array.isArray(s.saved) ? s.saved.filter((x) => x && typeof x.name === 'string' && !('error' in checkStreamUrl(x.url))).slice(0, 24) : [],
       };
     } catch {
       // a broken file just means a quiet lounge

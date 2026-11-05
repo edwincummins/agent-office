@@ -20,7 +20,10 @@ export type JukeboxClientMsg =
   | { t: 'jukebox.play'; track?: string; url?: string }
   /** On to the next tune. */
   | { t: 'jukebox.skip' }
-  | { t: 'jukebox.stop' };
+  | { t: 'jukebox.stop' }
+  /** Keep a link on the jukebox under a name, or forget one. */
+  | { t: 'jukebox.save'; name?: string; url: string }
+  | { t: 'jukebox.forget'; url: string };
 
 export type CabinetClientMsg =
   /**

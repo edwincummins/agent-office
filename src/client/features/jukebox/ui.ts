@@ -11,6 +11,10 @@ export function openJukebox(net: Net, openVolume: () => void) {
   const list = h('ul.svc-list');
   const url = h('input', { type: 'text', placeholder: 'https://… a YouTube / YouTube Music song or playlist, internet radio, or an .mp3', 'aria-label': 'Stream or audio file link', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
   const playUrl = h('button.btn.primary', { type: 'button' }, '📻 Play');
+  const name = h('input', { type: 'text', placeholder: 'Name it (optional)', 'aria-label': 'Name for the saved link', maxlength: '60', autocomplete: 'off', style: 'max-width:180px' }) as HTMLInputElement;
+  const saveUrl = h('button.btn', { type: 'button', title: 'Keep this link on the jukebox: one click to put it on again, every session' }, '☆ Save');
+  const savedList = h('ul.svc-list');
+  const savedLabel = h('label', { style: 'margin-top:16px' }, 'Your saved');
   const volume = h('button.btn', { type: 'button' }, '🔈 Your volume');
   const el = h(
     'div.modal.jukebox',
@@ -20,10 +24,13 @@ export function openJukebox(net: Net, openVolume: () => void) {
       'div.body',
       {},
       now,
+      savedLabel,
+      savedList,
       h('label', { style: 'margin-top:16px' }, 'Put on a tune'),
       list,
       h('label', { style: 'margin-top:16px' }, 'Or play a stream'),
       h('div.webhook', {}, url, playUrl),
+      h('div.webhook', { style: 'margin-top:6px' }, name, saveUrl),
       h('p.setting-note', {}, 'A YouTube or YouTube Music song or playlist, internet radio, or an audio file. It plays from the jukebox, for everyone on this floor.'),
     ),
     h('footer', {}, h('span.grow', {}, 'Everyone on this floor hears the same song, louder the closer they are to the lounge.'), volume),
@@ -44,6 +51,20 @@ export function openJukebox(net: Net, openVolume: () => void) {
       ),
       j.on ? button('⏭️ Skip', 'On to the next tune', () => net.send({ t: 'jukebox.skip' })) : button('▶️ Play', `Put ${trackTitle(j)} back on`, () => net.send({ t: 'jukebox.play' }), true),
       j.on ? button('⏹️ Stop', 'Turn the jukebox off', () => net.send({ t: 'jukebox.stop' })) : '',
+    );
+    // Saved links (your YouTube Music playlists, stations): click to put on, × to forget.
+    const saved = j.saved ?? [];
+    savedLabel.hidden = savedList.hidden = !saved.length;
+    savedList.replaceChildren(
+      ...saved.map((x) => {
+        const playing = j.on && j.track === STREAM && j.url === x.url;
+        const forget = h('button.btn', { type: 'button', title: `Forget ${x.name}`, 'aria-label': `Forget ${x.name}`, onclick: (e: Event) => { e.stopPropagation(); net.send({ t: 'jukebox.forget', url: x.url }); } }, '×');
+        const li = h('li', { class: playing ? 'on' : '', tabindex: 0, role: 'button', title: playing ? 'Playing now' : `Put on ${x.name}` }, h('span.jb-icon', {}, playing ? '🔊' : '⭐'), h('div.svc-main', {}, h('div.svc-title', {}, x.name), h('div.svc-meta', {}, trackTitle({ track: STREAM, url: x.url }))), forget);
+        const pick = () => { if (!playing) net.send({ t: 'jukebox.play', url: x.url }); };
+        li.addEventListener('click', pick);
+        li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+        return li;
+      }),
     );
     list.replaceChildren(
       ...JUKEBOX_TUNES.map((t) => {
@@ -79,6 +100,19 @@ export function openJukebox(net: Net, openVolume: () => void) {
     url.value = '';
   };
   playUrl.addEventListener('click', play);
+  // Saves the link in the box, or what's playing now when the box is empty.
+  saveUrl.addEventListener('click', () => {
+    const j = store.jukebox;
+    const raw = url.value.trim() || (j.track === STREAM ? j.url ?? '' : '');
+    const u = checkStreamUrl(raw);
+    if ('error' in u) {
+      toast('Paste a link to save (a YouTube Music playlist, a station...)', 'warn');
+      return url.focus();
+    }
+    net.send({ t: 'jukebox.save', name: name.value.trim() || undefined, url: u.url });
+    name.value = '';
+    toast('⭐ Saved on the jukebox');
+  });
   url.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') play();
   });
