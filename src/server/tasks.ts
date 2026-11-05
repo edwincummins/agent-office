@@ -3,8 +3,10 @@
 // the worker's prompts and recent tool calls, told how by the 'office.namer' prompt (shared/prompts.ts).
 // Without it, the card falls back to the prompt itself.
 
-import { spawn } from 'node:child_process';
+import { spawn } from './cli-process.js';
 import os from 'node:os';
+import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import path from 'node:path';
 import type { WorkerTask } from '../shared/protocol.js';
 
 /** What a worker has been asked and has been doing lately. */
@@ -99,7 +101,7 @@ export class TaskNamer {
 
   private async generate(ctx: TaskContext): Promise<WorkerTask | null> {
     if (!this.enabled) return null;
-    const out = await run(this.claude!, this.env, this.system(), describe(ctx));
+    const out = await run(this.claude!, this.env, this.system(), describe(ctx)).catch(() => null);
     const task = out === null ? null : parse(out);
     if (task) this.fails = 0;
     else if (++this.fails >= FAILS_BEFORE_BACKOFF) {
@@ -126,13 +128,18 @@ function describe(ctx: TaskContext): string {
   return parts.join('\n\n');
 }
 
-function run(claude: string, env: Record<string, string>, system: string, input: string): Promise<string | null> {
+async function run(claude: string, env: Record<string, string>, system: string, input: string): Promise<string | null> {
+  // Multiline instructions are data, never a Windows batch command line.
+  const temp=process.platform==='win32'?mkdtempSync(path.join(os.tmpdir(),'office-namer-')):undefined;
+  const systemFile=temp&&path.join(temp,'system.txt');
+  try{
+  if(systemFile)writeFileSync(systemFile,system,{mode:0o600});
   const args = [
     '-p',
     '--model', 'haiku',
     '--output-format', 'json',
     '--json-schema', SCHEMA,
-    '--system-prompt', system,
+    systemFile?'--system-prompt-file':'--system-prompt', systemFile??system,
     '--tools', '',
     // Not the user's or the project's settings: no hooks, no MCP servers, no plugins, no transcript.
     '--setting-sources', '',
@@ -140,7 +147,7 @@ function run(claude: string, env: Record<string, string>, system: string, input:
     '--disable-slash-commands',
     '--no-session-persistence',
   ];
-  return new Promise((resolve) => {
+  return await new Promise((resolve) => {
     let out = '';
     let settled = false;
     const finish = (v: string | null) => {
@@ -166,6 +173,7 @@ function run(claude: string, env: Record<string, string>, system: string, input:
     child.stdin.on('error', () => {});
     child.stdin.end(input);
   });
+  }finally{if(temp)rmSync(temp,{recursive:true,force:true});}
 }
 
 function parse(out: string): WorkerTask | null {

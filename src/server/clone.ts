@@ -1,4 +1,5 @@
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from './cli-process.js';
+import { execFileSync, type ChildProcess } from 'node:child_process';
 import { closeSync, fstatSync, openSync, readSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import type { CloneProgress } from '../shared/protocol.js';

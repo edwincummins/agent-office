@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process';
+import { execFile } from './cli-process.js';
+import { ghText } from './cli-text.js';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { ImageResult } from './decor.js';
@@ -319,7 +320,7 @@ export class Changes {
       const remote = remotes.includes('origin') ? 'origin' : remotes[0];
       if (!remote) return 'This project has no git remote to push to';
       await git(['push', '-u', remote, s.branch], t.cwd, 120_000, env);
-      const r = await run('gh', ['pr', 'create', '--head', s.branch, '--base', s.prBase, '--title', title.trim(), '--body', body], t.cwd, 120_000, env);
+      const r = await ghText(['pr', 'create', '--head', s.branch, '--base', s.prBase, '--title', title.trim(), '--body', body], args => run('gh', args, t.cwd, 120_000, env));
       const url = r.out.trim().split('\n').pop() ?? '';
       if (r.code !== 0 || !/^https?:\/\//.test(url)) throw new GitError(reason(r, url || 'gh pr create failed'));
       const number = Number(/\/(\d+)$/.exec(url)?.[1] ?? 0);

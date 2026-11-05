@@ -1,7 +1,7 @@
 // The models a provider's own CLI lists, for the hire dialog: what each is called and which
 // reasoning efforts it takes, where the CLI says. Each is asked without a shell, and only what
 // looks like a model gets through.
-import { spawn } from 'node:child_process';
+import { spawn } from './cli-process.js';
 import { closeSync, mkdtempSync, openSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
