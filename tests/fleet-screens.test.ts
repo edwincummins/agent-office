@@ -32,3 +32,13 @@ test('poller publishes a changed tail once, retains it during outage and suppres
  raw={};await poller.poll(3);assert.equal(poller.state.status,'stale');assert.match(poller.state.seats[0].tail!.at(-1)!,/result 2/);
  poller.stop();
 });
+
+test('screen tails remove bidi direction overrides and isolates',()=>{
+ const controls=[0x202a,0x202b,0x202c,0x202d,0x202e,0x2066,0x2067,0x2068,0x2069];
+ for(const code of controls)assert.deepEqual(screenTail([`before${String.fromCodePoint(code)}after`]),['beforeafter'],`U+${code.toString(16)}`);
+});
+test('screen tails remove C1 and Unicode line/paragraph separators',()=>{
+ const controls=[...Array.from({length:32},(_,i)=>0x80+i),0x2028,0x2029];
+ for(const code of controls){const tail=screenTail([`before${String.fromCodePoint(code)}after`]);assert.equal(tail.length,1);assert.ok(!/[\u0080-\u009f\u2028\u2029]/u.test(tail[0]),`U+${code.toString(16)}`);}
+ assert.deepEqual(screenTail(['café 中文 😀']),['café 中文 😀']);
+});
