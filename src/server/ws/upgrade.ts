@@ -1,4 +1,5 @@
 import {watchSession} from '../onboarding/socket-session.js';
+import {isOwner} from '../owner-workers/access.js';
 import type http from 'node:http';
 import type https from 'node:https';
 import type { Duplex } from 'node:stream';
@@ -24,10 +25,10 @@ export function acceptWebSockets(ctx: Ctx, server: http.Server | https.Server) {
     socket.on('error', () => socket.destroy());
     const tunneled = tunneledService(req, cfg.port, cfg.tailnet, (port) => ctx.services.lookup(port));
     if (tunneled) {
-      const session=auth.sessionFromAnyCookie(req);
+      const session=auth.sessionFromAnyCookie(req,s=>isOwner(ctx,s.account?.id));
       if(tunneled.svc!=='gone'&&session){
-        const id=session.account?.id,epoch=session.sessionEpoch??0;
-        watchSession(socket,()=>id?!!ctx.accounts.get(id)&&(ctx.accounts.get(id)?.sessionEpoch??0)===epoch:ctx.accounts.sharedPassword);
+        const id=session.account!.id,epoch=session.sessionEpoch??0;
+        watchSession(socket,()=>isOwner(ctx,id)&&(ctx.accounts.get(id)?.sessionEpoch??0)===epoch);
         return relayUpgrade(req,socket,head,tunneled.svc);
       }
       return refuseUpgrade(socket);

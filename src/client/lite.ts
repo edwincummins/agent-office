@@ -1,3 +1,4 @@
+import {canWork,ownerName} from './shared/owner-workers';
 // The 2D view (/lite): the office without the 3D, for a phone or a computer the 3D office is too
 // much for. Every worker on the floor and how it's doing, the ones waiting on someone first; its
 // terminal, with the keys a phone's keyboard hasn't got and a box to send it a prompt; and the boards
@@ -132,7 +133,7 @@ function renderWorkers() {
   const list = byUrgency(store.workers.values());
   const ul = $('workers');
   ul.replaceChildren(...list.map(workerCard));
-  if (!list.length) ul.append(h('li.lite-empty', {}, store.project ? 'Nobody is working on this floor. ✨ New task hires someone.' : 'No workers here.'));
+  if (!list.length) ul.append(h('li.lite-empty', {}, store.project ? (canWork()?'Nobody is working on this floor. ✨ New task hires someone.':'Nobody is working on this floor yet.') : 'No workers here.'));
   $('waiting-now').textContent = waitingLabel(waitingInOrder(list));
   renderTitle();
 }
@@ -170,7 +171,7 @@ function workerCard(w: WorkerInfo): HTMLElement {
       h(
         'span.lite-info',
         {},
-        h('span.lite-name', {}, w.name),
+        h('span.lite-name', {}, h('span',{},w.name), !canWork()?h('small',{style:'margin-left:6px;font-weight:400'},`${ownerName()}'s`):null),
         task ? h('span.lite-task', {}, task) : null,
         now ? h('span.lite-now', {}, now) : null,
         h('span.lite-sub', {}, sub.join(' · ')),
@@ -178,7 +179,7 @@ function workerCard(w: WorkerInfo): HTMLElement {
       h('span.lite-state', {}, h('span.pill', { class: w.status }, STATUS_LABEL[w.status] ?? w.status), waiting && w.waitingSince ? h('small', {}, timeAgo(w.waitingSince)) : null),
     ),
     // One that's asking something is answered in its terminal, where the question is.
-    asleep || w.lost || w.status === 'needs_input' ? null : h('button.btn.lite-say', { type: 'button', title: `Send ${w.name} a prompt`, 'aria-label': `Send ${w.name} a prompt`, onclick: () => promptWorker(w.id) }, '✍️'),
+    !canWork() || asleep || w.lost || w.status === 'needs_input' ? null : h('button.btn.lite-say', { type: 'button', title: `Send ${w.name} a prompt`, 'aria-label': `Send ${w.name} a prompt`, onclick: () => promptWorker(w.id) }, '✍️'),
   );
 }
 

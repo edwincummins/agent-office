@@ -1,3 +1,4 @@
+import {isOwner} from '../owner-workers/access.js';
 import type http from 'node:http';
 import type { Session } from '../auth.js';
 import { RELAY_LOGIN, relayRequest, signInPage, stoppedPage, tunneledService } from '../relay.js';
@@ -49,7 +50,9 @@ export function requestHandler(ctx: Ctx, routes: readonly Route[]) {
       const tunneled = tunneledService(req, cfg.port, cfg.tailnet, (port) => ctx.services.lookup(port));
       if (tunneled) {
         if (req.method === 'POST' && req.url === RELAY_LOGIN) return await login(ctx, req, res);
-        if (!auth.fromAnyCookie(req)) return signInPage(res, tunneled.port, loginOptions(ctx));
+        const relaySession=auth.fromAnyCookie(req);
+        if (!relaySession) return signInPage(res, tunneled.port, loginOptions(ctx));
+        if(!auth.fromAnyCookie(req,s=>isOwner(ctx,s.account?.id)))return send(res,403,{error:'Only the owner can access worker services'});
         if (tunneled.svc === 'gone') return stoppedPage(res, tunneled.port);
         return relayRequest(req, res, tunneled.svc);
       }

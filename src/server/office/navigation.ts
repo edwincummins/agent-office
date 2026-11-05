@@ -1,3 +1,4 @@
+import {isOwner} from '../owner-workers/access.js';
 import type { Floor } from '../floor.js';
 import { elevatorSpot } from '../../shared/layout.js';
 import { ROOF } from '../../shared/rooftop.js';
@@ -20,8 +21,7 @@ export function navigation(ctx: Ctx): Navigation {
     ctx.sendTo(c, { t: 'floor.enter', peers: [...ctx.clients.values()].map((o) => o.peer), ...floorView(ctx, floor) });
     screensOf(ctx, c, floor);
     arrived(c, left);
-    floor.arrived();
-    floor.workers.wakeAll();
+    if(isOwner(ctx,c.accountId)){floor.arrived();floor.workers.wakeAll();}
     ctx.floorsChanged();
   };
 

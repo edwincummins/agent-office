@@ -293,6 +293,7 @@ export class Accounts {
       const saved = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Saved>;
       if(!Array.isArray(saved?.accounts)||!Array.isArray(saved.invites))throw Error('Invalid accounts store');
       this.data = {
+        ...(typeof saved.ownerAccountId === 'string' ? {ownerAccountId:saved.ownerAccountId} : {}),
         accounts: Array.isArray(saved.accounts) ? saved.accounts.filter((a) => a && typeof a.id === 'string' && typeof a.hash === 'string') : [],
         invites: Array.isArray(saved.invites) ? saved.invites.filter((v) => v && typeof v.token === 'string') : [],
         ...(typeof saved.ownerAccountId === 'string' ? {ownerAccountId:saved.ownerAccountId} : {}),

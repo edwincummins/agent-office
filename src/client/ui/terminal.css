@@ -31,3 +31,8 @@
 .term-say { display: flex; gap: 8px; }
 .modal .term-say input[type=text] { flex: 1; min-width: 0; padding: 8px 10px; }
 .modal.term header .typed { font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; }
+
+/* A read-only viewer keeps the owner's PTY size; fill unused viewport space with its theme. */
+.modal.term.read-only .xterm-viewport { background-color:#1e1f2e !important; }
+.term-read-only { padding:4px 7px; border-radius:4px; background:#2b2d42; color:white; font-size:12px; font-weight:700; }
+.modal.term .term-read-only-footer { color:#7a6f65; background:var(--paper); }

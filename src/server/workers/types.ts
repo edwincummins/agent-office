@@ -43,6 +43,7 @@ export interface OpenedPr {
  * (see signins.ts). Workers hired without an account run as the office, as they always have.
  */
 export interface RunAs {
+  canRun?(owner:string|undefined):boolean;
   /** Whether the account has a Claude sign-in its workers can start on. */
   claudeReady(owner: string): boolean;
   /** What to tell the account when it hasn't. */
