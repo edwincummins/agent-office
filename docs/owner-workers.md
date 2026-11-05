@@ -25,3 +25,5 @@ It refuses an existing unmarked directory and known owner ports. `Test Owner` ow
 Visitors see the configured owner's display name in desk hints and read-only footers. The command palette omits hiring. A visitor tip appears once per account name/browser storage (or shared visitor), waits for existing dialogs to close, and dismisses with X/Esc through the normal modal path. Clearing browser storage shows it again.
 
 Read-only terminal windows use one owner-labelled header badge and one footer; unused terminal space keeps the terminal background. Visitor worker rows omit prompt/edit controls.
+
+Visitor worker rows also show the office owner's name beside the worker name.

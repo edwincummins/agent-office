@@ -1,4 +1,4 @@
-import {canWork} from './shared/owner-workers';
+import {canWork,ownerName} from './shared/owner-workers';
 // The 2D view (/lite): the office without the 3D, for a phone or a computer the 3D office is too
 // much for. Every worker on the floor and how it's doing, the ones waiting on someone first; its
 // terminal, with the keys a phone's keyboard hasn't got and a box to send it a prompt; and the boards
@@ -171,7 +171,7 @@ function workerCard(w: WorkerInfo): HTMLElement {
       h(
         'span.lite-info',
         {},
-        h('span.lite-name', {}, w.name),
+        h('span.lite-name', {}, h('span',{},w.name), !canWork()?h('small',{style:'margin-left:6px;font-weight:400'},`${ownerName()}'s`):null),
         task ? h('span.lite-task', {}, task) : null,
         now ? h('span.lite-now', {}, now) : null,
         h('span.lite-sub', {}, sub.join(' · ')),
