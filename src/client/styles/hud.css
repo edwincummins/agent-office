@@ -219,8 +219,9 @@ body.telescope-active #hud { visibility: hidden; }
 .share-thumb .who { position: absolute; left: 6px; bottom: 6px; background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px; font-size: 12px; font-weight: 800; }
 
 /* Screen share viewer */
-.modal.viewer { width: min(1400px, 100%); background: #111; }
-.modal.viewer video { width: 100%; max-height: calc(100vh - 120px); background: #111; display: block; }
+/* Nearly the whole window, so a shared screen reads at full size (was capped at 1400px wide: small and soft on 4K). */
+.modal.viewer { width: 96vw; max-width: none; background: #111; }
+.modal.viewer video { width: 100%; height: calc(96vh - 70px); object-fit: contain; background: #111; display: block; }
 
 @media (max-width: 800px) {
   .side { width: min(250px, calc(100vw - 24px)); max-height: calc(100vh - 290px); }

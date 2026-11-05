@@ -174,8 +174,9 @@ export class Voice {
     if (this.screen) return null;
     if (!window.isSecureContext || !navigator.mediaDevices?.getDisplayMedia) return 'Screen sharing needs HTTPS (or localhost).';
     try {
-      // Up to 1440p at 30 fps: the TV is 6.75 m wide, and 15 fps at the browser's default bitrate blurred text (11-05).
-      this.screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 2560, max: 2560 }, height: { ideal: 1440, max: 1440 } }, audio: false });
+      // Up to 4K at 30 fps: charts and small text need the screen's own pixels (15 fps at the browser's default bitrate,
+      // then a 1440p cap, blurred them; 11-05). What's sent to others is held to 12 Mbps below.
+      this.screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 3840, max: 3840 }, height: { ideal: 2160, max: 2160 } }, audio: false });
     } catch (err) {
       return (err as Error).name === 'NotAllowedError' ? null : `Could not share: ${(err as Error).message}`;
     }

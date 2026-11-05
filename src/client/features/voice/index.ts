@@ -97,8 +97,9 @@ export function installVoice(ctx: Ctx, deps: VoiceDeps) {
     const [who, stream] = streams.find(([name]) => name !== 'You') ?? streams[0];
     video.srcObject = stream;
     const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
-    const el = h('div.modal.viewer', { role: 'dialog', 'aria-label': 'Screen share' }, h('header', {}, h('h2', {}, `🖥️ ${who}'s screen`), close), video);
-    const modal = openModal(el, { doing: `🖥️ watching ${who}'s screen`, onClose: () => (video.srcObject = null) });
+    const whose = who === 'You' ? 'Your' : `${who}'s`;
+    const el = h('div.modal.viewer', { role: 'dialog', 'aria-label': 'Screen share' }, h('header', {}, h('h2', {}, `🖥️ ${whose} screen`), close), video);
+    const modal = openModal(el, { doing: who === 'You' ? '🖥️ watching your own screen' : `🖥️ watching ${who}'s screen`, onClose: () => (video.srcObject = null) });
     close.addEventListener('click', () => modal.close());
   }
 
