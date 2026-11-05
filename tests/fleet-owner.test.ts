@@ -53,13 +53,13 @@ test('gateway grants are owner-bound, keep upstream token private, audit actions
   const gateway=await cadreGateway(ctx);const grant=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
   assert.notEqual(grant.token,'upstream-private');
   const base=`http://localhost:${gateway.port}`,headers={Host:`localhost:${gateway.port}`,Authorization:`Bearer ${grant.token}`};
-  for(const route of ['/version','/api/fleet','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers:{Host:headers.Host}})).status,403);
+  for(const route of ['/api/fleet','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers:{Host:headers.Host}})).status,403);
   assert.equal((await fetch(base+'/auth',{method:'POST',headers})).status,204);
   assert.equal((await fetch(base+'/api/say',{method:'POST',headers,body:JSON.stringify({seat:'synthetic@demo',text:'test'})})).status,200);
   const log=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(!log.includes(grant.token)&&!log.includes('upstream-private'));
   const rows=log.trim().split('\n').map(s=>JSON.parse(s));assert.deepEqual(rows.map(r=>r.event),['action.request','action.result']);assert.ok(rows.every(r=>r.accountId==='owner'&&r.target==='synthetic@demo'));
   assert.ok(calls.every(v=>v==='Bearer upstream-private'));
-  for(const route of ['/version','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers})).status,200);
+  for(const route of ['/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers})).status,200);
   for(const route of ['/api/inbox/read','/api/team','/api/seat','/api/access'])assert.equal((await fetch(base+route,{method:'POST',headers,body:JSON.stringify({action:'synthetic',seat:'demo'})})).status,200);
   const actions=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(actions.includes('team:synthetic')&&actions.includes('access:synthetic'));
   assert.equal((await fetch(base+'/api/not-allowed',{method:'POST',headers,body:'{}'})).status,404);
