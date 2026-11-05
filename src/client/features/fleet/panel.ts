@@ -12,7 +12,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
   const body=h('div.cadre-body',{},notice,rows);
   const content=h('div.modal.cadre-panel',{role:'dialog','aria-label':'Cadre'},
     h('header',{},h('h2',{},'Cadre'),h('div.cadre-modes',{},h('button',{onclick:()=>{modal.close();services();}},'Services'),h('span.selected',{},'Cadre'))),body);
-  let closed=false,key='',frame:HTMLIFrameElement|undefined,lastAlive=0;
+  let closed=false,connectionAttempted=false,key='',frame:HTMLIFrameElement|undefined,lastAlive=0;
   const render=()=>{
     const state=snapshot(),next=JSON.stringify(state);if(next===key)return;key=next;
     const scroll=new Map(Array.from(rows.querySelectorAll<HTMLElement>('.cadre-tail'),el=>[el.dataset.seat,{top:el.scrollTop,left:el.scrollLeft,bottom:el.scrollTop+el.clientHeight>=el.scrollHeight-4}]));
@@ -30,7 +30,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
       tile.append(tail);grid.append(tile);const position=scroll.get(seat.session);tail.scrollTop=position&&!position.bottom?position.top:tail.scrollHeight;tail.scrollLeft=position?.left??0;
     }
   };
-  const load=()=>{frame?.remove();lastAlive=Date.now();frame=h('iframe',{title:'Cadre connection',src:'/api/cadre/embed',sandbox:'allow-scripts allow-same-origin allow-forms',referrerpolicy:'no-referrer',hidden:true});content.append(frame);};
+  const load=()=>{connectionAttempted=true;frame?.remove();lastAlive=Date.now();frame=h('iframe',{title:'Cadre connection',src:'/api/cadre/embed',sandbox:'allow-scripts allow-same-origin allow-forms',referrerpolicy:'no-referrer',hidden:true});content.append(frame);};
   const recovery=reconnect(async signal=>{
     const response=await fetch('/api/cadre/health',{cache:'no-store',signal});
     if(response.status===403||response.status===401){modal.close();return false;}
@@ -53,7 +53,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
   const timer=setInterval(()=>{
     if(store.me.account?.role!=='admin'){modal.close();return;}
     render();
-    if(!frame||Date.now()-lastAlive>6000){frame?.remove();frame=undefined;body.hidden=false;notice.textContent='Read-only preview · Reconnecting…';recovery.waiting();}
+    if(connectionAttempted&&(!frame||Date.now()-lastAlive>6000)){frame?.remove();frame=undefined;body.hidden=false;notice.textContent='Read-only preview · Reconnecting…';recovery.waiting();}
     scheduleRetry();
   },1000);
   const modal=openModal(content,{onClose:()=>{closed=true;recovery.close();clearTimeout(retryTimer);clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
