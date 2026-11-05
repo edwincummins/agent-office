@@ -1,5 +1,5 @@
-export type FleetStatus = 'working' | 'idle' | 'needs-you' | 'stuck' | 'stopped';
-export interface FleetSeat { session:string; rig:string; name:string; state:FleetStatus; activity:string }
+export type FleetStatus = 'working' | 'idle' | 'needs-you' | 'stuck' | 'waiting' | 'stopped';
+export interface FleetSeat { session:string; rig:string; name:string; state:FleetStatus; activity:string; reason?:string; since?:number }
 export interface FleetNeed { id:string; rig:string; seat:string; summary:string }
 export interface FleetSnapshot {
   status:'ready'|'stale';

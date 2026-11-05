@@ -1,9 +1,9 @@
-import type { FleetNeed, FleetSeat, FleetSnapshot } from '../../shared/protocol/fleet.js';
+import type { FleetNeed, FleetSeat, FleetSnapshot, FleetStatus } from '../../shared/protocol/fleet.js';
 
 export const STUCK_AFTER_MS = 20 * 60_000;
 const obj = (v:unknown):v is Record<string,unknown> => !!v && typeof v==='object' && !Array.isArray(v);
 const text = (v:unknown,limit=240) => typeof v==='string'?v.replace(/[\u0000-\u001f\u007f]/g,' ').slice(0,limit):'';
-interface Seen { signature:string; since:number; working:boolean }
+interface Seen { signature:string; since:number; working:boolean; stateKey?:string; stateSince?:number }
 
 /** Only a small display projection leaves the server; raw tasks, paths and inbox fields do not. */
 export class FleetNormalizer {
@@ -28,10 +28,21 @@ export class FleetNormalizer {
       const working=s.status==='running'&&((typeof s.work==='number'&&s.work>0)||!!tasks[session]||activity.state==='working');
       const previous=this.seen.get(session);
       const since=previous?.signature===signature&&previous.working&&working?previous.since:now;
-      next.set(session,{signature,since,working});
-      const state=s.status!=='running'?'stopped':needs.some(n=>n.seat?n.seat===session:n.rig===rig)?'needs-you':working&&now-since>=this.stuckAfter?'stuck':working?'working':'idle';
+      let state:FleetStatus=s.status!=='running'?'stopped':needs.some(n=>n.seat?n.seat===session:n.rig===rig)?'needs-you':working&&now-since>=this.stuckAfter?'stuck':working?'working':'idle';
+      const explicit=obj(s.state)?s.state:undefined;
+      let reason='';
+      if(s.state!==undefined){
+        const key=explicit?.key??s.state;
+        const states:Record<string,FleetStatus>={working:'working',idle:'idle',you:'needs-you','needs-you':'needs-you',stuck:'stuck',waiting:'waiting',stopped:'stopped'};
+        if(typeof key!=='string'||!Object.hasOwn(states,key))throw Error('Invalid fleet seat state');
+        if(s.status==='running')state=states[key];
+        reason=text(explicit?.why,1000);
+      }
+      const stateKey=JSON.stringify([state,reason]);
+      const stateSince=previous?.stateKey===stateKey?previous.stateSince??now:now;
+      next.set(session,{signature,since,working,stateKey,stateSince});
       if(!teams.includes(rig))teams.push(rig);
-      return {session,rig,name:text(s.member,60)||session,state,activity:line};
+      return {session,rig,name:text(s.member,60)||session,state,activity:line,...(reason?{reason}:{}),...(['stuck','waiting'].includes(state)?{since:stateSince}:{})};
     }).sort((a,b)=>a.session.localeCompare(b.session,undefined,{numeric:true}));
     this.seen=next;
     return {status:'ready',teams:[...new Set(teams)].sort(),seats,needs};

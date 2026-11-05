@@ -1,6 +1,6 @@
 import type { FleetSnapshot, FleetStatus } from '../../../shared/protocol/fleet';
 
-export const fleetColors:Record<FleetStatus,string>={working:'#3ecf8e','needs-you':'#e3a948',stuck:'#e2605f',idle:'#8b8676',stopped:'#2c3036'};
+export const fleetColors:Record<FleetStatus,string>={working:'#3ecf8e','needs-you':'#e3a948',stuck:'#e2605f',waiting:'#7fb2ff',idle:'#8b8676',stopped:'#2c3036'};
 export function fitText(ctx:Pick<CanvasRenderingContext2D,'measureText'>,value:string,width:number):string {
   const chars=Array.from(value.replace(/[\u0000-\u001f\u007f]/g,' '));
   if(ctx.measureText(chars.join('')).width<=width)return chars.join('');
@@ -17,7 +17,7 @@ function activityLines(g:CanvasRenderingContext2D,value:string,width:number):str
   if(space>end/2)end=space;
   return [chars.slice(0,end).join(''),fitText(g,chars.slice(end).join('').trimStart(),width)];
 }
-const urgency:FleetStatus[]=['needs-you','stuck','working','idle','stopped'];
+const urgency:FleetStatus[]=['needs-you','stuck','waiting','working','idle','stopped'];
 export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
   g.globalAlpha=1;g.textBaseline='top';g.textAlign='left';g.fillStyle='#08090a';g.fillRect(0,0,2048,1024);
   g.fillStyle='#F0643B';g.fillRect(28,36,24,24);g.fillStyle='#ece6d6';g.font=`600 40px ${sans}`;g.fillText('Cadre',70,25);
@@ -34,8 +34,8 @@ export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
   state.teams.slice(0,8).forEach((team,i)=>{
     const x=28+(i%columns)*(w+20),y=top+Math.floor(i/columns)*(h+20);
     const seats=state.seats.filter(s=>s.rig===team),status=urgency.find(s=>seats.some(seat=>seat.state===s))??'idle';
-    g.fillStyle='#0b0c0d';g.beginPath();g.roundRect(x,y,w,h,14);g.fill();g.strokeStyle=fleetColors[status];g.lineWidth=2;g.stroke();
-    g.fillStyle='#17191c';g.fillRect(x+2,y+2,w-4,72);
+    g.fillStyle='#0b0c0d';g.beginPath();g.roundRect(x,y,w,h,14);g.fill();g.strokeStyle=status==='waiting'?'#7fb2ff8c':fleetColors[status];g.lineWidth=2;g.stroke();
+    g.fillStyle=status==='waiting'?'#1a2533':'#17191c';g.fillRect(x+2,y+2,w-4,72);
     g.font=`600 40px ${sans}`;g.fillStyle='#ece6d6';g.fillText(fitText(g,team,w*.57),x+16,y+13);
     g.font=`600 22px ${sans}`;g.fillStyle=fleetColors[status];g.fillText(status==='working'?`${seats.filter(s=>s.state==='working').length} working`:status.replace('-',' '),x+w*.62,y+18);
     if(i===7&&state.teams.length>8){g.fillStyle='#8b8676';g.fillText(`+${state.teams.length-7} more teams`,x+16,y+80);return;}
@@ -46,8 +46,9 @@ export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
       const sy=y+90+j*rowHeight;g.globalAlpha=seat.state==='stopped'?.45:1;
       g.beginPath();g.arc(x+20,sy+12,6,0,Math.PI*2);g.fillStyle=fleetColors[seat.state];g.strokeStyle='#2c3036';seat.state==='stopped'?g.stroke():g.fill();
       g.font=`32px ${sans}`;g.fillStyle='#c9c3b3';g.fillText(fitText(g,seat.name,w-52),x+36,sy);
-      g.font='24px "Cascadia Mono", Consolas, monospace';g.fillStyle='#8b8676';
-      activityLines(g,seat.activity||seat.state,w-52).forEach((line,k)=>g.fillText(line,x+36,sy+32+k*24));
+      g.font='24px "Cascadia Mono", Consolas, monospace';g.fillStyle=seat.state==='waiting'||seat.state==='stuck'?fleetColors[seat.state]:'#8b8676';
+      const detail=seat.state==='waiting'?`waiting ${seat.reason||'on a teammate'}`:seat.state==='stuck'?`stuck · ${seat.reason||'unchanged activity'}`:seat.activity||seat.state;
+      (seat.state==='stuck'?[fitText(g,detail,w-52)]:activityLines(g,detail,w-52)).forEach((line,k)=>g.fillText(line,x+36,sy+32+k*24));
       g.globalAlpha=1;
     });
     if(seats.length>visible.length){g.font=`24px ${sans}`;g.fillStyle='#8b8676';g.fillText(`+${seats.length-visible.length} more`,x+18,y+90+visible.length*rowHeight);}

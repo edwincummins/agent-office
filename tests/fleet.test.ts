@@ -151,3 +151,14 @@ test('embed wrapper confines frame origin and escapes script-ending token conten
   assert.ok(!page.html.includes('allow-top-navigation'));
   assert.match(page.html,/event.source!==frame.contentWindow/);
 });
+
+test('engine state wins over inferred work and needs; reasons and observed since remain stable',()=>{
+  const normalizer=new FleetNormalizer();
+  const raw={...fleetFixture(),seats:fleetFixture().seats.map((seat,i)=>({...seat,state:i===0?{key:'idle'}:i===1?{key:'working'}:i===2?{key:'stuck',why:'approval menu'}:i===3?{key:'waiting',why:'on review'}:{key:'working'}}))};
+  const first=normalizer.parse(raw,100);
+  assert.deepEqual(first.seats.map(s=>s.state),['idle','working','stuck','waiting','stopped']);
+  assert.equal(first.seats[2].reason,'approval menu');assert.equal(first.seats[3].reason,'on review');
+  assert.equal(normalizer.parse(raw,200).seats[2].since,100);
+  raw.seats[2].state.why='usage limit';assert.equal(normalizer.parse(raw,300).seats[2].since,300);
+  raw.seats[2].state.key='unknown';assert.throws(()=>normalizer.parse(raw,400),/Invalid fleet seat state/);
+});
