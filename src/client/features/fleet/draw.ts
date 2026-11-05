@@ -8,6 +8,15 @@ export function fitText(ctx:Pick<CanvasRenderingContext2D,'measureText'>,value:s
   return chars.length?chars.join('')+'…':'';
 }
 const sans='"Segoe UI", sans-serif';
+function activityLines(g:CanvasRenderingContext2D,value:string,width:number):string[] {
+  const text=value.replace(/[\u0000-\u001f\u007f]/g,' ');
+  if(g.measureText(text).width<=width)return [text];
+  const chars=Array.from(text);let end=0;
+  while(end<chars.length&&g.measureText(chars.slice(0,end+1).join('')).width<=width)end++;
+  const space=chars.slice(0,end).lastIndexOf(' ');
+  if(space>end/2)end=space;
+  return [chars.slice(0,end).join(''),fitText(g,chars.slice(end).join('').trimStart(),width)];
+}
 const urgency:FleetStatus[]=['needs-you','stuck','working','idle','stopped'];
 export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
   g.globalAlpha=1;g.textBaseline='top';g.textAlign='left';g.fillStyle='#08090a';g.fillRect(0,0,2048,1024);
@@ -30,14 +39,15 @@ export function drawFleet(g:CanvasRenderingContext2D,state:FleetSnapshot|null) {
     g.font=`600 40px ${sans}`;g.fillStyle='#ece6d6';g.fillText(fitText(g,team,w*.57),x+16,y+13);
     g.font=`600 22px ${sans}`;g.fillStyle=fleetColors[status];g.fillText(status==='working'?`${seats.filter(s=>s.state==='working').length} working`:status.replace('-',' '),x+w*.62,y+18);
     if(i===7&&state.teams.length>8){g.fillStyle='#8b8676';g.fillText(`+${state.teams.length-7} more teams`,x+16,y+80);return;}
-    const rowHeight=Math.max(40,Math.min(64,(h-94)/Math.max(1,seats.length)));
+    const rowHeight=86;
     const capacity=Math.max(1,Math.floor((h-94)/rowHeight));
     const visible=seats.length>capacity?seats.slice(0,capacity-1):seats;
     visible.forEach((seat,j)=>{
       const sy=y+90+j*rowHeight;g.globalAlpha=seat.state==='stopped'?.45:1;
       g.beginPath();g.arc(x+20,sy+12,6,0,Math.PI*2);g.fillStyle=fleetColors[seat.state];g.strokeStyle='#2c3036';seat.state==='stopped'?g.stroke():g.fill();
-      g.font=`${Math.round(rowHeight*.53)}px ${sans}`;g.fillStyle='#c9c3b3';g.fillText(fitText(g,seat.name,w*.4-30),x+36,sy);
-      g.font=`${Math.round(rowHeight*.4)}px "Cascadia Mono", Consolas, monospace`;g.fillStyle='#8b8676';g.fillText(fitText(g,seat.activity||seat.state,w*.55-22),x+w*.44,sy+5);
+      g.font=`32px ${sans}`;g.fillStyle='#c9c3b3';g.fillText(fitText(g,seat.name,w-52),x+36,sy);
+      g.font='24px "Cascadia Mono", Consolas, monospace';g.fillStyle='#8b8676';
+      activityLines(g,seat.activity||seat.state,w-52).forEach((line,k)=>g.fillText(line,x+36,sy+32+k*24));
       g.globalAlpha=1;
     });
     if(seats.length>visible.length){g.font=`24px ${sans}`;g.fillStyle='#8b8676';g.fillText(`+${seats.length-visible.length} more`,x+18,y+90+visible.length*rowHeight);}
