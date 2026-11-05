@@ -37,7 +37,18 @@ export async function startServer(cfg: Config, opts: StartOptions = {}) {
   Object.assign(ctx, createLateServices(ctx));
 
   // --- HTTP ------------------------------------------------------------------------------------
-  const handler = requestHandler(ctx, routes);
+  const inner = requestHandler(ctx, routes);
+  // Cadre's panel only runs when the office is opened as 127.0.0.1 (cookie isolation from Cadre Web on localhost), so a
+  // page load on localhost is sent to the same path on 127.0.0.1 instead of quietly showing the read-only fallback.
+  const handler: typeof inner = (req, res) => {
+    const host = req.headers.host ?? '';
+    if (!cfg.tls && req.method === 'GET' && /^localhost(:\d+)?$/i.test(host) && !req.headers.upgrade) {
+      res.writeHead(302, { Location: `http://${host.replace(/^localhost/i, '127.0.0.1')}${req.url ?? '/'}`, 'Cache-Control': 'no-store' });
+      res.end();
+      return Promise.resolve();
+    }
+    return inner(req, res);
+  };
   const server = cfg.tls ? https.createServer({ cert: cfg.tls.cert, key: cfg.tls.key }, handler) : http.createServer(handler);
 
   // --- WebSocket -------------------------------------------------------------------------------
