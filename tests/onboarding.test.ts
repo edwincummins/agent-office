@@ -12,7 +12,7 @@ import {authRoutes} from '../src/server/http/routes/auth.js';
 import type {Ctx} from '../src/server/office/context.js';
 import {generateKeyPair,SignJWT,createLocalJWKSet,exportJWK} from 'jose';
 import {verifyIdToken} from '../src/server/onboarding/oidc.js';
-import {guessKey} from '../src/server/onboarding/limits.js';
+import {guessKey,AttemptLimits} from '../src/server/onboarding/limits.js';
 async function harness(){
   const dir=mkdtempSync(path.join(tmpdir(),'office-onboarding-')),accounts=new Accounts(dir),auth=new Auth(Buffer.alloc(32),Buffer.alloc(16),'synthetic',accounts);
   const ctx={accounts,auth,cfg:{dataDir:dir,host:'127.0.0.1',port:0,trustProxy:false},services:{lookup:()=>undefined},accountsChanged:()=>{}} as unknown as Ctx;
@@ -49,12 +49,20 @@ test('a failed first account save leaves no in-memory owner',async()=>{
 test('another valid login cannot reset the victim name budget',async()=>{
   const h=await harness();try{
     await h.ctx.accounts.createFirst('Owner','password1');const invite=h.ctx.accounts.invite('Owner','member','Other');assert.notEqual(typeof invite,'string');await h.ctx.accounts.join((invite as any).token,'Other','password2');
-    for(let i=0;i<10;i++){
+    for(let i=0;i<9;i++){
       assert.equal((await h.post('/api/login',{name:'Owner',password:'wrong'})).status,401);
       assert.equal((await h.post('/api/login',{name:'Other',password:'password2'})).status,200);
     }
+    assert.equal((await h.post('/api/login',{name:'Owner',password:'wrong'})).status,401);
     assert.equal((await h.post('/api/login',{name:'Owner',password:'wrong'})).status,429);
   }finally{await h.close();}
+});
+test('successful attempts release their IP reservation without erasing another name failure',()=>{
+  const limits=new AttemptLimits();
+  for(let i=0;i<9;i++){assert.ok(limits.take('ip'));assert.ok(limits.take('victim'));assert.ok(limits.take('ip'));assert.ok(limits.take('other'));limits.success('other');limits.release('ip');}
+  assert.ok(limits.take('ip'));assert.equal(limits.take('ip'),false);
+  assert.ok(limits.take('victim'));assert.equal(limits.take('victim'),false);
+  const successful=new AttemptLimits();for(let i=0;i<50;i++){assert.ok(successful.take('ip'));successful.release('ip');}
 });
 test('Google off by default; bound state is single-use and redirects are fixed',async()=>{
   const h=await harness();try{

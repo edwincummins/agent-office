@@ -32,7 +32,7 @@ export function onboardingRoutes(provider:IdentityProvider=googleProvider):Route
       if(!limits.take(key))return send(res,429,{error:'Too many tries. Try again in 300 s.'});
       const a=await ctx.accounts.createFirst(b.name,b.password);
       if(typeof a==='string')return send(res,409,{error:a});
-      limits.success(key);ctx.accountsChanged();
+      limits.success(key);limits.release(`signup-ip:${ip}`);ctx.accountsChanged();
       send(res,200,{ok:true},{'set-cookie':ctx.auth.cookie(req,ctx.auth.issue(a.id),isSecure(req,ctx.cfg))});
     }catch{send(res,400,{error:'Could not create the account. Please try again.'});}
   }
@@ -70,7 +70,7 @@ export function onboardingRoutes(provider:IdentityProvider=googleProvider):Route
     res.setHeader('Set-Cookie',`${cookieName(ctx)}=; Path=/auth/google; HttpOnly; SameSite=Lax; Max-Age=0`);
     if(url.searchParams.get('error')==='access_denied'){res.writeHead(302,{location:'/login'}).end();return;}
     const code=url.searchParams.get('code');if(!code||code.length>4096)return finish('invalid');
-    if(!s.limits.take(`callback-ip:${flow.ip}`,30))return finish('limited');
+    if(!s.limits.take(`callback-ip:${flow.ip}`))return finish('limited');
     try{
       const identity=await provider.exchange(code,flow.verifier,flow.nonce,config);
       const key=`google-sub:${identity.subject}`;
@@ -85,7 +85,7 @@ export function onboardingRoutes(provider:IdentityProvider=googleProvider):Route
         if(typeof result==='string')return finish('invite');a=result;
       }
       if(!a)return finish('invalid');
-      s.limits.success(key);ctx.accountsChanged();
+      s.limits.success(key);s.limits.release(`callback-ip:${flow.ip}`);ctx.accountsChanged();
       res.setHeader('Set-Cookie',[`${cookieName(ctx)}=; Path=/auth/google; HttpOnly; SameSite=Lax; Max-Age=0`,ctx.auth.cookie(req,ctx.auth.issue(a.id),isSecure(req,ctx.cfg))]);finish();
     }catch{finish('invalid');}
   }

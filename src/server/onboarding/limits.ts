@@ -11,6 +11,8 @@ export class AttemptLimits {
     return ++e.count<=max;
   }
   success(key:string){this.entries.delete(key);}
+  /** Release only this successful in-flight attempt, preserving prior failures from the IP. */
+  release(key:string){const e=this.entries.get(key);if(e){e.count=Math.max(0,e.count-1);if(!e.count)this.entries.delete(key);}}
 }
 const stores=new WeakMap<object,AttemptLimits>();
 export function authLimits(ctx:object){let v=stores.get(ctx);if(!v){v=new AttemptLimits();stores.set(ctx,v);}return v;}
