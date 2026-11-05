@@ -14,6 +14,7 @@ import { startTimers } from './office/timers.js';
 import { findPublicDir } from './http/static.js';
 import { requestHandler } from './http/router.js';
 import { routes } from './http/routes/index.js';
+import type {Route} from './http/router.js';
 import { startHookServer } from './hooks/server.js';
 import { acceptWebSockets } from './ws/upgrade.js';
 import { installFleet } from './fleet/index.js';
@@ -21,6 +22,7 @@ import { installFleet } from './fleet/index.js';
 /** What a test can set about how the office starts: the client bundle it serves, instead of the built one. */
 export interface StartOptions {
   publicDir?: string;
+  routes?: readonly Route[];
 }
 
 export async function startServer(cfg: Config, opts: StartOptions = {}) {
@@ -37,7 +39,7 @@ export async function startServer(cfg: Config, opts: StartOptions = {}) {
   Object.assign(ctx, createLateServices(ctx));
 
   // --- HTTP ------------------------------------------------------------------------------------
-  const inner = requestHandler(ctx, routes);
+  const inner = requestHandler(ctx, opts.routes ?? routes);
   // Cadre's panel only runs when the office is opened as 127.0.0.1 (cookie isolation from Cadre Web on localhost), so a
   // page load on localhost is sent to the same path on 127.0.0.1 instead of quietly showing the read-only fallback.
   const handler: typeof inner = (req, res) => {

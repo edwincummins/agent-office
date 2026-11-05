@@ -11,9 +11,11 @@ import { searchRoutes } from './search.js';
 import { serviceRoutes } from './services.js';
 import { cadreWebRoute } from '../../fleet/web.js';
 import { mapModelRoute } from './map-model.js';
+import {onboardingRoutes} from '../../onboarding/routes.js';
 
 export const routes: readonly Route[] = [
   // Anyone.
+  ...onboardingRoutes(),
   authRoutes.login,
   authRoutes.loginOptions,
   authRoutes.join,
