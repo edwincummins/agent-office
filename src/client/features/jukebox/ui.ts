@@ -8,8 +8,8 @@ import { h, openModal, toast } from '../../ui/dom';
  * Your own YouTube Music, signed in as you: private playlists, Liked Music and Premium play there, which YouTube never
  * allows inside an embedded player. A small window of your browser, reused if it's already open.
  */
-const isYouTube = (u: string) => /^https://(music.|www.|m.)?youtube.com/|^https://youtu.be//i.test(u);
-const openYouTubeMusic = (u: string) => window.open(u.replace(/^https://(www.|m.)?youtube.com//i, 'https://music.youtube.com/'), 'ytmusic', 'popup,width=520,height=760');
+const isYouTube = (u: string) => /^https:\/\/(music\.|www\.|m\.)?youtube\.com\/|^https:\/\/youtu\.be\//i.test(u);
+const openYouTubeMusic = (u: string) => window.open(u.replace(/^https:\/\/(www\.|m\.)?youtube\.com\//i, 'https://music.youtube.com/'), 'ytmusic', 'popup,width=520,height=760');
 
 /** The jukebox: what's on, the tunes to pick from, skip and stop, and a box for a stream. */
 export function openJukebox(net: Net, openVolume: () => void) {

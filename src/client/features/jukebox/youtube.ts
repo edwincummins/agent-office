@@ -77,6 +77,8 @@ export class YouTubeStream {
   ) {
     this.host = document.createElement('div');
     this.host.style.cssText = 'position:fixed;left:-10px;top:-10px;width:1px;height:1px;opacity:0;pointer-events:none';
+    // Inert: the browser never gives it focus or clicks, so it can't take your movement keys.
+    this.host.inert = true;
     const slot = document.createElement('div');
     this.host.append(slot);
     document.body.append(this.host);
