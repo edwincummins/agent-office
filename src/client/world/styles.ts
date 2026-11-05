@@ -10,6 +10,9 @@ import type { World } from './world';
  * every map in that style can then be picked, and main.ts shows it like any other.
  */
 export const BUILDERS: Record<MapStyle, (plan: MapPlan) => World> = {
-  castle: withFixtures(buildCastle),
-  station: withFixtures(buildStation),
+  castle: buildCastle,
+  station: buildStation,
 };
+
+// Decorate registry entries uniformly, including separately installed map styles.
+for(const style of Object.keys(BUILDERS) as MapStyle[])BUILDERS[style]=withFixtures(BUILDERS[style]);
