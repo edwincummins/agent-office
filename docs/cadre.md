@@ -79,6 +79,8 @@ The board uses one 2048×1024 canvas texture with mipmaps and maximum supported 
 
 Synthetic screen fixtures: `node --import tsx tests/fixtures/fleet-command.ts --screens` (four ordered seats); add `--9` or `--32` for overflow cases. On Windows, an absolute `--import` module path must be a `file:///` URL. Fixtures contain no real screens or credentials.
 
-Read audits for `/api/seats?team=`, `/api/queue?team=` and `/api/inbox` record `read.open`/`read.result` once per route/team per panel grant, rather than on each poll. `/api/inbox/read`, `/api/team`, `/api/seat` and `/api/access` preserve their JSON payload and record action request/result with the acting office account. Version checks are metadata polling and are not logged on every refresh.
+Read audits for `/api/seats?team=`, `/api/queue?team=` `/api/inbox`, `/api/audit?team=` and `/api/ideas?team=` record `read.open`/`read.result` once per route/team per panel grant, rather than on each poll. `/api/inbox/read`, `/api/team`, `/api/seat` and `/api/access` preserve their JSON payload and record action request/result with the acting office account. Version checks are metadata polling and are not logged on every refresh.
 
 The disposable `tests/fixtures/cadre-version-preview.ts` exercises the real office wrapper and gateway against an in-process synthetic Web service. It proves anonymous version checks trigger reload plus authentication; it never loads real Cadre or owner data.
+
+The owner gateway forwards `POST /api/tune` unchanged. Its local action audit records the seat, bounded model and effort names, and restart flag. Arbitrary request fields are excluded.

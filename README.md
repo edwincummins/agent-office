@@ -422,3 +422,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+The owner-only Cadre panel supports team audit and ideas reads and seat tuning; see [Cadre gateway and audit details](docs/cadre.md).

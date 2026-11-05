@@ -48,11 +48,11 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
       if(!grant||!account)return send(res,403,{error:'Not available'});
       if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
       const route=url.pathname;
-      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox'].includes(route);
-      const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access'].includes(route);
+      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'].includes(route);
+      const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access','/api/tune'].includes(route);
       if(!read&&!action&&!(req.method==='POST'&&route==='/auth'))return send(res,404,{error:'Not available'});
       let body:string|undefined,detail:Record<string,string>={};
-      const readAction=read&&['/api/seats','/api/queue','/api/inbox'].includes(route);
+      const readAction=read&&['/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'].includes(route);
       const readTarget=(url.searchParams.get('team')??'').slice(0,160),readKey=JSON.stringify([route,readTarget]);
       const firstRead=readAction&&!(grant.reads??=new Set()).has(readKey);
       if(firstRead){auditCadre(ctx.cfg.dataDir,account,'read.open',{action:route.slice(5),target:readTarget});grant.reads!.add(readKey);}
@@ -67,6 +67,7 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
         if(gateway.grants.get(bearer)!==grant||grant.expires<=Date.now()||!cadreOwner(ctx,grant.accountId))return send(res,403,{error:'Not available'});
         const parsed=JSON.parse(body);
         detail={action:route==='/api/say'?'message':route==='/api/decide'?String(parsed.kind??'').slice(0,32):route.slice(5)+':'+String(parsed.action??parsed.on??'').slice(0,16),target:String(parsed.seat??parsed.id??parsed.team??'').slice(0,160)};
+        if(route==='/api/tune')detail={action:'tune',target:String(parsed.seat??'').slice(0,160),model:typeof parsed.model==='string'?parsed.model.slice(0,80):'',effort:typeof parsed.effort==='string'?parsed.effort.slice(0,32):'',restart:parsed.restart===true?'true':parsed.restart===false?'false':'unset'};
         auditCadre(ctx.cfg.dataDir,account,'action.request',detail);
       }
       const target=new URL(route==='/app'?'/':route,grant.upstream);target.search=url.search;
