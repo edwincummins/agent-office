@@ -1,4 +1,4 @@
-export type FleetStatus = 'working' | 'idle' | 'needs-you' | 'stuck' | 'waiting' | 'stopped';
+export type FleetStatus = 'working' | 'idle' | 'needs-you' | 'stuck' | 'waiting' | 'stopped' | 'unknown';
 export interface FleetSeat { session:string; rig:string; name:string; state:FleetStatus; activity:string; reason?:string; since?:number }
 export interface FleetNeed { id:string; rig:string; seat:string; summary:string }
 export interface FleetSnapshot {

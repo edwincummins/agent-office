@@ -21,7 +21,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
     const grid=h('div.cadre-grid');rows.append(grid);
     for(const team of state.teams){
       const seats=state.seats.filter(s=>s.rig===team);
-      const status=(['needs-you','stuck','waiting','working','idle','stopped'] as const).find(s=>seats.some(seat=>seat.state===s))??'idle';
+      const status=(['needs-you','stuck','waiting','unknown','working','idle','stopped'] as const).find(s=>seats.some(seat=>seat.state===s))??'idle';
       const tile=h('section.cadre-team',{style:`border-color:${fleetColors[status]}`},h('h3',{},team,h('small',{style:`color:${fleetColors[status]}`},status.replace('-',' '))));
       for(const seat of state.seats.filter(s=>s.rig===team))tile.append(h('details.cadre-seat',{},
         h('summary',{},h('span',{style:`color:${seat.state==='stopped'?'#8b8676':fleetColors[seat.state]}`},`${seat.name} · ${seat.state.replace('-',' ')}`)),

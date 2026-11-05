@@ -160,5 +160,24 @@ test('engine state wins over inferred work and needs; reasons and observed since
   assert.equal(first.seats[2].reason,'approval menu');assert.equal(first.seats[3].reason,'on review');
   assert.equal(normalizer.parse(raw,200).seats[2].since,100);
   raw.seats[2].state.why='usage limit';assert.equal(normalizer.parse(raw,300).seats[2].since,300);
-  raw.seats[2].state.key='unknown';assert.throws(()=>normalizer.parse(raw,400),/Invalid fleet seat state/);
+  raw.seats[2].state.key='future-state';assert.equal(normalizer.parse(raw,400).seats[2].state,'unknown');
+});
+
+test('unknown engine states stay local to the seat while other live seats continue updating',async()=>{
+  for(const state of [{key:'future-state'},'future-state',null,{},42,{key:'__proto__'}]){
+    let raw:unknown={...fleetFixture(),seats:fleetFixture().seats.map((seat,i)=>i===0?{...seat,state}:seat)};
+    const poller=new FleetPoller(async()=>raw,()=>{});
+    await poller.poll(0);
+    assert.equal(poller.state.status,'ready');
+    assert.equal(poller.state.seats[0].state,'unknown');
+    assert.equal(poller.state.seats[1].state,'needs-you');
+    const next=fleetFixture();next.seats[2].activity.msg='Fresh activity';
+    raw={...next,seats:next.seats.map((seat,i)=>i===0?{...seat,state}:seat)};
+    await poller.poll(1);
+    assert.equal(poller.state.status,'ready');
+    assert.equal(poller.state.seats[2].activity,'Fresh activity');
+    raw={...next,seats:next.seats.map((seat,i)=>i===0?{...seat,state:{key:'working'}}:seat)};
+    await poller.poll(2);assert.equal(poller.state.status,'ready');assert.equal(poller.state.seats[0].state,'working');
+    raw=next;await poller.poll(3);assert.equal(poller.state.seats[0].state,'working');poller.stop();
+  }
 });

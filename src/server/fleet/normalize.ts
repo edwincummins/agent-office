@@ -34,8 +34,7 @@ export class FleetNormalizer {
       if(s.state!==undefined){
         const key=explicit?.key??s.state;
         const states:Record<string,FleetStatus>={working:'working',idle:'idle',you:'needs-you','needs-you':'needs-you',stuck:'stuck',waiting:'waiting',stopped:'stopped'};
-        if(typeof key!=='string'||!Object.hasOwn(states,key))throw Error('Invalid fleet seat state');
-        if(s.status==='running')state=states[key];
+        if(s.status==='running')state=typeof key==='string'&&Object.hasOwn(states,key)?states[key]:'unknown';
         reason=text(explicit?.why,1000);
       }
       const stateKey=JSON.stringify([state,reason]);
