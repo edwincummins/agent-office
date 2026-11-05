@@ -11,6 +11,7 @@ import type { CoreState } from '../core/ctx';
 import type { Parts } from '../core/parts';
 import { interactionAvailable, type DeskKey } from '../interaction';
 import { EYE_HEIGHT } from '../player';
+import { blockerAt, groundAt } from '../player/collide';
 import { store } from '../state';
 import { modalOpen, toast } from '../ui/dom';
 import type { Interactable } from '../world/types';
@@ -175,13 +176,63 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
       return;
     }
     const aim = aimedAt(ndc, 2.5);
-    if (!aim) return;
+    if (!aim) {
+      // Nothing to use there: a click on open floor takes you to it (Fetty, 11-05: "click on locations to instantly
+      // transport over there", as in a VR headset).
+      // A double-click, so a stray click on the floor never moves you (Fetty, 11-05).
+      const spot = floorAt(ndc);
+      const now = performance.now();
+      const again = spot && lastFloorClick && now - lastFloorClick.at < 450 && Math.hypot(spot.x - lastFloorClick.x, spot.z - lastFloorClick.z) < 1.5;
+      lastFloorClick = spot && !again ? { at: now, x: spot.x, z: spot.z } : null;
+      if (spot && again) teleport(spot.x, spot.z, spot.y);
+      return;
+    }
     if (!aim.near) {
-      toast('Walk closer to that first');
+      // Out of reach: a double-click hops you over beside it and uses it; a single click only says so.
+      const now = performance.now();
+      const again = lastFarClick && lastFarClick.it === aim.it && now - lastFarClick.at < 450;
+      lastFarClick = again ? null : { at: now, it: aim.it };
+      if (!again) toast('Double-click to jump there');
+      else if (hopToward(aim.hit.point, ctx.interactions.reach(aim.it.kind))) use(aim.it, 'E', noteUnder(aim));
+      else toast('Walk closer to that first');
       return;
     }
     use(aim.it, 'E', noteUnder(aim));
   };
+
+  // ---- Teleport ----------------------------------------------------------------------------------
+  const floorRay = new THREE.Raycaster();
+  let lastFloorClick: { at: number; x: number; z: number } | null = null;
+  let lastFarClick: { at: number; it: Interactable } | null = null;
+  /** The open floor under the mouse, on the level you're standing on (not walls, not another storey). */
+  function floorAt(ndc: THREE.Vector2): { x: number; y: number; z: number } | null {
+    floorRay.setFromCamera(ndc, camera);
+    const hit = floorRay.intersectObjects(inOffice() ? [office.group] : ctx.world().pickables, true)[0];
+    // On your own level only; walls and furniture are refused by teleport()'s room check.
+    if (!hit || Math.abs(hit.point.y - player.pos.y) > 0.6) return null;
+    return { x: hit.point.x, y: hit.point.y, z: hit.point.z };
+  }
+  /** Puts you at (x, z) if you fit there on this level; a quick fade so it reads as a jump, not a glitch. */
+  function teleport(x: number, z: number, floorY = player.pos.y): boolean {
+    // The open floor isn't a collider (furniture and steps are): stand on whichever is higher.
+    const y = Math.max(groundAt(player.colliders, x, z, floorY + 1), floorY);
+    if (Math.abs(y - player.pos.y) > 0.6) return false;
+    const body = { pos: new THREE.Vector3(x, y, z), colliders: player.colliders, grounded: true, stepOffset: 0 };
+    if (blockerAt(body, x, z, y)) return false;
+    if (player.seat) player.stand();
+    player.pos.set(x, y, z);
+    player.vy = 0;
+    canvas.animate?.([{ opacity: 0.35 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+    return true;
+  }
+  /** Lands you within reach of `point` on the way from where you are: the first spot along that line you fit in. */
+  function hopToward(point: THREE.Vector3, reach: number): boolean {
+    const dx = player.pos.x - point.x, dz = player.pos.z - point.z, len = Math.hypot(dx, dz) || 1;
+    for (let d = Math.max(0.9, Math.min(reach * 0.7, 2.2)); d <= reach + 0.3; d += 0.3) {
+      if (teleport(point.x + (dx / len) * d, point.z + (dz / len) * d)) return true;
+    }
+    return false;
+  }
 
   return {
     /** What you're pointing at (first person) or standing at (third), if anything. */
