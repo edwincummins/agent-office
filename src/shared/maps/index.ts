@@ -2,6 +2,7 @@ import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEET
 import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
 import { CASTLE } from './castle.js';
+import { checkModel } from './model.js';
 import { MapError, isObj, num, str } from './check.js';
 import { overlaps, planDungeon, planSendHome } from './dungeon.js';
 import { PROP_KINDS, boxFootprint, propFootprint, propTop } from './props.js';
@@ -22,6 +23,7 @@ export const BUILTIN_MAPS: readonly MapConfig[] = [CASTLE, STATION];
 const STYLE_PROPS: Record<MapStyle, { kinds: Readonly<Record<string, string>>; footprint: typeof propFootprint; top(p: PropConfig): number }> = {
   castle: { kinds: PROP_KINDS, footprint: propFootprint, top: propTop },
   station: { kinds: STATION_PROP_KINDS, footprint: stationFootprint, top: stationTop },
+  model: { kinds: {}, footprint: propFootprint, top: propTop },
 };
 
 const STATION_KINDS: readonly StationKind[] = ['issues', 'pulls', 'queue'];
@@ -156,9 +158,17 @@ export function planMap(input: unknown): MapPlan {
   const opt = (v: unknown, what: string, min: number, max: number) => (v === undefined ? undefined : num(v, what, min, max));
   const rects: Rect[] = [];
   const circles: Circle[] = [];
+  const model = style === 'model' ? checkModel(c.model, bounds, height) : undefined;
+  if (model) {
+    if(c.tables?.length || c.throne || c.herald || c.dungeon || c.lineup || c.sendHome || c.airlock) throw new MapError('model maps use explicit seats and walls; remove tables, throne, herald, dungeon, lineup, sendHome and airlock');
+    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
+    rects.push(...model.walls.map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
+    if(!model.source)rects.push(...model.seats.slice(0,20).map(s=>boxFootprint(s.x,s.z,1.6,.8,s.rotY)));
+    rects.push(...(model.lounges??[]).map(s=>boxFootprint(s.x,s.z,.6,1.2,0)));
+  }
 
   // The seats at the tables: every table's side toward the middle of the hall first, then the far sides.
-  if (!Array.isArray(c.tables) || !c.tables.length) throw new MapError('it needs tables for the workers to sit at');
+  if (!Array.isArray(c.tables) || (!model && !c.tables.length)) throw new MapError('it needs tables for the workers to sit at');
   if (c.tables.length > MAP_LIMITS.tables) throw new MapError(`it has ${c.tables.length} tables, and a map can have ${MAP_LIMITS.tables}`);
   const inner: { def: Omit<DeskDef, 'id' | 'label'>; table: string }[] = [];
   const outer: typeof inner = [];
@@ -201,7 +211,7 @@ export function planMap(input: unknown): MapPlan {
       }
     }
   });
-  const all = [...inner, ...outer];
+  const all = model ? model.seats.map((s, i) => ({ def: s, table: i < 20 ? `Desk ${i + 1}` : `Soft seat ${i - 19}` })) : [...inner, ...outer];
   const need = MAP_DESKS.length + BEANBAGS.length;
   if (all.length < need) throw new MapError(`its tables seat ${all.length}, and a map needs ${need} (${MAP_DESKS.length} seats and ${BEANBAGS.length} more for when they’re all taken)`);
   const counts = new Map<string, number>();
@@ -229,16 +239,17 @@ export function planMap(input: unknown): MapPlan {
   // The meeting table: five chairs round it, the head of the table first.
   const council = place(c.council, 'council');
   const meeting: DeskDef[] = MEETING_SEATS.map((m, i) => {
+    const anchor=model?.source?.council[i];
+    if(anchor){const a=anchor.rotY+Math.PI;circles.push([anchor.x,anchor.z,.28]);return {id:m.id,room:true,x:anchor.x-Math.sin(a)*.85,z:anchor.z-Math.cos(a)*.85,rotY:a,label:m.label};}
     const a = council.rotY + (i * Math.PI * 2) / MEETING_SEATS.length;
     const def = { id: m.id, room: true, x: council.x + Math.sin(a) * COUNCIL.place, z: council.z + Math.cos(a) * COUNCIL.place, rotY: a, label: m.label };
     circles.push([council.x + Math.sin(a) * COUNCIL.chairs, council.z + Math.cos(a) * COUNCIL.chairs, 0.28]);
     return def;
   });
-  circles.push([council.x, council.z, COUNCIL.radius]);
+  if(!model?.source)circles.push([council.x, council.z, COUNCIL.radius]);
   const ex = council.x - Math.sin(council.rotY) * COUNCIL.easel;
   const ez = council.z - Math.cos(council.rotY) * COUNCIL.easel;
-  inside(ex, ez, 'the council’s easel');
-  rects.push(boxFootprint(ex, ez, 2.6, 0.5, council.rotY));
+  if(!model?.source){inside(ex, ez, 'the council’s easel');rects.push(boxFootprint(ex, ez, 2.6, 0.5, council.rotY));}
 
   // The boards on the walls.
   if (!isObj(c.boards)) throw new MapError('it needs boards: issues, queue, pulls and services');
@@ -378,7 +389,7 @@ export function planMap(input: unknown): MapPlan {
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
     description: typeof c.description === 'string' ? c.description.slice(0, 400) : '',
     style,
-    config: c,
+    config: model ? { ...c, model } : c,
     bounds,
     height,
     spawn: { ...spawn, y: 0 },
