@@ -26,6 +26,7 @@ interface YTPlayer {
   playVideo(): void;
   pauseVideo(): void;
   stopVideo(): void;
+  nextVideo(): void;
   seekTo(s: number, allow: boolean): void;
   setVolume(v: number): void;
   getDuration(): number;
@@ -66,6 +67,8 @@ export class YouTubeStream {
   private host: HTMLDivElement;
   private vol = 0.5;
   private stopped = false;
+  private skips = 0;
+  private unfocus: () => void = () => {};
 
   constructor(
     link: { video?: string; list?: string },
@@ -77,6 +80,15 @@ export class YouTubeStream {
     const slot = document.createElement('div');
     this.host.append(slot);
     document.body.append(this.host);
+    // The hidden player must never hold the keyboard (11-05: it took focus on start and WASD stopped moving you).
+    this.unfocus = () => setTimeout(() => {
+      const f = this.host.querySelector('iframe');
+      if (f && document.activeElement === f) {
+        f.blur();
+        window.focus();
+      }
+    }, 0);
+    window.addEventListener('blur', this.unfocus);
     loadApi()
       .then(() => {
         if (this.stopped || !window.YT) return;
@@ -87,6 +99,12 @@ export class YouTubeStream {
           playerVars: { autoplay: 1, controls: 0, disablekb: 1, playsinline: 1, loop: 1, ...(link.list ? { listType: 'playlist', list: link.list } : link.video ? { playlist: link.video } : {}) },
           events: {
             onReady: () => {
+              const f = this.host.querySelector('iframe');
+              if (f) {
+                f.tabIndex = -1;
+                f.setAttribute('aria-hidden', 'true');
+              }
+              this.unfocus();
               this.setVolume(this.vol);
               this.sync();
               this.player?.playVideo();
@@ -94,7 +112,11 @@ export class YouTubeStream {
             onStateChange: (e: { data: number }) => {
               this.paused = e.data !== window.YT?.PlayerState.PLAYING;
             },
-            onError: () => onError("📻 YouTube won't play that one here (private, region-locked or not embeddable)"),
+            onError: (e: { data: number }) => {
+              // In a playlist, a song its owner keeps on YouTube is skipped rather than stopping the music.
+              if (link.list && link.list !== 'LM' && link.list !== 'LL' && (e.data === 101 || e.data === 150) && ++this.skips < 25) return this.player?.nextVideo();
+              onError(link.list === 'LM' || link.list === 'LL' ? '📻 Your Liked Music list is private to YouTube. Make a playlist from it and set it to Unlisted' : e.data === 100 ? "📻 YouTube can't find that one (deleted or private). Private playlists don't play outside YouTube; set it to Unlisted" : e.data === 101 || e.data === 150 ? "📻 That song's owner doesn't allow it outside YouTube. Try another song, or a playlist (it skips ahead)" : '📻 YouTube didn’t understand that link. Use Share → Copy link on the song or playlist');
+            },
           },
         });
       })
@@ -125,6 +147,7 @@ export class YouTubeStream {
 
   stop() {
     this.stopped = true;
+    window.removeEventListener('blur', this.unfocus);
     try {
       this.player?.stopVideo();
       this.player?.destroy();
