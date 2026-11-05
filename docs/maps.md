@@ -278,3 +278,25 @@ A map without a dungeon can still have a script: a guard who walks each worker t
 - **Workers walking about** (lining up, coming back, running to their seats) is [`src/client/world/court.ts`](../src/client/world/court.ts), for any map other than the office.
 - **The dungeon and sending workers home**: [`src/shared/maps/dungeon.ts`](../src/shared/maps/dungeon.ts) checks a map's `dungeon` and `sendHome`, works out the vault, the stairs and the cells' seats, how far a prisoner has wasted away (`wasting`) and the way between the hall and the dungeon (`levelRoute`). The client builds it in [`src/client/world/dungeon.ts`](../src/client/world/dungeon.ts), acts a script out in [`src/client/features/workers/sendhome.ts`](../src/client/features/workers/sendhome.ts) and shows the prisoners in [`src/client/features/workers/jail.ts`](../src/client/features/workers/jail.ts); the server keeps each floor's prisoners in `.agent-office/jail.json` ([`src/server/jail.ts`](../src/server/jail.ts)) and hands them out with the `worker.remove` that took them away. **A new kind of step** is its name in `SEND_HOME_STEPS`, its checking in `planSendHome`, and its `begin` and `tick` in `features/workers/sendhome.ts`; one with much to act out has a file of its own beside it (`lockup.ts` for `jail`, `eject.ts` for `eject`).
 - **The airlock and whoever's adrift**: [`src/shared/maps/airlock.ts`](../src/shared/maps/airlock.ts) checks a map's `airlock`, works out what's cut through a station's walls (`wallOpenings`) and where someone ejected has drifted to by now (`adrift`, from their id and when they went, so every browser agrees). The client shows them in [`src/client/features/workers/adrift.ts`](../src/client/features/workers/adrift.ts), from the same list the dungeon's prisoners are kept in.
+
+
+## Local model maps
+
+The `model` style places the office's working furniture inside a local architectural GLB. Keep licensed models and their map configurations outside the source repository. Put the model at `<project>/.agent-office/maps/assets/room.glb` and the map JSON directly in `<project>/.agent-office/maps/`. Start the office with that project, then select the map in Settings → Building → Map. The authenticated server serves that file locally; it does not upload it.
+
+Use the common `id`, `name`, `hall`, `spawn`, `door`, `stations`, `council` and `boards` fields described below. Set `style` to `model`, `tables` to `[]`, and add a `model` object:
+
+| Field | Content |
+| --- | --- |
+| `asset` | A lowercase local filename such as `room.glb`; no URL, absolute path or directory components. |
+| `seats` | Exactly 32 `{x, z, rotY}` placements: `desk-1` through `desk-20`, then `beanbag-1` through `beanbag-12`. Soft seats remain visible even when empty. |
+| `walls` | Collision rectangles `{minX, maxX, minZ, maxZ, top}`. Leave door openings clear. These also block interaction rays. |
+| `platforms` | Optional rectangles with the same fields for raised floors that can be stood on. Add intermediate steps for taller platforms. |
+| `screen`, `whiteboard` | Each `{x, y, z, rotY, width, height}` places a live surface. The screen displays the floor's screen share; the whiteboard uses the existing collaborative drawing tool. |
+| `labels` | Optional room signs `{x, z, rotY, text}`. |
+
+Coordinates are in metres, Y up, with the main floor at Y=0. A seat at rotation 0 faces toward -Z; its chair is at Z+0.85. Leave room around the chair and its approach, and at least 0.6 m between desk edges for walking. Screens face +Z at rotation 0. The common `door` is the workers' entry/exit waypoint. GLB nodes named `Door__...` open upward automatically when someone approaches; keep each leaf separate from its fixed frame. Walls and platforms are explicit collision data, not inferred from rendered triangles.
+
+The GLB must embed its buffers and images, use glTF 2.0, and be at most 100 MB. Export without Draco compression; compress embedded texture images (for example WebP) and merge static meshes by material. External textures/buffers are rejected. Missing or invalid models display an error in the lower-left panel. Unsupported castle/station features (`throne`, `herald`, `dungeon`, `lineup`, `sendHome`, `airlock`) must be absent or null. Model maps do not implement their escorted send-home or throne behavior.
+
+The model renderer uses environment lighting, transparent glass, AgX tone mapping, no cartoon outline or shadow-map passes for the model world, and caps pixel ratio at 1.5 (the office's adaptive resolution may reduce it further). The lower-left panel reports GPU, FPS, whole-frame draw calls and triangles. Interaction picking uses lightweight wall/furniture proxies instead of raycasting the architectural model. Measure walking and reverse views in hardware-accelerated Chrome at the intended window size; headless screenshots alone do not establish GPU performance. A useful starting budget is 150 draw calls and 750,000 triangles per view; active workers can increase both.
