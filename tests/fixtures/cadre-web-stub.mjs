@@ -20,6 +20,7 @@ setInterval(async()=>{if(authenticated){try{const response=await fetch('/auth',{
 </script>`;
 http.createServer((req,res)=>{
  res.setHeader('Cache-Control','no-store');
+ if(req.url==='/api/fleet'){res.writeHead(req.headers.authorization===`Bearer ${token}`?200:401,{'Content-Type':'application/json'}).end('{}');return;}
  if(req.url==='/auth'){res.writeHead(req.headers.authorization===`Bearer ${token}`?204:401).end();return;}
  if(req.url!=='/'){res.writeHead(404).end();return;}
  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Referrer-Policy':'no-referrer'}).end(page);

@@ -18,7 +18,7 @@ export function cadreWeb(dataDir:string,env=process.env):{url:string;token:strin
   return {url:url.href,token};
 }
 
-export const cadreWebRoute:Route={path:['/api/cadre/web','/api/cadre/embed','/api/cadre/open'],auth:'session',async handle(ctx,{req,res,session,path:requestPath}){
+export const cadreWebRoute:Route={path:['/api/cadre/web','/api/cadre/embed','/api/cadre/open','/api/cadre/health'],auth:'session',async handle(ctx,{req,res,session,path:requestPath}){
   res.setHeader('Cache-Control','no-store');
   const account=cadreOwner(ctx,session.account?.id);
   if(!account)return send(res,403,{error:'Not available'});
@@ -33,6 +33,8 @@ export const cadreWebRoute:Route={path:['/api/cadre/web','/api/cadre/embed','/ap
     // Cookies are hostname-scoped, not port-scoped. Require a distinct loopback hostname.
     const officeHost=new URL(`http://${req.headers.host}`).hostname;
     if(officeHost!=='127.0.0.1')return send(res,200,{allowed:true,available:false,reason:'Open the office on 127.0.0.1 to isolate Cadre cookies.'});
+    if(ctx.cfg.tls)return send(res,200,{allowed:true,available:false,reason:'Cadre gateway requires the local HTTP office.'});
+    if(requestPath==='/api/cadre/health'){const r=await fetch(new URL('/api/fleet',config.url),{headers:{Authorization:`Bearer ${config.token}`},redirect:'error',signal:AbortSignal.timeout(2000)});await r.body?.cancel();return send(res,200,{allowed:true,available:r.ok});}
     if(requestPath==='/api/cadre/embed'){
       const scheme=ctx.cfg.tls?'https:':'http:';
       if(ctx.cfg.tls)return send(res,200,{available:false,reason:'Cadre gateway requires the local HTTP office.'});

@@ -4,13 +4,13 @@ import type { Ctx } from '../office/context.js';
 import { readBody,send } from '../http/util.js';
 import { auditCadre,cadreOwner } from './access.js';
 
-interface Grant {accountId:string; expires:number; upstream:string; token:string; officeOrigin:string; screen?:string}
+interface Grant {accountId:string; expires:number; upstream:string; token:string; officeOrigin:string; screens?:Map<string,number>}
 const gateways=new WeakMap<Ctx,Promise<Gateway>>();
 const TTL=30*60_000;
 class Gateway {
   readonly grants=new Map<string,Grant>();
   constructor(readonly server:Server,readonly port:number,readonly ctx:Ctx){}
-  revoke(key:string){const grant=this.grants.get(key);if(!grant)return;this.grants.delete(key);const a=this.ctx.accounts.get(grant.accountId);if(a&&grant.screen)auditCadre(this.ctx.cfg.dataDir,a,'screen.close',{target:grant.screen});}
+  revoke(key:string){const grant=this.grants.get(key);if(!grant)return;this.grants.delete(key);const a=this.ctx.accounts.get(grant.accountId);if(a)for(const target of grant.screens?.keys()??[])auditCadre(this.ctx.cfg.dataDir,a,'screen.close',{target});}
   issue(grant:Omit<Grant,'expires'>){
     for(const [key,value] of this.grants)if(value.expires<Date.now())this.revoke(key);
     if(this.grants.size>=128)this.revoke(this.grants.keys().next().value!);
@@ -47,20 +47,21 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
       if(!grant||!account)return send(res,403,{error:'Not available'});
       if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
       const route=url.pathname;
-      const read=req.method==='GET'&&['/app','/api/fleet','/api/capture'].includes(route);
-      const action=req.method==='POST'&&['/api/say','/api/decide'].includes(route);
+      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox'].includes(route);
+      const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access'].includes(route);
       if(!read&&!action&&!(req.method==='POST'&&route==='/auth'))return send(res,404,{error:'Not available'});
       let body:string|undefined,detail:Record<string,string>={};
       const capture=route==='/api/capture';
-      if(capture){const target=(url.searchParams.get('seat')??'').slice(0,160);if(grant.screen!==target){
-        if(grant.screen)auditCadre(ctx.cfg.dataDir,account,'screen.close',{target:grant.screen});
-        auditCadre(ctx.cfg.dataDir,account,'screen.open',{target});grant.screen=target;
-      }}
+      if(capture){const target=(url.searchParams.get('seat')??'').slice(0,160),now=Date.now();
+        const screens=grant.screens??=new Map();
+        for(const [seat,seen] of screens)if(now-seen>15000){auditCadre(ctx.cfg.dataDir,account,'screen.close',{target:seat});screens.delete(seat);}
+        if(!screens.has(target))auditCadre(ctx.cfg.dataDir,account,'screen.open',{target});screens.set(target,now);
+      }
       if(action){
         body=await readBody(req,16384);
         if(gateway.grants.get(bearer)!==grant||grant.expires<=Date.now()||!cadreOwner(ctx,grant.accountId))return send(res,403,{error:'Not available'});
         const parsed=JSON.parse(body);
-        detail={action:route==='/api/say'?'message':String(parsed.kind??'').slice(0,32),target:String(parsed.seat??parsed.id??'').slice(0,160)};
+        detail={action:route==='/api/say'?'message':route==='/api/decide'?String(parsed.kind??'').slice(0,32):route.slice(5)+':'+String(parsed.action??parsed.on??'').slice(0,16),target:String(parsed.seat??parsed.id??parsed.team??'').slice(0,160)};
         auditCadre(ctx.cfg.dataDir,account,'action.request',detail);
       }
       const target=new URL(route==='/app'?'/':route,grant.upstream);target.search=url.search;

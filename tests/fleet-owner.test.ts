@@ -24,7 +24,7 @@ test('owner allow-list gates HTTP and fleet; other admins and unset config get n
  config([{id:'owner'}]);const server=createServer(requestHandler(ctx,[cadreWebRoute]));const port=await listen(server);const base=`http://127.0.0.1:${port}`;ctx.cfg.port=port;
  let stop=installFleet(ctx);
  try {
-  for(const route of ['/api/cadre/web','/api/cadre/embed','/api/cadre/open']){
+  for(const route of ['/api/cadre/web','/api/cadre/embed','/api/cadre/open','/api/cadre/health']){
    const options=route.endsWith('open')?{method:'POST'}:{};
    assert.equal((await fetch(base+route,{...options,headers:{'x-test-account':'other',Origin:base}})).status,403);
    assert.equal((await fetch(base+route,options)).status,401);
@@ -53,18 +53,23 @@ test('gateway grants are owner-bound, keep upstream token private, audit actions
   const gateway=await cadreGateway(ctx);const grant=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
   assert.notEqual(grant.token,'upstream-private');
   const base=`http://localhost:${gateway.port}`,headers={Host:`localhost:${gateway.port}`,Authorization:`Bearer ${grant.token}`};
-  assert.equal((await fetch(base+'/api/fleet',{headers:{Host:headers.Host}})).status,403);
+  for(const route of ['/version','/api/fleet','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers:{Host:headers.Host}})).status,403);
   assert.equal((await fetch(base+'/auth',{method:'POST',headers})).status,204);
   assert.equal((await fetch(base+'/api/say',{method:'POST',headers,body:JSON.stringify({seat:'synthetic@demo',text:'test'})})).status,200);
   const log=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(!log.includes(grant.token)&&!log.includes('upstream-private'));
   const rows=log.trim().split('\n').map(s=>JSON.parse(s));assert.deepEqual(rows.map(r=>r.event),['action.request','action.result']);assert.ok(rows.every(r=>r.accountId==='owner'&&r.target==='synthetic@demo'));
   assert.ok(calls.every(v=>v==='Bearer upstream-private'));
+  for(const route of ['/version','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers})).status,200);
+  for(const route of ['/api/inbox/read','/api/team','/api/seat','/api/access'])assert.equal((await fetch(base+route,{method:'POST',headers,body:JSON.stringify({action:'synthetic',seat:'demo'})})).status,200);
+  const actions=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(actions.includes('team:synthetic')&&actions.includes('access:synthetic'));
+  assert.equal((await fetch(base+'/api/not-allowed',{method:'POST',headers,body:'{}'})).status,404);
   await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=beta',{headers});
+  await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=beta',{headers});
   const revoked=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
   assert.equal((await fetch(base+'/revoke',{method:'POST',headers:{Origin:'http://127.0.0.1:4632'},body:revoked.token})).status,204);
   assert.equal(gateway.grants.has(revoked.token),false);
   const screens=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8').trim().split('\n').map(s=>JSON.parse(s)).filter(r=>r.event.startsWith('screen.'));
-  assert.deepEqual(screens.map(r=>[r.event,r.target]),[['screen.open','alpha'],['screen.close','alpha'],['screen.open','beta']]);
+  assert.deepEqual(screens.map(r=>[r.event,r.target]),[['screen.open','alpha'],['screen.open','beta']]);
   const slow=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
   const beforeRevoked=calls.length;
   const revokedUpload=new Promise<number>(resolve=>{
@@ -84,4 +89,19 @@ test('gateway grants are owner-bound, keep upstream token private, audit actions
   assert.equal((await fetch(base+'/api/say',{method:'POST',headers,body:'{}'})).status,403);
   assert.equal((await fetch(base+'/api/fleet',{headers})).status,403);
  }finally{stopCadreGateway(ctx);await close(upstream);await new Promise(r=>setTimeout(r,20));rmSync(dir,{recursive:true,force:true});}
+});
+
+test('owner health probe reports unhealthy and stopped upstream without issuing grants',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'cadre-health-'));let healthy=true;
+ const upstream=createServer((req,res)=>res.writeHead(healthy&&req.headers.authorization==='Bearer synthetic-health'?200:503).end('{}'));
+ const upstreamPort=await listen(upstream),account={id:'owner',name:'Synthetic owner',role:'admin'};
+ const ctx={cfg:{dataDir:dir,port:0},accounts:{get:()=>account},auth:{fromRequest:()=>({account})}} as unknown as Ctx;
+ writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:[{id:'owner'}],webUrl:`http://127.0.0.1:${upstreamPort}`,webToken:'synthetic-health'}}));
+ const office=createServer(requestHandler(ctx,[cadreWebRoute])),port=await listen(office);ctx.cfg.port=port;
+ try{
+  const probe=async()=>await (await fetch(`http://127.0.0.1:${port}/api/cadre/health`)).json();
+  assert.equal((await probe()).available,true);healthy=false;assert.equal((await probe()).available,false);
+  await close(upstream);assert.equal((await probe()).available,false);
+  assert.equal((await cadreGateway(ctx)).grants.size,0);
+ }finally{await close(office);stopCadreGateway(ctx);if(upstream.listening)await close(upstream);await new Promise(r=>setTimeout(r,20));rmSync(dir,{recursive:true,force:true});}
 });

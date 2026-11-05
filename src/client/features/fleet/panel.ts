@@ -1,4 +1,5 @@
 import './panel.css';
+import {reconnect} from './reconnect';
 import type { FleetSnapshot } from '../../../shared/protocol/fleet';
 import { h,openModal } from '../../ui/dom';
 import { store } from '../../state';
@@ -29,10 +30,22 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
       grid.append(tile);
     }
   };
+  const load=()=>{frame?.remove();lastAlive=Date.now();frame=h('iframe',{title:'Cadre connection',src:'/api/cadre/embed',sandbox:'allow-scripts allow-same-origin allow-forms',referrerpolicy:'no-referrer',hidden:true});content.append(frame);};
+  const recovery=reconnect(async signal=>{
+    const response=await fetch('/api/cadre/health',{cache:'no-store',signal});
+    if(response.status===403||response.status===401){modal.close();return false;}
+    return response.ok&&(await response.json()).available===true;
+  },load);
+  let retryTimer:ReturnType<typeof setTimeout>|undefined;
+  const scheduleRetry=()=>{
+    if(closed||retryTimer!==undefined)return;
+    const delay=recovery.delay();if(delay===null)return;
+    retryTimer=setTimeout(async()=>{await recovery.tick();retryTimer=undefined;scheduleRetry();},delay);
+  };
   const message=(event:MessageEvent)=>{
     if(!frame||store.me.account?.role!=='admin'||event.source!==frame.contentWindow||event.origin!==location.origin)return;
     if(event.data?.type==='cadre.web.connected'||event.data?.type==='cadre.web.heartbeat'){
-      lastAlive=Date.now();frame.hidden=false;body.hidden=true;
+      recovery.connected();lastAlive=Date.now();frame.hidden=false;body.hidden=true;
     }
     if(event.data?.type==='cadre.web.close')modal.close();
   };
@@ -40,14 +53,14 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
   const timer=setInterval(()=>{
     if(store.me.account?.role!=='admin'){modal.close();return;}
     render();
-    if(frame&&Date.now()-lastAlive>6000){frame.hidden=true;body.hidden=false;notice.textContent='Read-only preview. Live Cadre is unavailable or has not completed its connection handshake.';}
+    if(!frame||Date.now()-lastAlive>6000){frame?.remove();frame=undefined;body.hidden=false;notice.textContent='Read-only preview · Reconnecting…';recovery.waiting();}
+    scheduleRetry();
   },1000);
-  const modal=openModal(content,{onClose:()=>{closed=true;clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
+  const modal=openModal(content,{onClose:()=>{closed=true;recovery.close();clearTimeout(retryTimer);clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
   render();
   void fetch('/api/cadre/web',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
     if(closed||store.me.account?.role!=='admin'||!config?.available){if(config?.reason)notice.textContent=`Read-only preview. ${config.reason}`;return;}
-    frame=h('iframe',{title:'Cadre connection',src:'/api/cadre/embed',sandbox:'allow-scripts allow-same-origin allow-forms',referrerpolicy:'no-referrer',hidden:true});
-    content.append(frame);
+    load();
   }).catch(()=>{notice.textContent='Read-only preview. Cadre Web could not be reached.';});
   return modal;
 }
