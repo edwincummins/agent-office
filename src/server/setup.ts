@@ -1,4 +1,4 @@
-import { execFile, spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from './cli-process.js';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';

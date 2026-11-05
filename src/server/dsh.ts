@@ -8,7 +8,7 @@
 // This module owns the wire. The translation core above the connection is pure, so the test suite
 // can drive a fake ACP agent over stdio without a DSH install (tests/dsh.test.ts).
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, type ChildProcessWithoutNullStreams } from './cli-process.js';
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { commandAction, toolAction } from '../shared/actions.js';

@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process';
+import { execFile } from './cli-process.js';
+import { ghText } from './cli-text.js';
 import type { GhCheck, GhCloseReason, GhComment, GhIssue, GhIssueDetail, GhLabel, GhMergeMethod, GhPull, GhPullDetail, GhRepoInfo, GhReviewComment, GhState } from '../shared/protocol.js';
 import type { GhAs } from './signins.js';
 
@@ -22,7 +23,7 @@ export function friendlyGhError(raw: string): string {
 
 /** Runs gh as the office, or with `env` as someone signed in to their own GitHub (see signins.ts). */
 export function gh(args: string[], cwd: string, timeout = 30_000, env?: Record<string, string>): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return ghText(args, args => new Promise((resolve, reject) => {
     execFile('gh', args, { cwd, maxBuffer: 32 * 1024 * 1024, timeout, env }, (err, stdout, stderr) => {
       if (err) {
         const msg = (stderr || err.message || '').trim();
@@ -30,7 +31,7 @@ export function gh(args: string[], cwd: string, timeout = 30_000, env?: Record<s
         reject(new Error((err as NodeJS.ErrnoException).code === 'ENOENT' ? 'GitHub CLI (gh) is not installed on the server' : signedOut ? 'Your GitHub sign-in stopped working — sign in again (☰ → 🔐 Your sign-ins)' : friendlyGhError(msg)));
       } else resolve(stdout);
     });
-  });
+  }));
 }
 
 function labels(raw: any[]): GhLabel[] {
