@@ -4,6 +4,13 @@ import type { Net } from '../../net';
 import { store } from '../../state';
 import { h, openModal, toast } from '../../ui/dom';
 
+/**
+ * Your own YouTube Music, signed in as you: private playlists, Liked Music and Premium play there, which YouTube never
+ * allows inside an embedded player. A small window of your browser, reused if it's already open.
+ */
+const isYouTube = (u: string) => /^https://(music.|www.|m.)?youtube.com/|^https://youtu.be//i.test(u);
+const openYouTubeMusic = (u: string) => window.open(u.replace(/^https://(www.|m.)?youtube.com//i, 'https://music.youtube.com/'), 'ytmusic', 'popup,width=520,height=760');
+
 /** The jukebox: what's on, the tunes to pick from, skip and stop, and a box for a stream. */
 export function openJukebox(net: Net, openVolume: () => void) {
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
@@ -30,7 +37,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
       list,
       h('label', { style: 'margin-top:16px' }, 'Or play a stream'),
       h('div.webhook', {}, url, playUrl),
-      h('div.webhook', { style: 'margin-top:6px' }, name, saveUrl),
+      h('div.webhook', { style: 'margin-top:6px' }, name, saveUrl, h('button.btn', { type: 'button', title: 'Open the link in YouTube Music, signed in as you', onclick: () => { if (isYouTube(url.value.trim())) openYouTubeMusic(url.value.trim()); else window.open('https://music.youtube.com/', 'ytmusic', 'popup,width=520,height=760'); } }, '↗ YouTube Music')),
       h('p.setting-note', {}, 'A YouTube or YouTube Music song or playlist, internet radio, or an audio file. It plays from the jukebox, for everyone on this floor.'),
     ),
     h('footer', {}, h('span.grow', {}, 'Everyone on this floor hears the same song, louder the closer they are to the lounge.'), volume),
@@ -51,6 +58,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
       ),
       j.on ? button('⏭️ Skip', 'On to the next tune', () => net.send({ t: 'jukebox.skip' })) : button('▶️ Play', `Put ${trackTitle(j)} back on`, () => net.send({ t: 'jukebox.play' }), true),
       j.on ? button('⏹️ Stop', 'Turn the jukebox off', () => net.send({ t: 'jukebox.stop' })) : '',
+      stream && j.url && isYouTube(j.url) ? button('↗ YouTube Music', 'Open it in YouTube Music, signed in as you', () => openYouTubeMusic(j.url!)) : '',
     );
     // Saved links (your YouTube Music playlists, stations): click to put on, × to forget.
     const saved = j.saved ?? [];
@@ -58,8 +66,9 @@ export function openJukebox(net: Net, openVolume: () => void) {
     savedList.replaceChildren(
       ...saved.map((x) => {
         const playing = j.on && j.track === STREAM && j.url === x.url;
+        const own = isYouTube(x.url) ? h('button.btn', { type: 'button', title: 'Play it in YouTube Music, signed in as you (private playlists, Liked Music, Premium)', onclick: (e: Event) => { e.stopPropagation(); openYouTubeMusic(x.url); } }, '↗ YouTube Music') : '';
         const forget = h('button.btn', { type: 'button', title: `Forget ${x.name}`, 'aria-label': `Forget ${x.name}`, onclick: (e: Event) => { e.stopPropagation(); net.send({ t: 'jukebox.forget', url: x.url }); } }, '×');
-        const li = h('li', { class: playing ? 'on' : '', tabindex: 0, role: 'button', title: playing ? 'Playing now' : `Put on ${x.name}` }, h('span.jb-icon', {}, playing ? '🔊' : '⭐'), h('div.svc-main', {}, h('div.svc-title', {}, x.name), h('div.svc-meta', {}, trackTitle({ track: STREAM, url: x.url }))), forget);
+        const li = h('li', { class: playing ? 'on' : '', tabindex: 0, role: 'button', title: playing ? 'Playing now' : `Put on ${x.name}` }, h('span.jb-icon', {}, playing ? '🔊' : '⭐'), h('div.svc-main', {}, h('div.svc-title', {}, x.name), h('div.svc-meta', {}, trackTitle({ track: STREAM, url: x.url }))), own, forget);
         const pick = () => { if (!playing) net.send({ t: 'jukebox.play', url: x.url }); };
         li.addEventListener('click', pick);
         li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
