@@ -9,7 +9,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
   const close = h('button.btn.close', { 'aria-label': 'Close' }, '✕');
   const now = h('div.jb-now');
   const list = h('ul.svc-list');
-  const url = h('input', { type: 'text', placeholder: 'https://… internet radio, or a link to an .mp3', 'aria-label': 'Stream or audio file link', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
+  const url = h('input', { type: 'text', placeholder: 'https://… a YouTube / YouTube Music song or playlist, internet radio, or an .mp3', 'aria-label': 'Stream or audio file link', spellcheck: 'false', autocomplete: 'off' }) as HTMLInputElement;
   const playUrl = h('button.btn.primary', { type: 'button' }, '📻 Play');
   const volume = h('button.btn', { type: 'button' }, '🔈 Your volume');
   const el = h(
@@ -24,7 +24,7 @@ export function openJukebox(net: Net, openVolume: () => void) {
       list,
       h('label', { style: 'margin-top:16px' }, 'Or play a stream'),
       h('div.webhook', {}, url, playUrl),
-      h('p.setting-note', {}, 'Internet radio or an audio file. It plays from the jukebox, for everyone on this floor.'),
+      h('p.setting-note', {}, 'A YouTube or YouTube Music song or playlist, internet radio, or an audio file. It plays from the jukebox, for everyone on this floor.'),
     ),
     h('footer', {}, h('span.grow', {}, 'Everyone on this floor hears the same song, louder the closer they are to the lounge.'), volume),
   );
