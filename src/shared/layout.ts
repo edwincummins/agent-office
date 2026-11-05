@@ -255,7 +255,8 @@ export const BOARDS = {
 } as const;
 
 /** The big TV on the east wall that shows whoever is screen sharing. */
-export const TV = { x: FLOOR.maxX - 0.1, y: 2.2, z: 0, width: 6.4, height: 3.6 } as const;
+// Level with the Cadre board beside it (same height, same top and bottom: BOARDS.services); 16:9 for screen shares.
+export const TV = { x: FLOOR.maxX - 0.1, y: 2.4, z: 0, width: 6.76, height: 3.8 } as const;
 /**
  * The monitor on the west wall, between the first two windows from the north (the ladder has the
  * span between the middle two) and facing the desks: how busy the office's machine is, and how many

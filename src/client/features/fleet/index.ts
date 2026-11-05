@@ -22,10 +22,13 @@ export function installFleet(ctx:Ctx) {
   const labelMaps=new WeakMap<THREE.Mesh,THREE.Texture>();
   const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=128;
   const labelPaint=labelCanvas.getContext('2d')!;labelPaint.fillStyle='#111214';labelPaint.fillRect(0,0,512,128);
-  labelPaint.fillStyle='#ece6d6';labelPaint.font='600 76px Segoe UI';labelPaint.fillText('Cadre',110,91);
+  // Logo + "Cadre", centered on the sign as one group.
+  labelPaint.font='600 76px Segoe UI';
+  const labelText=labelPaint.measureText('Cadre').width,labelLeft=Math.round((512-(72+18+labelText))/2);
+  labelPaint.fillStyle='#ece6d6';labelPaint.fillText('Cadre',labelLeft+90,91);
   const labelTexture=new THREE.CanvasTexture(labelCanvas);labelTexture.colorSpace=THREE.SRGBColorSpace;
   // Cadre's own logo on the sign (and on the board's header, see draw.ts), once the image has loaded.
-  cadreLogo.then(img=>{labelPaint.drawImage(img,26,28,72,72);labelTexture.needsUpdate=true;last='';draw(state);}).catch(()=>{labelPaint.fillStyle='#F0643B';labelPaint.fillRect(30,40,48,48);labelTexture.needsUpdate=true;});
+  cadreLogo.then(img=>{labelPaint.drawImage(img,labelLeft,28,72,72);labelTexture.needsUpdate=true;last='';draw(state);}).catch(()=>{labelPaint.fillStyle='#F0643B';labelPaint.fillRect(labelLeft+12,40,48,48);labelTexture.needsUpdate=true;});
   let authorized=false,permissionRequest=0;
   const allowed=()=>authorized&&store.me.account?.role==='admin';
   const header=document.createElement('canvas');header.width=1024;header.height=250;

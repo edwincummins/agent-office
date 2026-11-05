@@ -21,6 +21,21 @@ type Signal = { description?: RTCSessionDescriptionInit; candidate?: RTCIceCandi
  * Mesh WebRTC for voice + screen share. Signaling rides the office WebSocket.
  * Uses the "perfect negotiation" pattern so either side can add tracks at any time.
  */
+/** Screen shares are text: up to 12 Mbps, 30 fps, and drop frames before sharpness. */
+function crisp(sender: RTCRtpSender): RTCRtpSender {
+  try {
+    const p = sender.getParameters();
+    p.encodings = p.encodings?.length ? p.encodings : [{}];
+    p.encodings[0].maxBitrate = 12_000_000;
+    p.encodings[0].maxFramerate = 30;
+    (p as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = 'maintain-resolution';
+    void sender.setParameters(p).catch(() => {});
+  } catch {
+    // not negotiated yet or not supported: the browser's defaults stand
+  }
+  return sender;
+}
+
 export class Voice {
   readonly conns = new Map<string, Conn>();
   private mic: MediaStream | null = null;
@@ -159,14 +174,15 @@ export class Voice {
     if (this.screen) return null;
     if (!window.isSecureContext || !navigator.mediaDevices?.getDisplayMedia) return 'Screen sharing needs HTTPS (or localhost).';
     try {
-      this.screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false });
+      // Up to 1440p at 30 fps: the TV is 6.75 m wide, and 15 fps at the browser's default bitrate blurred text (11-05).
+      this.screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 2560, max: 2560 }, height: { ideal: 1440, max: 1440 } }, audio: false });
     } catch (err) {
       return (err as Error).name === 'NotAllowedError' ? null : `Could not share: ${(err as Error).message}`;
     }
     const track = this.screen.getVideoTracks()[0];
     track.contentHint = 'detail';
     track.addEventListener('ended', () => this.stopShare());
-    for (const c of this.conns.values()) c.screenSender = c.pc.addTrack(track, this.screen);
+    for (const c of this.conns.values()) c.screenSender = crisp(c.pc.addTrack(track, this.screen));
     this.changed();
     return null;
   }
@@ -300,7 +316,7 @@ export class Voice {
 
     // Share whatever we're already sending.
     if (this.mic) c.micSender = pc.addTrack(this.mic.getAudioTracks()[0], this.mic);
-    if (this.screen) c.screenSender = pc.addTrack(this.screen.getVideoTracks()[0], this.screen);
+    if (this.screen) c.screenSender = crisp(pc.addTrack(this.screen.getVideoTracks()[0], this.screen));
     return c;
   }
 
