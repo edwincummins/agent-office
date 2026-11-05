@@ -48,11 +48,11 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
       if(!grant||!account)return send(res,403,{error:'Not available'});
       if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
       const route=url.pathname;
-      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'].includes(route);
+      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas','/api/changes','/api/overview'].includes(route);
       const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access','/api/tune'].includes(route);
       if(!read&&!action&&!(req.method==='POST'&&route==='/auth'))return send(res,404,{error:'Not available'});
       let body:string|undefined,detail:Record<string,string>={};
-      const readAction=read&&['/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'].includes(route);
+      const readAction=read&&['/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas','/api/changes','/api/overview'].includes(route);
       const readTarget=(url.searchParams.get('team')??'').slice(0,160),readKey=JSON.stringify([route,readTarget]);
       const firstRead=readAction&&!(grant.reads??=new Set()).has(readKey);
       if(firstRead){auditCadre(ctx.cfg.dataDir,account,'read.open',{action:route.slice(5),target:readTarget});grant.reads!.add(readKey);}
