@@ -1,7 +1,8 @@
 // Starting things for the workers: which shell, where a command is, how to run one without
 // blocking the office, and the install's own bin/ scripts and the commands that run them.
 import { accessSync, chmodSync, constants, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { execFile } from '../cli-process.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 

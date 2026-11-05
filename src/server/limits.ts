@@ -3,7 +3,7 @@
 // its stream-json protocol with the numbers its /usage screen shows. Asking starts no conversation
 // and costs nothing, and Claude Code deals with the sign-in (keychain, token refresh) itself.
 
-import { spawn } from 'node:child_process';
+import { spawn } from './cli-process.js';
 import os from 'node:os';
 import type { PlanLimits, PlanWindow } from '../shared/protocol.js';
 

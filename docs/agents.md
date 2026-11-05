@@ -75,3 +75,9 @@ DeepSeek Harness metrics come from ACP `usage_update`: tokens in context and the
 ## The office's prompts
 
 Everything the office tells a worker by itself can be rewritten in ⚙️ Settings → **🤖 Workers** → **📝 Edit the prompts…**: what **🤖 Hand to a worker**, **🔍 Review**, **Fix up & merge**, **Fix conflicts & merge** and **✍️ Ask a worker** send from the boards, what a meeting about an issue or a review panel starts with, the note the queue adds to a worktree task, the three board agents' briefs, every part the meeting room hands out, and the instructions for the model that writes the signs over workers' heads. Each one lists its `{{placeholders}}` (the issue number, the PR's branch, the file a meeting waits for…), which the office fills in when it sends it, and warns when one the office counts on is missing. **↺ Default** puts the office's own wording back. Admins edit them; they're the same on every floor and kept in `.agent-office/prompts.json` with the Default worker.
+
+### Windows npm launchers
+
+Agent CLIs installed by npm may resolve to `.cmd` or `.bat` launchers on Windows. The office runs these through `cmd.exe` with escaped arguments; native executables and POSIX commands keep direct argument passing. This covers sign-in status, Claude plan limits and task naming, provider model catalogs, GitHub helpers, setup, upgrades and ACP launches. Interactive worker/login terminals continue to use the existing PTY path.
+
+Multiline Claude naming instructions and GitHub bodies travel through temporary files (removed after the command), not shell command text. Other batch arguments containing line breaks or NUL are refused; use the CLI's stdin/file option instead. Async shim timeouts and cancellation terminate the Windows process tree. No credentials or sign-in policy are changed by this launcher fix.

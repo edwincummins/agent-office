@@ -420,3 +420,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+On Windows, npm-installed agent CLI `.cmd` launchers are supported for status, plan limits and model discovery; see [Windows npm launchers](docs/agents.md#windows-npm-launchers).

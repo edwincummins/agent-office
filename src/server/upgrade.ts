@@ -1,4 +1,5 @@
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from './cli-process.js';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
