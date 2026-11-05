@@ -84,6 +84,8 @@ export interface PlanLimits {
   windows: PlanWindow[];
   /** When the numbers were read (ms since epoch); 0 before the first read. */
   at: number;
+  /** Other providers' limits (Codex, ...), one card each, shown with arrows beside Claude's (server/provider-limits.ts). */
+  providers?: { provider: string; plan?: string; windows: PlanWindow[]; at: number }[];
 }
 
 export type UsageClientMsg =

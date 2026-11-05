@@ -76,6 +76,9 @@
 /* Claude plan limits: the 5-hour session and the week */
 .side .limits { flex: none; cursor: pointer; font-size: 12px; font-weight: 700; display: flex; flex-direction: column; gap: 4px; }
 .limits h3 { margin-bottom: 2px; }
+.limits h3 { display: flex; align-items: center; gap: 4px; }
+.limits .limits-arrow { flex: none; width: 20px; height: 20px; padding: 0; border: 1px solid var(--line, #6b5a3a); border-radius: 4px; background: transparent; color: inherit; font: 800 14px/1 inherit; cursor: pointer; }
+.limits .limits-arrow:hover { background: rgba(255, 255, 255, 0.08); }
 .limits .plan { margin-left: auto; font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 800; }
 .limits .row { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
 .limits .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

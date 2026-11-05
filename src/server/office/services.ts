@@ -9,6 +9,7 @@ import { Services } from '../services.js';
 import { ImageProxy } from '../decor.js';
 import { Ledger } from '../usage.js';
 import { PlanLimitsReader } from '../limits.js';
+import { withProviders } from '../provider-limits.js';
 import { Webhook } from '../webhook.js';
 import { Machine } from '../machine.js';
 import type { Floor } from '../floor.js';
@@ -70,7 +71,7 @@ export function createServices(ctx: Ctx): BuildingServices {
     childEnv(),
     () => [...clients.values()].some((c) => limitsOf(c) === limits),
     (state) => {
-      for (const c of clients.values()) if (limitsOf(c) === limits) ctx.sendTo(c, { t: 'limits', state });
+      for (const c of clients.values()) if (limitsOf(c) === limits) ctx.sendTo(c, { t: 'limits', state: withProviders(state) });
     },
   );
   const accountLimits = new Map<string, { key: string; reader: PlanLimitsReader }>();
@@ -87,7 +88,7 @@ export function createServices(ctx: Ctx): BuildingServices {
         signins.apply(id, childEnv(), [], 'claude'),
         () => [...clients.values()].some((o) => o.accountId === id),
         (state) => {
-          for (const o of clients.values()) if (o.accountId === id) ctx.sendTo(o, { t: 'limits', state });
+          for (const o of clients.values()) if (o.accountId === id) ctx.sendTo(o, { t: 'limits', state: withProviders(state) });
         },
       );
       a = { key, reader };

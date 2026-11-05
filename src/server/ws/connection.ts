@@ -12,6 +12,7 @@ import { floorView, roofView, screensOf } from '../office/views.js';
 import { dispatch } from './dispatch.js';
 import { features } from './handlers/index.js';
 import { mapNews } from './handlers/settings.js';
+import { withProviders } from '../provider-limits.js';
 
 /**
  * Someone came in: where they arrive and who they are, the welcome with everything they see, and
@@ -74,7 +75,7 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
     version: upgrader.version,
     upgrade: upgrader.state,
     usage: ledger.state(),
-    limits: limitsOf(client).state,
+    limits: withProviders(limitsOf(client).state),
     me,
     notify: webhook.state(),
     machine: machine.state(),

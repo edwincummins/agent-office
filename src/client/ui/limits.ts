@@ -34,14 +34,55 @@ function windowRow(w: PlanWindow, now: number): HTMLElement[] {
   ];
 }
 
-/** The Claude plan's 5-hour session and weekly limits, under the workers. Click to read them again. */
+/** Which provider's card is showing (remembered in this browser): Claude, Codex, and more as they're built in. */
+let shown = (() => {
+  try {
+    return localStorage.getItem('agent-office.limitsProvider') ?? 'Claude';
+  } catch {
+    return 'Claude';
+  }
+})();
+
+/**
+ * Plan limits, one provider at a time so the panel never stacks up: Claude's 5-hour session and week, then Codex,
+ * Gemini, Grok... as readers exist for them (server/provider-limits.ts). ‹ › step between them.
+ */
 export function renderLimits() {
   const s = store.limits;
   const el = $('limits');
-  el.classList.toggle('hidden', !s.windows.length);
-  if (!s.windows.length) return;
+  const cards = [
+    ...(s.windows.length ? [{ provider: 'Claude', plan: s.plan, windows: s.windows, at: s.at }] : []),
+    ...(s.providers ?? []).filter((p) => p.windows.length),
+  ];
+  el.classList.toggle('hidden', !cards.length);
+  if (!cards.length) return;
+  let i = Math.max(0, cards.findIndex((c) => c.provider === shown));
+  const card = cards[i];
+  const go = (step: number) => (e: Event) => {
+    e.stopPropagation();
+    i = (i + step + cards.length) % cards.length;
+    shown = cards[i].provider;
+    try {
+      localStorage.setItem('agent-office.limitsProvider', shown);
+    } catch {
+      // storage blocked: it just won't be remembered
+    }
+    renderLimits();
+  };
   const now = Date.now();
-  const plan = s.plan ? s.plan.charAt(0).toUpperCase() + s.plan.slice(1) : '';
-  el.replaceChildren(h('h3', {}, 'Claude limits', plan ? h('span.plan', {}, plan) : null, panelHide('limits')), ...s.windows.flatMap((w) => windowRow(w, now)));
-  if (now - s.at > STALE_MS) el.append(h('div.row.muted', {}, `As of ${new Date(s.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`));
+  const plan = card.plan ? card.plan.charAt(0).toUpperCase() + card.plan.slice(1) : '';
+  const arrows = cards.length > 1;
+  el.replaceChildren(
+    h(
+      'h3',
+      {},
+      arrows ? h('button.limits-arrow', { onclick: go(-1), title: 'Previous provider', 'aria-label': 'Previous provider' }, '‹') : null,
+      `${card.provider} limits`,
+      plan ? h('span.plan', {}, plan) : null,
+      arrows ? h('button.limits-arrow', { onclick: go(1), title: `Next provider (${i + 1} of ${cards.length})`, 'aria-label': 'Next provider' }, '›') : null,
+      panelHide('limits'),
+    ),
+    ...card.windows.flatMap((w) => windowRow(w, now)),
+  );
+  if (now - card.at > STALE_MS) el.append(h('div.row.muted', {}, `As of ${new Date(card.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`));
 }

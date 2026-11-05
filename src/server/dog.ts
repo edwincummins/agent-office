@@ -338,15 +338,19 @@ export class Dog {
       return this.think();
     }
     const person: Pt = [p.x, p.z];
+    // Walking: it trails behind, out from under their feet. Stopped: it comes round and sits in front of them, a little
+    // off to one side so it's in view without blocking the middle of a first-person screen (Fetty, 11-05: "it always
+    // goes to my back").
     const behind = nearestWalkable([p.x - Math.sin(p.rotY) * 1.1, p.z - Math.cos(p.rotY) * 1.1], this.wing);
+    const front = nearestWalkable([p.x + Math.sin(p.rotY + 0.45) * 1.3, p.z + Math.cos(p.rotY + 0.45) * 1.3], this.wing);
+    const spot = p.moving ? behind : front;
     const end = this.leg.path[this.leg.path.length - 1];
     const along = this.leg.act === 'sit' && this.leg.following === p.id;
-    // Someone standing still who just turns around doesn't need it circling round behind them.
-    const settled = along && ((!p.moving && dist(end, person) < 1.8 && dist(end, person) > 0.4) || dist(end, behind) < 0.8);
+    const settled = along && dist(end, spot) < 0.9;
     if (!settled) {
       const at = this.here();
-      if (dist(at, behind) < 0.8) this.go([at], 0, 'sit', { face: toward(at, person), following: p.id });
-      else this.walkTo(behind, dist(at, behind) > 4 ? RUN * 0.8 : 1.8, 'sit', { face: toward(behind, person), following: p.id });
+      if (dist(at, spot) < 0.8) this.go([at], 0, 'sit', { face: toward(at, person), following: p.id });
+      else this.walkTo(spot, dist(at, spot) > 4 ? RUN * 0.8 : 1.8, 'sit', { face: toward(spot, person), following: p.id });
     }
     this.wake(900, () => this.followStep());
   }
