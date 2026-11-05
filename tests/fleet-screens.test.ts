@@ -43,8 +43,12 @@ test('screen tails remove C1 and Unicode line/paragraph separators',()=>{
  assert.deepEqual(screenTail(['café 中文 😀']),['café 中文 😀']);
 });
 
-test('screen tails strip zero-width spaces, joiners and byte order marks',()=>{
- for(const code of [0x180e,0x200b,0x200c,0x200d,0x2060,0xfeff])assert.deepEqual(screenTail([`left${String.fromCodePoint(code)}right`]),['leftright']);
+test('screen tails strip zero-width spaces and byte order marks',()=>{
+ for(const code of [0x180e,0x200b,0x2060,0xfeff])assert.deepEqual(screenTail([`left${String.fromCodePoint(code)}right`]),['leftright']);
+});
+test('screen tails preserve emoji joiners and language non-joiners',()=>{
+ const lines=['👨‍👩‍👧‍👦 👩🏽‍💻 🏳️‍🌈','می\u200cروم','क्\u200cष','café 中文 😀'];
+ assert.deepEqual(screenTail(lines),lines);
 });
 test('screen tails strip invisible formatting and direction marks',()=>{
  for(const code of [0x00ad,0x034f,0x061c,0x200e,0x200f,0x2061,0x2062,0x2063,0x2064,0x206a,0x206b,0x206c,0x206d,0x206e,0x206f])assert.deepEqual(screenTail([`left${String.fromCodePoint(code)}right`]),['leftright']);
