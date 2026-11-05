@@ -1,3 +1,8 @@
+import {spawn} from 'node:child_process';
+import {request} from 'node:http';
+import {fileURLToPath} from 'node:url';
+import {Readable} from 'node:stream';
+import {recoverPassword} from '../src/server/onboarding/password-cli.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,writeFileSync,mkdirSync} from 'node:fs';
@@ -108,4 +113,74 @@ test('verified tokens reject bad claim types, identity, time and algorithm',asyn
   await assert.rejects(verify(await new SignJWT(claims).setProtectedHeader({alg:'RS256',kid:'unknown'}).sign(privateKey)));
   const other=await generateKeyPair('RS256');await assert.rejects(verify(await new SignJWT(claims).setProtectedHeader({alg:'RS256',kid:'test'}).sign(other.privateKey)));
   await assert.rejects(verify(Buffer.from(JSON.stringify({alg:'none'})).toString('base64url')+'.'+Buffer.from(JSON.stringify(claims)).toString('base64url')+'.'));
+});
+
+test('first-run password and Google admission refuse all proxy headers',async()=>{
+ for(const header of ['X-Forwarded-For','X-Forwarded-Host','X-Forwarded-Anything','Forwarded','X-Real-IP','Via']){
+  const h=await harness();try{
+   writeFileSync(path.join(h.dir,'config.json'),JSON.stringify({google:{clientId:'test',clientSecret:'secret',redirectUri:h.base+'/auth/google/callback'}}));
+   for(const route of ['/api/signup','/auth/google/start']){
+    const r=await fetch(h.base+route,{method:'POST',headers:{Origin:h.base,[header]:'proxy','content-type':'application/json'},body:JSON.stringify({name:'Owner',password:'password1',confirm:'password1'})});
+    assert.equal(r.status,403,header+' '+route);assert.equal(h.ctx.accounts.any,false);
+   }
+  }finally{await h.close();}
+ }
+});
+
+test('Google first password is self-only, single-use and survives local recovery',async()=>{
+ const h=await harness();try{
+  const owner=await h.ctx.accounts.createFirst('Owner','unusable-random',{issuer:'test',subject:'owner',email:'owner@example.test'}) as any;
+  const invite=h.ctx.accounts.invite('Owner','member','Guest') as any;
+  const guest=await h.ctx.accounts.join(invite.token,'Ignored','another-random',{issuer:'test',subject:'guest',email:'guest@example.test'}) as any;
+  const cookie=(id:string)=>`ao_session_${h.ctx.cfg.port}=${h.ctx.auth.issue(id)}`;
+  const set=(cookieValue:string,body:unknown,origin=h.base)=>fetch(h.base+'/api/account/password',{method:'POST',headers:{Origin:origin,Cookie:cookieValue,'content-type':'application/json'},body:JSON.stringify(body)});
+  const body={password:'new-password',confirm:'new-password',accountId:owner.id};
+  assert.equal((await set('',body)).status,401);
+  assert.equal((await set(cookie(guest.id),body,'https://foreign.test')).status,403);
+  assert.equal((await set(cookie(guest.id),body)).status,200);
+  assert.equal(await h.ctx.accounts.check('Owner','new-password'),undefined);
+  assert.equal((await h.ctx.accounts.check('Guest','new-password'))?.id,guest.id);
+  assert.equal((await set(cookie(guest.id),body)).status,403);
+  assert.equal(await recoverPassword(h.ctx.accounts,['Owner','no-argument-secret'],Readable.from(['reset-password\n'])),2);
+  assert.equal(await recoverPassword(h.ctx.accounts,['Owner'],Readable.from(['short\n'])),1);
+  assert.equal(await recoverPassword(h.ctx.accounts,['Owner'],Readable.from(['reset-password\n'])),0);
+  const reloaded=new Accounts(h.dir);assert.equal((await reloaded.check('Owner','reset-password'))?.id,owner.id);
+  assert.equal(reloaded.ownerAccountId,owner.id);assert.equal(reloaded.get(owner.id)?.identity?.subject,'owner');assert.equal(reloaded.get(owner.id)?.passwordUnset,undefined);
+ }finally{await h.close();}
+});
+test('a proxy header on the Google first-run callback cannot create an owner',async()=>{
+ const h=await harness();try{
+  writeFileSync(path.join(h.dir,'config.json'),JSON.stringify({google:{clientId:'test',clientSecret:'secret',redirectUri:h.base+'/auth/google/callback'}}));
+  const r=await h.post('/auth/google/start',{}),cookie=r.headers.get('set-cookie')!.split(';')[0],u=new URL((await r.json() as any).url);
+  const done=await fetch(h.base+'/auth/google/callback?state='+u.searchParams.get('state')+'&code=test',{headers:{Cookie:cookie,Via:'local-proxy'},redirect:'manual'});
+  assert.match(done.headers.get('location')!,/authError/);assert.equal(h.ctx.accounts.any,false);
+ }finally{await h.close();}
+});
+
+test('local CLI recovery reads stdin and refuses ambiguous on/off names',async()=>{
+ const h=await harness();try{
+  await h.ctx.accounts.createFirst('on','old-password',{issuer:'test',subject:'one',email:'one@example.test'});
+  const parent=path.dirname(h.dir),home=path.join(parent,path.basename(h.dir)+'-cli');mkdirSync(home);mkdirSync(path.join(home,'.agent-office'));
+  const {readFileSync}=await import('node:fs');writeFileSync(path.join(home,'.agent-office/accounts.json'),readFileSync(path.join(h.dir,'accounts.json')));
+  const run=(args:string[],input:string)=>new Promise<{code:number|null;out:string}>(resolve=>{
+   const c=spawn(process.execPath,['--import','tsx',fileURLToPath(new URL('./fixtures/accounts-command.ts',import.meta.url)),...args,'--dir',home],{stdio:['pipe','pipe','pipe'],windowsHide:true});let out='';c.stdout.on('data',d=>out+=d);c.stderr.on('data',d=>out+=d);c.on('close',code=>resolve({code,out}));c.stdin.end(input);
+  });
+  try{
+   const refused=await run(['password','on'],'new-password\n');assert.equal(refused.code,2);assert.equal(new Accounts(path.join(home,'.agent-office')).sharedPassword,false);
+   const reset=await run(['password','--account','on'],'new-password\n');assert.equal(reset.code,0);assert.ok(await new Accounts(path.join(home,'.agent-office')).check('on','new-password'));assert.ok(!reset.out.includes('new-password'));
+  }finally{rmSync(home,{recursive:true,force:true});}
+ }finally{await h.close();}
+});
+test('logout while a password request body is pending prevents recovery',async()=>{
+ const h=await harness();try{
+  const a=await h.ctx.accounts.createFirst('Owner','old-random',{issuer:'test',subject:'one',email:'one@example.test'}) as any;
+  const token=h.ctx.auth.issue(a.id),cookie=`ao_session_${h.ctx.cfg.port}=${token}`,body=JSON.stringify({password:'new-password',confirm:'new-password'});
+  let finish!:()=>void;
+  const response=new Promise<number>(resolve=>{
+   const req=request(h.base+'/api/account/password',{method:'POST',headers:{Origin:h.base,Cookie:cookie,'content-type':'application/json','content-length':Buffer.byteLength(body)}},res=>{res.resume();res.on('end',()=>resolve(res.statusCode!));});
+   req.write(body.slice(0,1));finish=()=>req.end(body.slice(1));
+  });
+  await new Promise(r=>setTimeout(r,30));await fetch(h.base+'/api/logout',{method:'POST',headers:{Origin:h.base,Cookie:cookie}});finish();
+  assert.equal(await response,400);assert.equal(await h.ctx.accounts.check('Owner','new-password'),undefined);
+ }finally{await h.close();}
 });

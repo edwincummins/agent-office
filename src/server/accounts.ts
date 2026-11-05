@@ -11,6 +11,7 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const MAX_INVITES = 100;
 
 export interface Account {
+  passwordUnset?: boolean;
   identity?: { issuer: string; subject: string; email: string };
   id: string;
   name: string;
@@ -104,9 +105,17 @@ export class Accounts {
     const salt = randomBytes(16), derived = await hash(password, salt);
     this.sync();
     if (this.data.accounts.length || this.unreadable || this.data.ownerAccountId) return 'This office already has an owner. Sign in instead.';
-    const a: Account = {id: randomBytes(8).toString('hex'), name:n, role:'admin', hash:derived.toString('hex'), salt:salt.toString('hex'), createdAt:Date.now(), createdBy:'first-run', ...(identity ? {identity} : {})};
+    const a: Account = {id: randomBytes(8).toString('hex'), name:n, role:'admin', hash:derived.toString('hex'), salt:salt.toString('hex'), createdAt:Date.now(), createdBy:'first-run', ...(identity ? {identity,passwordUnset:true} : {})};
     this.data.accounts.push(a); this.data.ownerAccountId = a.id; this.data.sharedPassword = false;
     this.save(); return a;
+  }
+
+  /** Local recovery or the authenticated first password for a Google-created account. */
+  async setPassword(id:string,password:string,onlyUnset=false,authorized:()=>boolean=()=>true):Promise<boolean>{
+    if(typeof password!=='string'||password.length<PASSWORD_MIN||password.length>PASSWORD_MAX)return false;
+    const salt=randomBytes(16),derived=await hash(password,salt),a=this.get(id);
+    if(!a||!authorized()||(onlyUnset&&a.passwordUnset!==true))return false;
+    a.salt=salt.toString('hex');a.hash=derived.toString('hex');delete a.passwordUnset;this.save();return true;
   }
 
   get(id: string | undefined): Account | undefined {
@@ -208,7 +217,7 @@ export class Accounts {
       salt: salt.toString('hex'),
       createdAt: Date.now(),
       createdBy: invite.createdBy,
-      ...(identity ? {identity} : {}),
+      ...(identity ? {identity,passwordUnset:true} : {}),
     };
     this.data.invites.splice(i, 1);
     this.data.accounts.push(account);
@@ -324,12 +333,14 @@ Usage:
                                                Make a single-use invite link (valid 7 days)
   agent-office accounts revoke <name>          Delete an account; it's signed out at once
   agent-office accounts role <name> admin|member
+  agent-office accounts password <name>        Set an account password from stdin (local recovery)
   agent-office accounts password on|off        Whether the shared office password still works
 
 Options:
   -d, --dir <dir>   The office's directory: the project it was started in, or its
                     home (default: the current directory if an office ran there,
                     else ~/agent-office or $AGENT_OFFICE_HOME)
+  --account        In password recovery, treat on/off as account names
   -h, --help        Show this help
 
 Works while the office runs: it picks up the changes within seconds.
@@ -338,10 +349,10 @@ Works while the office runs: it picks up the changes within seconds.
 const day = (t: number) => new Date(t).toISOString().slice(0, 16).replace('T', ' ');
 
 /** `agent-office accounts`: exits 0 when done, 1 when it couldn't, 2 for a usage error. */
-export function accountsCommand(argv: string[]): number {
+export async function accountsCommand(argv: string[]): Promise<number> {
   // An office started in this project keeps its accounts here; one started anywhere else, in its home.
   let dir = existsSync(path.join(process.cwd(), '.agent-office', 'config.json')) ? process.cwd() : officeHome();
-  let admin = false;
+  let admin = false, accountPassword = false;
   const args: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -351,7 +362,8 @@ export function accountsCommand(argv: string[]): number {
     } else if (a === '-d' || a === '--dir') {
       if (!argv[i + 1]) return usage('--dir needs a value');
       dir = path.resolve(argv[++i]);
-    } else if (a === '--admin') admin = true;
+    } else if (a === '--account') accountPassword = true;
+    else if (a === '--admin') admin = true;
     else if (a.startsWith('-')) return usage(`unknown option ${a}`);
     else args.push(a);
   }
@@ -403,7 +415,10 @@ export function accountsCommand(argv: string[]): number {
       return 0;
     }
     case 'password': {
-      if (arg !== 'on' && arg !== 'off') return usage('password takes on or off');
+      if(accountPassword)return (await import('./onboarding/password-cli.js')).recoverPassword(accounts,args.slice(1));
+      if((arg==='on'||arg==='off')&&accounts.byName(arg))return usage('ambiguous account name: use password --account <name> to reset its password');
+      if (arg !== 'on' && arg !== 'off') return (await import('./onboarding/password-cli.js')).recoverPassword(accounts,args.slice(1));
+      if(arg2)return usage('password never accepts a password argument');
       if (arg === 'off' && !accounts.state(new Set()).accounts.some((a) => a.role === 'admin')) {
         return fail('make an admin account first (`agent-office accounts invite <name> --admin`), or nobody could manage the office');
       }

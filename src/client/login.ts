@@ -1,1 +1,1 @@
-import './features/onboarding/login.js';
+import './onboarding/login.js';

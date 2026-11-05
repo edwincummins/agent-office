@@ -51,3 +51,17 @@ The fake provider serves `/.well-known/openid-configuration`; issuer and all end
 `verifyIdToken(token, {issuer, jwks, clientId, nonce, now})` is exported from `src/server/onboarding/oidc.ts`; `jwks` is a jose `createRemoteJWKSet` or `createLocalJWKSet` resolver and `now` is an optional Date. This allows token fault cases without weakening the production provider. Real Google consent/token exchange requires your Cloud client and is not established by synthetic tests.
 
 The sign-in page shows the leave-name-blank note only while shared-password entry is enabled. First-owner signup turns shared entry off; existing offices that retain it keep that hint. Invitation guidance uses separate labelled paragraphs beneath the form.
+
+## Local password recovery
+
+Google-first accounts can open **Your character** (profile) and choose **Set a password** while signed in. This adds their first password without unlinking Google. The action applies only to the authenticated account, requires same-origin requests, and rechecks the session after hashing. The profile closes when this dialog opens; X/Esc use the normal return-to-office modal path. Accounts created by older builds without the first-password marker can use local recovery instead.
+
+If Google is unavailable, run `agent-office accounts password "Your account name" --dir <office-directory>` on the office machine, supplying one password line through stdin. Passwords are never accepted as command arguments. For example, with Python installed, this prompts without echoing the password or putting it in command history:
+
+```sh
+python -c "import getpass; print(getpass.getpass('New password: '))" | agent-office accounts password "Your account name" --dir <office-directory>
+```
+
+Use 8–512 characters. Local filesystem access is the authority for this recovery command; there is no HTTP recovery endpoint for arbitrary accounts. It preserves account ID, owner role and Google identity. Existing sessions are not globally revoked by a local password reset. For an account literally named `on` or `off`, use `accounts password --account "on"` (or `"off"`) to distinguish it from the legacy shared-password switches; ambiguous names are refused.
+
+First-owner creation rejects any `X-Forwarded-*`, `Forwarded`, `X-Real-IP` or `Via` header, even on loopback, for both password signup and Google admission/callback. Open an unclaimed office directly, without a reverse proxy. Uninvited Google identities do not create accounts; a named invite supplies the new account's name rather than Google's display name.

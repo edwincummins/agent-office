@@ -1,3 +1,4 @@
+import {passwordRoutes} from './password.js';
 import {randomBytes,createHash} from 'node:crypto';
 import type {Route} from '../http/router.js';
 import type {Ctx} from '../office/context.js';
@@ -14,7 +15,7 @@ const signature=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).dige
 const states=new WeakMap<Ctx,{flows:Map<string,Flow>;limits:AttemptLimits}>();
 function state(ctx:Ctx){let s=states.get(ctx);if(!s){s={flows:new Map(),limits:new AttemptLimits()};states.set(ctx,s);}return s;}
 const cookieName=(ctx:Ctx)=>`ao_google_${ctx.cfg.port}`;
-export function onboardingRoutes(provider:IdentityProvider=googleProvider):Route[]{return [{
+export function onboardingRoutes(provider:IdentityProvider=googleProvider):Route[]{return [...passwordRoutes,{
   path:'/api/onboarding',method:'GET',auth:'public',handle(ctx,{req,res}){
     const google=googleConfig(ctx.cfg.dataDir);
     send(res,200,{first:!ctx.accounts.any&&!ctx.accounts.ownerAccountId,local:localBootstrap(ctx,req),google:!!google,shared:ctx.accounts.sharedPassword,canLink:!!ctx.auth.fromRequest(req)?.account});

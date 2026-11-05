@@ -1,3 +1,4 @@
+import {passwordOption} from '../onboarding/password';
 import './character.css';
 import * as THREE from 'three';
 import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
@@ -204,6 +205,7 @@ export function openCharacter(first: boolean, onSave: (p: Profile) => void) {
         h('label', {}, 'Your name'),
         account ? input : h('div.webhook', {}, input, reroll),
         account ? h('p.setting-note', {}, `🔑 Signed in as ${account.name}, so that's your name here.`) : null,
+        account ? passwordOption(()=>modal.close()) : null,
         h('label', {}, 'Skin tone'),
         skinRow,
         h('label', {}, 'Hair'),

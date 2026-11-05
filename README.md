@@ -426,3 +426,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 Open the office locally to create its first owner account. After that, people join by invite. Optional Google sign-in uses a locally configured Web client; password sign-in remains available. See [sign-up and Google setup](docs/google-signin.md) for the exact callback, credential keys, local bootstrap boundary and QA harness.
 
 The sign-in page explains blank-name entry when the shared office password is still enabled; first-owner signup disables that entry. See [sign-in setup](docs/google-signin.md).
+
+Google-first owners can add a password in **Your character → Set a password**, or recover locally with `agent-office accounts password <name>` using stdin, never a password argument. See [local recovery](docs/google-signin.md#local-password-recovery). First-owner creation requires direct loopback access without proxy headers.
