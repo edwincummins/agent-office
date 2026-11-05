@@ -25,7 +25,7 @@ button.mini { width: auto; margin: 0; padding: 6px 10px; font-size: 13px; box-sh
 .check { display: flex; gap: 8px; align-items: center; justify-content: center; margin-top: 14px; font-weight: 800; }
 .check input { width: auto; margin: 0; }
 a { color: var(--ink); font-weight: 800; }
-label + label { margin-top: 12px; }
+form > label ~ label { margin-top: 12px; }
 .note { text-align: left; color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 .role { display: inline-block; background: #fff3c4; border: 2px solid var(--border); border-radius: 6px; padding: 0 8px; font-size: 13px; font-weight: 800; }
 .google-button { display:flex; align-items:center; justify-content:center; gap:12px; height:44px; padding:0 12px; border:1px solid #747775; background:#fff; color:#1f1f1f; font:500 14px system-ui; box-shadow:none; }
@@ -36,4 +36,5 @@ label + label { margin-top: 12px; }
 .auth-divider { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:13px; }
 .auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--muted); opacity:.4; }
 .invite-hint { border-top:1px solid #d7c9bc; padding-top:14px; color:var(--muted); font-size:14px; white-space:pre-line; text-align:left; }
-.confirm-row { margin-top:12px; }
+.invite-hint p { margin:0; }
+.invite-hint p + p { margin-top:4px; }

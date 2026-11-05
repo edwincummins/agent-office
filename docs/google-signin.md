@@ -49,3 +49,5 @@ node --import tsx tests/fixtures/onboarding-preview.ts <absolute-throwaway-home>
 The fake provider serves `/.well-known/openid-configuration`; issuer and all endpoints must match its supplied origin. Client credentials are `synthetic-client` / `synthetic-secret`; callback is `http://127.0.0.1:4638/auth/google/callback`. The first created account is the test owner. Omit the fake URL to test Google-off behavior. Stop the preview immediately after testing. Use only headless browsers with disposable profiles.
 
 `verifyIdToken(token, {issuer, jwks, clientId, nonce, now})` is exported from `src/server/onboarding/oidc.ts`; `jwks` is a jose `createRemoteJWKSet` or `createLocalJWKSet` resolver and `now` is an optional Date. This allows token fault cases without weakening the production provider. Real Google consent/token exchange requires your Cloud client and is not established by synthetic tests.
+
+The sign-in page shows the leave-name-blank note only while shared-password entry is enabled. First-owner signup turns shared entry off; existing offices that retain it keep that hint. Invitation guidance uses separate labelled paragraphs beneath the form.

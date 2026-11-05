@@ -19,7 +19,8 @@ async function start(){
       const note=document.createElement('p');note.className='note';note.textContent="At least 8 characters. It's yours alone: nobody else in the office ever sees it.";submit.before(note);
       if(!o.local){submit.disabled=true;error.textContent='Open the office on its own computer to create the first account.';}
     }else{
-      const hint=document.createElement('p');hint.className='invite-hint';hint.textContent="Don't have an account? Ask the office owner for an invite link.\nHave an invite link? Open it to set up your account.";form.after(hint);
+      const hint=document.createElement('div');hint.className='invite-hint';
+      for(const [title,text] of [["Don't have an account?",' Ask the office owner for an invite link.'],['Have an invite link?',' Open it to set up your account.']]){const row=document.createElement('p'),lead=document.createElement('strong');lead.textContent=title;row.append(lead,text);hint.append(row);}form.after(hint);
     }
     if(o.google&&(!first||o.local)){
       const box=document.createElement('div');box.className='google-option';form.before(box);

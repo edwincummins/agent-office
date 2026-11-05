@@ -424,3 +424,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ### First account and Google sign-in
 
 Open the office locally to create its first owner account. After that, people join by invite. Optional Google sign-in uses a locally configured Web client; password sign-in remains available. See [sign-up and Google setup](docs/google-signin.md) for the exact callback, credential keys, local bootstrap boundary and QA harness.
+
+The sign-in page explains blank-name entry when the shared office password is still enabled; first-owner signup disables that entry. See [sign-in setup](docs/google-signin.md).
