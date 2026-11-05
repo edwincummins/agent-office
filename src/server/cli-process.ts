@@ -31,7 +31,7 @@ export function cliCommand(file:string,args:string[],options:any={}){
 }
 function tree<T extends ReturnType<typeof nativeSpawn>>(child:T,wrapped:boolean):T{
   if(wrapped){const kill=child.kill.bind(child);child.kill=(signal)=>{
-    if(child.pid&&child.exitCode===null)nativeSpawnSync('taskkill.exe',['/PID',String(child.pid),'/T','/F'],{windowsHide:true,timeout:5000,stdio:'ignore'});
+    if(child.pid&&child.exitCode===null)nativeSpawnSync(path.join(process.env.SystemRoot||'C:\\Windows','System32','taskkill.exe'),['/PID',String(child.pid),'/T','/F'],{windowsHide:true,timeout:5000,stdio:'ignore'});
     return kill(signal);
   };}return child;
 }
