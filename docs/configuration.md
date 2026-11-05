@@ -1,9 +1,5 @@
 # Configuration
 
-## Mouse sensitivity
-
-Open **Settings → You → Mouse sensitivity** to adjust mouse-look from 10% to 200%. The default is 50% of the original speed (0.0011 radians per pixel with pointer lock). Changes apply immediately in every map, including first-person drag and third-person orbit, and are saved only in this browser. **Reset** restores 50%. The 250-pixel clamp on each locked mouse event is unchanged. If browser storage is unavailable, the setting still works for the current visit.
-
 Back to the [README](../README.md).
 
 ## Where the office keeps things

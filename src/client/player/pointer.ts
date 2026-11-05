@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import type { ViewMode } from '../state';
-import { mouseSensitivity } from '../features/mouse-sensitivity/value';
 
 // Your hands on the controls: the keys you hold, and the mouse, which looks around. In first person a
 // click on the scene captures the mouse (pointer lock); where it won't lock, or in third person, you
@@ -130,7 +129,7 @@ export abstract class PlayerInput {
         }
         // Some platforms report a bogus huge jump right after locking.
         const clamp = (v: number) => THREE.MathUtils.clamp(v, -250, 250);
-        this.look(clamp(e.movementX) * LOOK_SPEED * mouseSensitivity(), clamp(e.movementY) * LOOK_SPEED * mouseSensitivity());
+        this.look(clamp(e.movementX) * LOOK_SPEED, clamp(e.movementY) * LOOK_SPEED);
         return;
       }
       if (!this.drag) return;
@@ -139,10 +138,10 @@ export abstract class PlayerInput {
       this.drag.x = e.clientX;
       this.drag.y = e.clientY;
       this.drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (this.view === 'first') this.look(dx * DRAG_LOOK_SPEED * mouseSensitivity(), dy * DRAG_LOOK_SPEED * mouseSensitivity());
+      if (this.view === 'first') this.look(dx * DRAG_LOOK_SPEED, dy * DRAG_LOOK_SPEED);
       else {
-        this.camYaw -= dx * 0.006 * mouseSensitivity();
-        this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.004 * mouseSensitivity(), 0.05, 1.3);
+        this.camYaw -= dx * 0.006;
+        this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.004, 0.05, 1.3);
       }
     });
     document.addEventListener('pointerlockchange', () => {

@@ -63,7 +63,6 @@ import { installWaiting } from './features/waiting';
 import { installWalking } from './features/walking';
 import { installWhiteboard } from './features/whiteboard';
 import { installModelMap } from './features/model-map';
-import { installMouseSensitivity } from './features/mouse-sensitivity';
 import { installWorkerActions } from './features/workers/actions';
 import { installWorkerViews } from './features/workers/views';
 
@@ -100,7 +99,6 @@ parts.boards = installBoards(ctx, { aimedNote: () => parts.pointer.aimedNote(), 
 parts.gallery = installGallery(ctx);
 installWhiteboard(ctx);
 installModelMap(ctx);
-installMouseSensitivity(ctx);
 // Onto whatever you're walking on: the office's floor and furniture, or the roof's.
 parts.confetti = new Confetti((x, z, y) => groundAt(ctx.player.colliders, x, z, y, false));
 ctx.scene.add(parts.confetti.mesh);
