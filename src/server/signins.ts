@@ -648,8 +648,7 @@ function lastWords(s: string): string {
 /** Runs a command to the end; never rejects. `last` is the last line it said on stderr (or stdout). */
 function run(cmd: string, args: string[], env: Record<string, string>, input?: string): Promise<{ code: number; out: string; last: string }> {
   return new Promise((resolve) => {
-    const shell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(cmd); // Windows won't start claude.CMD without one (EINVAL); args are fixed
-    const p = execFile(shell ? `"${cmd}"` : cmd, args, { env, timeout: LOOK_TIMEOUT_MS, maxBuffer: 1024 * 1024, encoding: 'utf8', shell }, (err, stdout, stderr) => {
+    const p = execFile(cmd, args, { env, timeout: LOOK_TIMEOUT_MS, maxBuffer: 1024 * 1024, encoding: 'utf8' }, (err, stdout, stderr) => {
       const e = err as { code?: number | string } | null;
       const code = !e ? 0 : typeof e.code === 'number' ? e.code : -1;
       const last = lastWords(stderr || (err && !stdout ? err.message : ''));

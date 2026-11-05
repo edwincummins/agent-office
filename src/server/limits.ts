@@ -130,11 +130,8 @@ function ask(claude: string, env: Record<string, string>): Promise<any> {
   return new Promise((resolve) => {
     let settled = false;
     let buf = '';
-    // Windows can't start npm's claude.CMD without a shell (spawn EINVAL); quote every argument, empty ones included.
-    const shell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(claude);
-    const child = shell
-      ? spawn(`"${claude}"`, args.map((a) => `"${a.replace(/"/g, '""')}"`), { cwd: os.tmpdir(), env, stdio: ['pipe', 'pipe', 'ignore'], shell: true })
-      : spawn(claude, args, { cwd: os.tmpdir(), env, stdio: ['pipe', 'pipe', 'ignore'] });
+    // cli-process's spawn starts npm's claude.CMD safely on Windows (PR #5).
+    const child = spawn(claude, args, { cwd: os.tmpdir(), env, stdio: ['pipe', 'pipe', 'ignore'] });
     const finish = (v: any) => {
       if (settled) return;
       settled = true;
