@@ -47,8 +47,8 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
       if(!grant||!account)return send(res,403,{error:'Not available'});
       if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
       const route=url.pathname;
-      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox'].includes(route);
-      const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access'].includes(route);
+      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'].includes(route);
+      const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access','/api/tune'].includes(route);
       if(!read&&!action&&!(req.method==='POST'&&route==='/auth'))return send(res,404,{error:'Not available'});
       let body:string|undefined,detail:Record<string,string>={};
       const capture=route==='/api/capture';
