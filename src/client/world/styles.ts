@@ -1,3 +1,4 @@
+import {withFixtures} from './fixtures/build';
 import type { MapPlan, MapStyle } from '../../shared/maps';
 import { buildCastle } from './castle';
 import { buildStation } from './station';
@@ -9,6 +10,6 @@ import type { World } from './world';
  * every map in that style can then be picked, and main.ts shows it like any other.
  */
 export const BUILDERS: Record<MapStyle, (plan: MapPlan) => World> = {
-  castle: buildCastle,
-  station: buildStation,
+  castle: withFixtures(buildCastle),
+  station: withFixtures(buildStation),
 };

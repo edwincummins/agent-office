@@ -1,3 +1,4 @@
+import type {FixtureConfig,ResolvedSlots} from '../fixtures/index.js';
 import type { DeskDef, SeatDef, StationKind } from '../layout.js';
 import type { Bounds, Obstacles, Pt, Rect } from '../nav.js';
 
@@ -167,6 +168,7 @@ export type PaletteKey = 'stone' | 'floor' | 'carpet' | 'wood' | 'trim' | 'hull'
 
 /** What a map is made of: see docs/maps.md for what each part does and how to write one. */
 export interface MapConfig {
+  fixtures?: FixtureConfig;
   /** Lowercase letters, digits and dashes: what the building's pick calls it. */
   id: string;
   name: string;
@@ -219,6 +221,8 @@ export interface BoardDef extends BoardPlace {
 
 /** A map checked and worked out: where everything is, by id. */
 export interface MapPlan {
+  slots: ResolvedSlots;
+  slotWarnings: string[];
   id: string;
   name: string;
   icon: string;

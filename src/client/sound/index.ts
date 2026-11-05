@@ -295,6 +295,7 @@ export class OfficeSound {
   // ---- The jukebox (features/jukebox) -------------------------------------------------------------
 
   /** What the jukebox on your floor plays, or null for nothing. It starts once the browser allows audio. */
+  setJukeboxPosition(p:{x:number;y:number;z:number}){this.music.setPosition(p);}
   setJukebox(play: JukeboxPlay | null) {
     this.music.setJukebox(play);
   }

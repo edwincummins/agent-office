@@ -1,3 +1,4 @@
+import {setFixtures} from './fixtures/handles';
 import type * as THREE from 'three';
 import type { FloorPalette } from '../../shared/floors';
 import { LOFT, WALL_HEIGHT, WALL_T, FLOOR, type DeskDef } from '../../shared/layout';
@@ -97,7 +98,7 @@ function ceilingOver(x: number, z: number): number {
  * workers leave by the balcony), and `wing` how many rows its back office is built out (see WING).
  */
 export function officeWorld(office: Office, upstairs: () => boolean, wing: () => number): World {
-  return {
+  const world:World = {
     plan: OFFICE_PLAN,
     group: office.group,
     colliders: office.colliders,
@@ -126,4 +127,6 @@ export function officeWorld(office: Office, upstairs: () => boolean, wing: () =>
     setProjectName: (name) => office.setProjectName(name),
     update: (t, dt, people) => office.update(t, dt, people),
   };
+  setFixtures(world,{tv:office.tvScreen,jukebox:office.jukebox,arcade:office.cabinet});
+  return world;
 }

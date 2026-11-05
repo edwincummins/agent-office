@@ -15,13 +15,24 @@ export class ScreenZoom {
   private readonly at = new THREE.Vector3();
   private readonly facing = new THREE.Quaternion();
   /** The screen's width over its height. */
-  private readonly aspect: number;
+  private aspect: number;
 
-  constructor(private readonly screen: THREE.Mesh) {
+  constructor(private screen: THREE.Mesh) {
     const { width, height } = (screen.geometry as THREE.PlaneGeometry).parameters;
     this.aspect = width / height;
+    this.dimensions();
   }
 
+  reset(){this.zoom=0;}
+  setScreen(screen:THREE.Mesh){this.zoom=0;this.screen=screen;const {width,height}=(screen.geometry as THREE.PlaneGeometry).parameters;this.aspect=width/height;this.dimensions();}
+  private dimensions() {
+    this.screen.updateWorldMatrix(true, false);
+    const {width,height}=(this.screen.geometry as THREE.PlaneGeometry).parameters;
+    const scale=new THREE.Vector3().setFromMatrixScale(this.screen.matrixWorld);
+    const measured={width:width*scale.x,height:height*scale.y};
+    this.aspect=measured.width/measured.height;
+    return measured;
+  }
   /** Anywhere between your view and the screen: your first-person hands would cover it. */
   get zoomed(): boolean {
     return this.zoom > 0;
@@ -43,11 +54,12 @@ export class ScreenZoom {
       if (Math.abs(want - this.zoom) < 0.002) this.zoom = want;
     }
     // Straight out from the screen, back just far enough that it fills FILL of the view, like the box does.
-    const { width, height } = (this.screen.geometry as THREE.PlaneGeometry).parameters;
+    const { width, height } = this.dimensions();
     const span = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * FILL;
     const back = Math.max(height / span, width / (span * camera.aspect));
     this.screen.getWorldQuaternion(this.facing);
-    this.screen.localToWorld(this.at.set(0, 0, back));
+    this.screen.getWorldPosition(this.at);
+    this.at.add(new THREE.Vector3(0,0,back).applyQuaternion(this.facing));
     camera.position.lerp(this.at, this.zoom);
     camera.quaternion.slerp(this.facing, this.zoom);
   }

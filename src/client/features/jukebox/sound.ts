@@ -21,6 +21,8 @@ const MUSIC_ROLLOFF = 1.3;
 
 /** The jukebox on your floor: a tune or a stream, muffled from across the room, at your own volume. */
 export class Jukebox {
+  private position:{x:number;y:number;z:number}={x:JUKEBOX.x,y:JUKEBOX.y,z:JUKEBOX.z};
+  setPosition(p:{x:number;y:number;z:number}){this.position={...p};if(this.musicIn){this.musicIn.positionX.value=p.x;this.musicIn.positionY.value=p.y;this.musicIn.positionZ.value=p.z;}}
   // From the cabinet, through a filter that muffles it from across the room, to your own volume.
   private musicIn!: PannerNode;
   private musicTone!: BiquadFilterNode;
@@ -44,7 +46,7 @@ export class Jukebox {
   /** Once there's audio: the jukebox's part of the graph. */
   connect(ctx: AudioContext) {
     // The jukebox skips the master (it has its own volume) and keeps playing while the tab is hidden.
-    this.musicIn = this.a.panner(JUKEBOX, MUSIC_REF, MUSIC_ROLLOFF);
+    this.musicIn = this.a.panner(this.position, MUSIC_REF, MUSIC_ROLLOFF);
     this.musicTone = biquad(ctx, 'lowpass', 16000, 0.5);
     this.musicBus = ctx.createGain();
     this.musicBus.gain.value = 0;
@@ -171,7 +173,7 @@ export class Jukebox {
 
   private jukeboxDistance(): number {
     const l = this.a.listener;
-    return Math.hypot(l.x - JUKEBOX.x, l.y - JUKEBOX.y, l.z - JUKEBOX.z);
+    return Math.hypot(l.x - this.position.x, l.y - this.position.y, l.z - this.position.z);
   }
 
 }

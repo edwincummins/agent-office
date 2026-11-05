@@ -1,3 +1,4 @@
+import {NATIVE_SLOTS} from '../../../shared/fixtures/stock';
 import * as THREE from 'three';
 import { JUKEBOX } from '../../../shared/layout';
 import { mesh, roundedBox, textSprite, toon, toonUnique } from '../../world/toon';
@@ -71,7 +72,8 @@ export function buildJukebox(): JukeboxView {
   });
 
   // Built facing +z; it stands against the east wall facing into the room (-x).
-  group.position.set(JUKEBOX.x, 0, JUKEBOX.z);
+  const slot=NATIVE_SLOTS.jukebox!;
+  group.position.set(slot.position.x,slot.position.y,slot.position.z);
   group.rotation.y = -Math.PI / 2;
   const collider: Collider = { minX: JUKEBOX.x - D / 2 - 0.05, maxX: JUKEBOX.x + D / 2, minZ: JUKEBOX.z - r - 0.05, maxZ: JUKEBOX.z + r + 0.05, top: H };
   const interactable: Interactable = { kind: 'jukebox', x: JUKEBOX.x - 1.3, z: JUKEBOX.z, radius: 1.6 };
