@@ -9,6 +9,15 @@ import { CASTLE } from '../src/shared/maps/castle.js';
 import { readMapModel } from '../src/server/http/routes/map-model.js';
 
 const bounds={minX:-30,maxX:30,minZ:-30,maxZ:30};
+test('lounge rugs stay in the room and clear of walls',()=>{
+ assert.equal(checkModel({...model(),lounges:[]},bounds,10).lounges?.length,0);
+ assert.equal(checkModel({...model(),lounges:[{x:0,z:-10,rotY:0}]},bounds,10).lounges?.[0].x,0);
+ assert.throws(()=>checkModel({...model(),lounges:[{x:29,z:0}]},bounds,10),/outside the hall/);
+ assert.throws(()=>checkModel({...model(),lounges:[{x:0,z:-10}],walls:[{minX:-1,maxX:1,minZ:-11,maxZ:-9,top:4}]},bounds,10),/rug overlaps/);
+ assert.throws(()=>checkModel({...model(),lounges:[{x:0,z:-10,rotY:1}]},bounds,10),/rotation 0/);
+ assert.throws(()=>checkModel({...model(),lounges:[{x:0,z:-10}],platforms:[{minX:-1,maxX:1,minZ:-11,maxZ:-9,top:.5}]},bounds,10),/raised platform/);
+ assert.throws(()=>checkModel({...model(),platforms:[{minX:-.1,maxX:.1,minZ:6.7,maxZ:7,top:.2}]},bounds,10),/soft seat overlaps/);
+});
 function model(){return {asset:'room.glb',seats:Array.from({length:32},(_,i)=>({x:-12+(i%8)*3,z:Math.floor(i/8)*3,rotY:0})),walls:[],screen:{x:0,y:3,z:-20,rotY:0,width:6,height:3},whiteboard:{x:10,y:2,z:-20,rotY:0,width:3,height:2}};}
 test('model maps retain all stable seat ids and explicit zero coordinates',()=>{
  const p=planMap({...CASTLE,id:'test-model',style:'model',hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:model()});

@@ -4,7 +4,7 @@ import type { DeskDef } from '../../../shared/layout';
 import type { DeskView, Interactable } from '../types';
 import { mergeByMaterial } from '../toon';
 
-export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[]) {
+export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = []) {
   const still = new THREE.Group();
   const oak = new THREE.MeshStandardMaterial({ color: '#aa8260', roughness: .6 });
   const metal = new THREE.MeshStandardMaterial({ color: '#30353b', roughness: .5, metalness: .3 });
@@ -22,14 +22,22 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
     m.position.set(...pos as [number,number,number]); g.add(m);
   };
   const work=defs.filter(d=>d.id.startsWith('desk-'));
+  for(const p of lounges){
+    box(still,[2.6,.012,p.rugLength],[p.x,.018,p.z],carpet);
+    box(still,[.6,.065,1.2],[p.x,.3675,p.z],oak);
+    box(still,[.22,.33,.75],[p.x,.165,p.z],metal);
+  }
   if(work.length){const xs=work.map(d=>d.x),zs=work.map(d=>d.z);box(still,[Math.max(...xs)-Math.min(...xs)+2,.012,Math.max(...zs)-Math.min(...zs)+2.6],[(Math.max(...xs)+Math.min(...xs))/2,.018,(Math.max(...zs)+Math.min(...zs))/2+.5],carpet);}
   for (const def of defs) {
     const soft = def.id.startsWith('beanbag');
     const g = new THREE.Group(); g.position.set(def.x,0,def.z); g.rotation.y=def.rotY;
     const shape = new THREE.Group(); shape.position.copy(g.position); shape.rotation.copy(g.rotation);
     if (soft) {
-      const cushion = new THREE.Mesh(new THREE.SphereGeometry(.6,12,8), Number(def.id.split('-')[1])%2 ? orange : fabric);
-      cushion.scale.set(1,.6,1.15); cushion.position.set(0,.32,.85); shape.add(cushion);
+      const charcoal = (Number(def.id.split('-')[1])-1)%6>=4;
+      const cushion = new THREE.Mesh(new THREE.SphereGeometry(.407,16,10), charcoal ? fabric : orange);
+      cushion.scale.set(1,.6,1.05); cushion.position.set(0,.2192,.85); shape.add(cushion);
+      const contact = new THREE.Mesh(new THREE.CylinderGeometry(.363,.363,.005,16),fabric);
+      contact.scale.z=1.05;contact.position.set(0,.027,.85);shape.add(contact);
     } else if (!def.room) {
       box(shape,[1.6,.07,.8],[0,.75,0],oak);
       box(shape,[.42,.018,.15],[0,.797,.17],metal);
@@ -49,11 +57,11 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
     }
     still.add(shape);
     const laptopAnchor = new THREE.Object3D(); laptopAnchor.position.set(0,soft?.4:.8,0); g.add(laptopAnchor);
-    const seatAnchor = new THREE.Object3D(); seatAnchor.position.set(0,soft?.25:.38,.85); seatAnchor.rotation.y=Math.PI; seatAnchor.scale.setScalar(.82); g.add(seatAnchor);
+    const seatAnchor = new THREE.Object3D(); seatAnchor.position.set(0,soft?.18:.38,.85); seatAnchor.rotation.y=Math.PI; seatAnchor.scale.setScalar(.82); g.add(seatAnchor);
     const stage = new THREE.Object3D(); stage.position.set(.55,0,.85); g.add(stage);
     const vacancy = new THREE.Group(); if(def.station) vacancy.add(seatAnchor.clone()); g.add(vacancy);
     const it: Interactable = {kind:def.station?'station':'desk',deskId:def.id,x:def.x+Math.sin(def.rotY)*1.1,z:def.z+Math.cos(def.rotY)*1.1,radius:1.25};
-    const hit=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.3,1.8),hitMaterial);hit.position.set(0,.65,.4);g.add(hit);
+    const hit=new THREE.Mesh(new THREE.BoxGeometry(soft?.81:1.5,soft?.46:1.3,soft?.85:1.8),hitMaterial);hit.position.set(0,soft?.23:.65,soft?.85:.4);g.add(hit);
     g.userData.interact=it; interactables.push(it); group.add(g);
     desks.set(def.id,{def,group:g,laptopAnchor,seatAnchor,stage,chair:new THREE.Group(),vacancy,vacancyY:1.4});
   }

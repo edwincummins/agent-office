@@ -21,11 +21,11 @@ export function buildModel(plan: MapPlan): World {
   const group = new THREE.Group();
   const interactables: Interactable[] = [];
   const colliders:Collider[] = [
-    ...plan.obstacles!.rects.map(([minX,maxX,minZ,maxZ])=>({minX,maxX,minZ,maxZ,top:.8})),
+    ...plan.obstacles!.rects.map(([minX,maxX,minZ,maxZ])=>({minX,maxX,minZ,maxZ,top:(config.lounges??[]).some(p=>Math.abs(minX-(p.x-.3))<1e-6&&Math.abs(maxX-(p.x+.3))<1e-6&&Math.abs(minZ-(p.z-.6))<1e-6&&Math.abs(maxZ-(p.z+.6))<1e-6)?.4:.8})),
     ...config.walls.map(w=>({...w, fence:true})),...(config.platforms??[]),
     {minX:plan.council!.x-1.3,maxX:plan.council!.x+1.3,minZ:plan.council!.z-1.3,maxZ:plan.council!.z+1.3,top:.78},
   ];
-  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables);
+  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges);
   const face = (p: BoardPlace, kind: Interactable['kind']) => {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(p.width,p.height),new THREE.MeshBasicMaterial({color:'#d9e3e8',toneMapped:false}));
     mesh.position.set(p.x,p.y,p.z); mesh.rotation.y=p.rotY;

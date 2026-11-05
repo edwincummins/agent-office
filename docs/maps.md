@@ -296,6 +296,7 @@ Use the common `id`, `name`, `hall`, `spawn`, `door`, `stations`, `council` and 
 | `platforms` | Optional rectangles with the same fields for raised floors that can be stood on. Add intermediate steps for taller platforms. |
 | `screen`, `whiteboard` | Each `{x, y, z, rotY, width, height}` places a live surface. The screen displays the floor's screen share; the whiteboard uses the existing collaborative drawing tool. |
 | `labels` | Optional room signs `{x, z, rotY, text}`. |
+| `lounges` | Optional list of up to two `{x, z, rotY: 0, rugLength?: number}` centres on the main floor. Each adds a 2.6 m wide rug (length 3.2–4 m, default 4) and a low 0.6 × 1.2 m table, with table collision. Rugs must clear walls and raised platforms. Place soft seats around them; their visible centres are 0.85 m behind their configured positions. |
 
 Coordinates are in metres, Y up, with the main floor at Y=0. A seat at rotation 0 faces toward -Z; its chair is at Z+0.85. Leave room around the chair and its approach, and at least 0.6 m between desk edges for walking. Screens face +Z at rotation 0. The common `door` is the workers' entry/exit waypoint. GLB nodes named `Door__...` open upward automatically when someone approaches; keep each leaf separate from its fixed frame. Walls and platforms are explicit collision data, not inferred from rendered triangles.
 

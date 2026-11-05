@@ -8,6 +8,7 @@ export interface ModelMapData {
   walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number }[];
   platforms?: ModelMapData['walls'];
   labels?: (Required<Place> & {text:string})[];
+  lounges?: (Required<Place> & {rugLength:number})[];
   screen: BoardPlace;
   whiteboard: BoardPlace;
 }
@@ -34,6 +35,10 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
   const walls=rectangles(value.walls,'model.walls');
   if(value.platforms!==undefined && (!Array.isArray(value.platforms)||value.platforms.length>300))throw new MapError('model.platforms must be a list of at most 300 rectangles');
   const platforms=rectangles((value.platforms??[]) as unknown[],'model.platforms');
+  for(const s of seats.slice(20)){
+    const x=s.x+Math.sin(s.rotY)*.85,z=s.z+Math.cos(s.rotY)*.85;
+    if(platforms.some(w=>Math.hypot(x-Math.max(w.minX,Math.min(x,w.maxX)),z-Math.max(w.minZ,Math.min(z,w.maxZ)))<.578))throw new MapError('a soft seat overlaps a raised platform');
+  }
   for (const s of seats) if (walls.some(w => s.x > w.minX && s.x < w.maxX && s.z > w.minZ && s.z < w.maxZ)) throw new MapError('a model seat is inside a wall');
   for(const [i,s] of seats.entries())for(const distance of [.85,1.1]){
     const x=s.x+Math.sin(s.rotY)*distance,z=s.z+Math.cos(s.rotY)*distance,r=.22;
@@ -51,5 +56,14 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
     if(typeof text!=='string'||!text.trim()||text.length>60)throw new MapError('model label needs 1-60 characters');
     return {...p,text};
   });
-  return { asset: value.asset, seats, walls, platforms, labels, screen: surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
+  if(value.lounges!==undefined&&(!Array.isArray(value.lounges)||value.lounges.length>2))throw new MapError('model.lounges must contain at most two centres');
+  const lounges=((value.lounges??[]) as unknown[]).map((v,i)=>({...point(v,`model.lounges[${i}]`),rugLength:num((v as Record<string,unknown>).rugLength??4,'lounge.rugLength',3.2,4)}));
+  for(const p of lounges){
+    if(p.rotY!==0)throw new MapError('model lounges use rotation 0');
+    const half=p.rugLength/2;
+    if(p.x-1.3<bounds.minX||p.x+1.3>bounds.maxX||p.z-half<bounds.minZ||p.z+half>bounds.maxZ)throw new MapError('model lounge rug is outside the hall');
+    if(walls.some(w=>p.x+1.3>w.minX&&p.x-1.3<w.maxX&&p.z+half>w.minZ&&p.z-half<w.maxZ))throw new MapError('model lounge rug overlaps a wall');
+    if(platforms.some(w=>p.x+1.3>w.minX&&p.x-1.3<w.maxX&&p.z+half>w.minZ&&p.z-half<w.maxZ))throw new MapError('model lounge rug overlaps a raised platform');
+  }
+  return { asset: value.asset, seats, walls, platforms, labels, lounges, screen: surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
 }
