@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/AgentSystemLabs/agent-office/main/i
 
 ## What it is
 
-Only the locally allow-listed owner can use a **Services | Cadre** view on the Services board, with live seat-screen tiles in engine order and a labeled read-only panel until Cadre Web is connected. An open panel reconnects automatically after Cadre Web restarts. See [Cadre configuration and controls](docs/cadre.md).
+Only the locally allow-listed owner can use a **Services | Cadre** view on the Services board, with live seat-screen tiles in engine order and a labeled read-only panel until Cadre Web is connected. An open panel reconnects automatically after Cadre Web restarts and follows its version updates through the owner-authenticated office wrapper. See [Cadre configuration and controls](docs/cadre.md).
 
 - **A floor per project.** Ride the elevator, pick one of your GitHub repos, and the office clones it (showing how far along it is) and opens a floor for it. Every worker, board and queue on that floor works in that checkout.
 - **Workers at desks.** Walk up to an empty desk, press **E**, and pick Claude Code, Codex, OpenCode, Grok, Muse, DeepSeek Harness, Pi or Cursor, each with its model and reasoning effort. The agent's live terminal shows on its laptop, and anyone can open it and type.
@@ -427,3 +427,4 @@ Every change to the app that lands on `main` is published as a GitHub release by
 [MIT](LICENSE)
 
 On Windows, npm-installed agent CLI `.cmd` launchers are supported for status, plan limits and model discovery; see [Windows npm launchers](docs/agents.md#windows-npm-launchers).
+The owner-only Cadre panel supports team audit and ideas reads and seat tuning; see [Cadre gateway and audit details](docs/cadre.md).

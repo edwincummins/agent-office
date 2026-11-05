@@ -32,3 +32,24 @@ test('poller publishes a changed tail once, retains it during outage and suppres
  raw={};await poller.poll(3);assert.equal(poller.state.status,'stale');assert.match(poller.state.seats[0].tail!.at(-1)!,/result 2/);
  poller.stop();
 });
+
+test('screen tails remove bidi direction overrides and isolates',()=>{
+ const controls=[0x202a,0x202b,0x202c,0x202d,0x202e,0x2066,0x2067,0x2068,0x2069];
+ for(const code of controls)assert.deepEqual(screenTail([`before${String.fromCodePoint(code)}after`]),['beforeafter'],`U+${code.toString(16)}`);
+});
+test('screen tails remove C1 and Unicode line/paragraph separators',()=>{
+ const controls=[...Array.from({length:32},(_,i)=>0x80+i),0x2028,0x2029];
+ for(const code of controls){const tail=screenTail([`before${String.fromCodePoint(code)}after`]);assert.equal(tail.length,1);assert.ok(!/[\u0080-\u009f\u2028\u2029]/u.test(tail[0]),`U+${code.toString(16)}`);}
+ assert.deepEqual(screenTail(['café 中文 😀']),['café 中文 😀']);
+});
+
+test('screen tails strip zero-width spaces and byte order marks',()=>{
+ for(const code of [0x180e,0x200b,0x2060,0xfeff])assert.deepEqual(screenTail([`left${String.fromCodePoint(code)}right`]),['leftright']);
+});
+test('screen tails preserve emoji joiners and language non-joiners',()=>{
+ const lines=['👨‍👩‍👧‍👦 👩🏽‍💻 🏳️‍🌈','می\u200cروم','क्\u200cष','café 中文 😀'];
+ assert.deepEqual(screenTail(lines),lines);
+});
+test('screen tails strip invisible formatting and direction marks',()=>{
+ for(const code of [0x00ad,0x034f,0x061c,0x200e,0x200f,0x2061,0x2062,0x2063,0x2064,0x206a,0x206b,0x206c,0x206d,0x206e,0x206f])assert.deepEqual(screenTail([`left${String.fromCodePoint(code)}right`]),['leftright']);
+});

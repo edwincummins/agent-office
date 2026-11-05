@@ -44,8 +44,8 @@ test('owner allow-list gates HTTP and fleet; other admins and unset config get n
 });
 
 test('gateway grants are owner-bound, keep upstream token private, audit actions and deny revocation',async()=>{
- const dir=mkdtempSync(path.join(tmpdir(),'cadre-gateway-'));const calls:string[]=[];
- const upstream=createServer((req,res)=>{calls.push(req.headers.authorization??'');if(req.url==='/auth'){res.writeHead(req.headers.authorization==='Bearer upstream-private'?204:401).end();return;}res.writeHead(200,{'Content-Type':'application/json'}).end(JSON.stringify({ok:true}));});
+ const dir=mkdtempSync(path.join(tmpdir(),'cadre-gateway-'));const calls:string[]=[];const requests:{url:string;body:string}[]=[];
+ const upstream=createServer((req,res)=>{calls.push(req.headers.authorization??'');let body='';req.on('data',chunk=>body+=chunk);req.on('end',()=>requests.push({url:req.url??'',body}));if(req.url==='/auth'){res.writeHead(req.headers.authorization==='Bearer upstream-private'?204:401).end();return;}res.writeHead(200,{'Content-Type':'application/json'}).end(JSON.stringify({ok:true}));});
  const port=await listen(upstream);const account={id:'owner',name:'Synthetic owner',role:'admin'};
  const ctx={cfg:{dataDir:dir},accounts:{get:(id:string)=>id==='owner'?account:undefined}} as unknown as Ctx;
  const config=path.join(dir,'config.json');writeFileSync(config,JSON.stringify({cadre:{ownerAllowlist:[{id:'owner'}]}}));
@@ -53,14 +53,28 @@ test('gateway grants are owner-bound, keep upstream token private, audit actions
   const gateway=await cadreGateway(ctx);const grant=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
   assert.notEqual(grant.token,'upstream-private');
   const base=`http://localhost:${gateway.port}`,headers={Host:`localhost:${gateway.port}`,Authorization:`Bearer ${grant.token}`};
-  for(const route of ['/version','/api/fleet','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers:{Host:headers.Host}})).status,403);
+  for(const route of ['/version','/api/fleet','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'])assert.equal((await fetch(base+route,{headers:{Host:headers.Host}})).status,403);
   assert.equal((await fetch(base+'/auth',{method:'POST',headers})).status,204);
   assert.equal((await fetch(base+'/api/say',{method:'POST',headers,body:JSON.stringify({seat:'synthetic@demo',text:'test'})})).status,200);
   const log=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(!log.includes(grant.token)&&!log.includes('upstream-private'));
   const rows=log.trim().split('\n').map(s=>JSON.parse(s));assert.deepEqual(rows.map(r=>r.event),['action.request','action.result']);assert.ok(rows.every(r=>r.accountId==='owner'&&r.target==='synthetic@demo'));
   assert.ok(calls.every(v=>v==='Bearer upstream-private'));
-  for(const route of ['/version','/api/seats','/api/queue','/api/inbox'])assert.equal((await fetch(base+route,{headers})).status,200);
+  for(const route of ['/version','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas'])assert.equal((await fetch(base+route,{headers})).status,200);
   for(const route of ['/api/inbox/read','/api/team','/api/seat','/api/access'])assert.equal((await fetch(base+route,{method:'POST',headers,body:JSON.stringify({action:'synthetic',seat:'demo'})})).status,200);
+  for(const route of ['/api/audit?team=synthetic%20team','/api/ideas?team=synthetic%20team']){
+   assert.equal((await fetch(base+route,{headers})).status,200);
+   assert.equal((await fetch(base+route,{headers})).status,200);
+   assert.ok(requests.some(r=>r.url===route));
+  }
+  const tuning={seat:'build@synthetic',model:'synthetic-model',effort:'high',restart:false,ignored:'not-for-audit'};
+  assert.equal((await fetch(base+'/api/tune',{method:'POST',body:JSON.stringify(tuning)})).status,403);
+  assert.equal((await fetch(base+'/api/tune',{method:'POST',headers,body:JSON.stringify(tuning)})).status,200);
+  assert.deepEqual(JSON.parse(requests.find(r=>r.url==='/api/tune')!.body),tuning);
+  const auditRows=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8').trim().split('\n').map(s=>JSON.parse(s));
+  const tune=auditRows.filter(r=>r.action==='tune');assert.equal(tune.length,2);
+  for(const row of tune){assert.equal(row.accountId,'owner');assert.equal(row.target,tuning.seat);assert.equal(row.model,tuning.model);assert.equal(row.effort,'high');assert.equal(row.restart,'false');}
+  assert.ok(!JSON.stringify(auditRows).includes('not-for-audit'));
+  for(const action of ['audit','ideas'])assert.equal(auditRows.filter(r=>r.action===action&&r.target==='synthetic team'&&r.event==='read.open').length,1);
   const actions=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(actions.includes('team:synthetic')&&actions.includes('access:synthetic'));
   assert.equal((await fetch(base+'/api/not-allowed',{method:'POST',headers,body:'{}'})).status,404);
   await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=beta',{headers});
