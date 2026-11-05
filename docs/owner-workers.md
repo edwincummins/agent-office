@@ -23,3 +23,5 @@ node --import tsx tests/fixtures/owner-preview.ts <new-absolute-throwaway-direct
 It refuses an existing unmarked directory and known owner ports. `Test Owner` owns it; `Other Admin` and `Test Member` do not. Account password: `synthetic-password-only`; shared password: `synthetic-shared-only`. It runs a synthetic agent and no real provider account. Use only headless browsers and stop the preview immediately after proof. The separate Windows npm-shim fix is required for npm-installed provider helpers on Windows; this PR does not duplicate it. Codex sign-in additions and the profile/crew/travel features are separate work.
 
 Visitors see the configured owner's display name in desk hints and read-only footers. The command palette omits hiring. A visitor tip appears once per account name/browser storage (or shared visitor), waits for existing dialogs to close, and dismisses with X/Esc through the normal modal path. Clearing browser storage shows it again.
+
+Read-only terminal windows use one owner-labelled header badge and one footer; unused terminal space keeps the terminal background. Visitor worker rows omit prompt/edit controls.

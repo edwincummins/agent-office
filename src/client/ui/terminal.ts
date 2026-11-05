@@ -153,8 +153,12 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   // The keypad has an Esc of its own, and a 🎤 on its prompt box.
   const el = h('div.modal.term', { role: 'dialog', 'aria-label': `${info.name} terminal` }, h('header', {}, dot, title, pill, cost, viewers, typed, modelsBtn, keypad ? null : mic.button, keypad ? null : escBtn, onChanges ? changesBtn : null, hideBtn, closeBtn), tabs.bar, host, tabs.pages, keypad);
 
-  const readOnly=h('div', {style:'padding:8px 14px;background:#262b31;color:#eee8db;border-radius:4px'},`Read-only · ${ownerName()}'s`);
-  if(!writable()){el.append(readOnly);el.append(h('p.note',{style:'padding:8px 14px;color:#eee8db'},`Only ${ownerName()} can type here`));keypad?.remove();changesBtn.remove();tabs.bar.remove();}
+  if(!writable()){
+    el.classList.add('read-only');
+    title.after(h('span.term-read-only',{},`Read-only · ${ownerName()}'s`));
+    el.append(h('footer.term-read-only-footer',{},`Only ${ownerName()} can type here`));
+    keypad?.remove();changesBtn.remove();tabs.bar.remove();tabs.pages.remove();escBtn.remove();modelsBtn.remove();mic.button?.remove();
+  }
   const term = new Terminal({
     disableStdin:!writable(),
     fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
@@ -162,7 +166,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
     fontSize: opts.keypad ? 12 : 14,
     lineHeight: 1.1,
     theme: TERM_THEME,
-    cursorBlink: true,
+    cursorBlink: writable(),
     scrollback: 5000,
     allowProposedApi: true,
     macOptionIsMeta: true,
