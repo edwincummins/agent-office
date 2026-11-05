@@ -15,7 +15,8 @@ addEventListener('message',event=>{
  if(['cadre.web.connected','cadre.web.heartbeat','cadre.web.close'].includes(event.data?.type))parent.postMessage({type:event.data.type},office);
 });
 addEventListener('keydown',event=>{if(event.key==='Escape')parent.postMessage({type:'cadre.web.close'},office);});
+addEventListener('pagehide',()=>{navigator.sendBeacon(origin+'/revoke',token);},{once:true});
 document.body.append(frame);
 </script></body></html>`;
-  return {html,csp:`default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; frame-src ${origin}; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`};
+  return {html,csp:`default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; frame-src ${origin}; connect-src ${origin}; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`};
 }

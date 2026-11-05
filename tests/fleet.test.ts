@@ -126,9 +126,9 @@ test('installed feed denies guests, removes demoted subscribers, and can resubsc
   const dir=mkdtempSync(path.join(tmpdir(),'fleet-hub-'));
   let stop=()=>{};
   try{
-    writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:[{name:'Hub demo'}],fleetCommand:[process.execPath,'-e',`console.log(${JSON.stringify(JSON.stringify(fleetFixture()))})`]}}));
     const accounts=new Accounts(dir),invite=accounts.invite('test','admin');if(typeof invite==='string')throw Error(invite);
     const account=await accounts.join(invite.token,'Hub demo','sample-password');if(typeof account==='string')throw Error(account);
+    writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:[{id:account.id}],fleetCommand:[process.execPath,'-e',`console.log(${JSON.stringify(JSON.stringify(fleetFixture()))})`]}}));
     const received:{client:Client;state:unknown}[]=[];
     const ctx={cfg:{dataDir:dir},accounts,sendTo:(client:Client,message:{state:unknown})=>received.push({client,state:message.state})} as unknown as Ctx;
     stop=installFleet(ctx);

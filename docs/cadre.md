@@ -17,7 +17,7 @@ Add the following optional object to the server's `.agent-office/config.json`, p
 }
 ```
 
-The allow-list is local only: exact account IDs or names (`{"name":"<owner-name>"}`); entries with both require both to match. The named account must also be an administrator. Missing, empty or unreadable allow-lists deny everyone and disable polling. Never commit real identities. Prefer IDs so a renamed or recreated account cannot inherit access.
+The allow-list is local only: exact account IDs only; name-only entries are refused. An optional name constraint must also match. The named account must also be an administrator. Missing, empty or unreadable allow-lists deny everyone and disable polling. Never commit real identities. Prefer IDs so a renamed or recreated account cannot inherit access.
 
 Alternatively, `AGENT_OFFICE_FLEET_COMMAND` is a JSON executable/arguments array. It overrides the file setting. Restart the office after changing server configuration. Unset means off: no command and no fleet messages. The source is the configured fleet command; no second shared-state reader runs.
 
@@ -42,11 +42,11 @@ Optional server settings are `cadre.webUrl` and `cadre.webToken`, overridden by 
 
 Open the office at `http://127.0.0.1:<office-port>`. The office starts a dedicated loopback gateway on `http://localhost:<ephemeral-port>` for the embedded app. Cookies are hostname-scoped, not port-scoped; this separate hostname isolates office cookies. Other office hostnames and HTTPS use the labeled fallback. This setup is for a browser on the same machine.
 
-The owner-only `/api/cadre/embed` wrapper embeds the real app through that gateway; no Cadre app code is copied into this repository. The upstream token stays on the server. The child receives an opaque 30-minute gateway grant tied to the office account. Every authenticated gateway request rechecks the account and local allow-list, so removal immediately denies further requests; the fleet subscription is revoked within one second. Closing the iframe does not invalidate an already-issued grant; it expires after 30 minutes. Only the documented fleet, capture, message, decision and authentication endpoints are forwarded, with no upstream redirects.
+The owner-only `/api/cadre/embed` wrapper embeds the real app through that gateway; no Cadre app code is copied into this repository. The upstream token stays on the server. The child receives an opaque 30-minute gateway grant tied to the office account. Every authenticated gateway request rechecks the account and local allow-list, so removal immediately denies further requests; the fleet subscription is revoked within one second. Closing the iframe sends a grant-revocation beacon. Grants also expire after 30 minutes; if a browser crashes before sending its beacon, opening a new panel evicts the oldest grant at the 128-grant cap. Only the documented fleet, capture, message, decision and authentication endpoints are forwarded, with no upstream redirects.
 
 The wrapper's CSP confines its child to the gateway origin. Frames omit referrers and permit only scripts, same-origin behavior and forms. Authentication messages target the exact child origin/window. The panel closes on office disconnect or loss of access.
 
-`.agent-office/cadre-audit.jsonl` records panel opens and embeds, plus each message, decision and screen request/result with timestamp, office account ID/name, target and HTTP result. Tokens, message text and screen contents are excluded. An unwritable audit log blocks the action before forwarding. A request without a result indicates interrupted or failed transport; it must not be treated as proof of completion. Protect and rotate this local log as needed.
+`.agent-office/cadre-audit.jsonl` records panel opens and embeds, plus each message/decision request/result and screen-view open/close (not every refresh) with timestamp, office account ID/name, target and HTTP result. Tokens, message text and screen contents are excluded. An unwritable audit log blocks the action before forwarding. A request without a result indicates interrupted or failed transport; it must not be treated as proof of completion. Protect and rotate this local log as needed.
 
 The proposed bridge contract, to be implemented and verified by the separately hosted app:
 

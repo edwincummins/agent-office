@@ -39,7 +39,7 @@ test('owner allow-list gates HTTP and fleet; other admins and unset config get n
   assert.equal((await fetch(base+'/api/cadre/web',{headers:{'x-test-account':'owner'}})).status,403);
   const count=received.length;subscribeFleet(ctx,other);subscribeFleet(ctx,owner);assert.equal(received.length,count);
   stop();stop=installFleet(ctx);subscribeFleet(ctx,owner);assert.equal(received.length,count);
-  config([{name:'Synthetic owner'}]);assert.equal(cadreOwner(ctx,'owner')?.id,'owner');assert.equal(cadreOwner(ctx,'other'),undefined);
+  config([{name:'Synthetic owner'}]);assert.equal(cadreOwner(ctx,'owner'),undefined);assert.equal(cadreOwner(ctx,'other'),undefined);
  }finally{stop();await close(server);rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -59,6 +59,19 @@ test('gateway grants are owner-bound, keep upstream token private, audit actions
   const log=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(!log.includes(grant.token)&&!log.includes('upstream-private'));
   const rows=log.trim().split('\n').map(s=>JSON.parse(s));assert.deepEqual(rows.map(r=>r.event),['action.request','action.result']);assert.ok(rows.every(r=>r.accountId==='owner'&&r.target==='synthetic@demo'));
   assert.ok(calls.every(v=>v==='Bearer upstream-private'));
+  await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=beta',{headers});
+  const revoked=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
+  assert.equal((await fetch(base+'/revoke',{method:'POST',headers:{Origin:'http://127.0.0.1:4632'},body:revoked.token})).status,204);
+  assert.equal(gateway.grants.has(revoked.token),false);
+  const screens=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8').trim().split('\n').map(s=>JSON.parse(s)).filter(r=>r.event.startsWith('screen.'));
+  assert.deepEqual(screens.map(r=>[r.event,r.target]),[['screen.open','alpha'],['screen.close','alpha'],['screen.open','beta']]);
+  const slow=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});
+  const beforeRevoked=calls.length;
+  const revokedUpload=new Promise<number>(resolve=>{
+   const req=request(base+'/api/say',{method:'POST',headers:{Authorization:`Bearer ${slow.token}`}},res=>{res.resume();resolve(res.statusCode!);});
+   req.write('{');setTimeout(()=>{gateway.revoke(slow.token);req.end('}');},50);
+  });
+  assert.equal(await revokedUpload,403);assert.equal(calls.length,beforeRevoked);
   // Start an authorized request, revoke while its upload is incomplete, then finish it.
   const before=calls.length;
   const pending=new Promise<number>(resolve=>{

@@ -7,7 +7,7 @@ export function ownerAllowlist(dataDir:string):{id?:string;name?:string}[] {
   try {
     const list=JSON.parse(readFileSync(path.join(dataDir,'config.json'),'utf8')).cadre?.ownerAllowlist;
     if(!Array.isArray(list))return [];
-    return list.filter(x=>x&&typeof x==='object'&&(typeof x.id==='string'&&x.id.length>0||typeof x.name==='string'&&x.name.length>0));
+    return list.filter(x=>x&&typeof x==='object'&&typeof x.id==='string'&&x.id.length>0);
   }catch{return [];}
 }
 export function cadreOwner(ctx:Pick<Ctx,'cfg'|'accounts'>,id:string|undefined):Account|undefined {
