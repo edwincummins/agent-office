@@ -1,5 +1,6 @@
 // Files a floor's windows show or take: pictures on the walls and the whiteboard, files dropped into
 // a terminal, changed pictures in the Changes window, and the bookshelf's Markdown.
+import {isOwner} from '../../owner-workers/access.js';
 import type { Floor } from '../../floor.js';
 import { WB_MAX_FILE_BYTES } from '../../../shared/whiteboard.js';
 import { DROP_MAX_BYTES } from '../../../shared/drops.js';
@@ -60,7 +61,7 @@ export const fileRoutes = {
   termDrop: {
     path: '/api/term/drop',
     auth: 'session',
-    async handle(ctx, { req, res, url }) {
+    async handle(ctx, { req, res, url, session }) {
       const floor = floorParam(ctx, url);
       // A file dropped or pasted into a worker's terminal, kept on this machine for the terminal to type its path.
       if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
@@ -76,6 +77,7 @@ export const fileRoutes = {
       } catch (err) {
         return (err as Error).message === 'too large' ? send(res, 413, { error: tooBig }) : send(res, 400, { error: 'Bad request' });
       }
+      if(!isOwner(ctx,session.account?.id)||floor.workers.ownerOf(workerId)!==session.account?.id)return send(res,403,{error:'Owner worker required'});
       const file = floor.workers.drop(workerId, str(url.searchParams.get('name'), 256), str(req.headers['content-type'], 128), body);
       return file ? send(res, 200, { path: file }) : send(res, 500, { error: 'The office could not keep that file' });
     },

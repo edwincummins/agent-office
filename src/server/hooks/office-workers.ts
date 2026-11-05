@@ -1,4 +1,5 @@
 import type http from 'node:http';
+import {ownerHook} from '../owner-workers/hooks.js';
 import { notLeaving } from '../leave-on-merge.js';
 import { findWorker, readHireRequest, readHomeRequest, readPrRequest, workerRow, type PullsView } from '../office-workers.js';
 import { gh } from '../github.js';
@@ -44,6 +45,7 @@ export async function officeWorkers(ctx: Ctx, req: http.IncomingMessage, res: ht
   const floor = ctx.workerFloor(workerId);
   const me = floor?.workers.authenticate(workerId, token);
   if (!floor || !me) return send(res, 401, { error: 'Send your own AGENT_OFFICE_WORKER_ID as ?worker= and AGENT_OFFICE_HOOK_TOKEN as the bearer token' });
+  if(!ownerHook(ctx,workerId,token))return send(res,403,{error:'Owner worker required'});
   const who = me.name;
   const view: PullsView = { pulls: floor.github.pulls.items, tasks: floor.queue.state().tasks, pullsOf: (id) => ctx.floors.get(id)?.github.pulls.items };
   const row = (id: string) => {
@@ -73,6 +75,7 @@ export async function officeWorkers(ctx: Ctx, req: http.IncomingMessage, res: ht
     return send(res, 400, { error: 'Send JSON' });
   }
 
+  if(!ownerHook(ctx,workerId,token))return send(res,403,{error:'Owner worker required'});
   if (action === '/home') {
     const ask = readHomeRequest(body);
     if (typeof ask === 'string') return send(res, 400, { error: ask });
@@ -154,6 +157,7 @@ export async function officeWorkers(ctx: Ctx, req: http.IncomingMessage, res: ht
   if (!ctx.floors.has(floor.id)) return send(res, 410, { error: 'This floor closed' });
   // It runs as whoever the asking worker runs as.
   const owner = floor.workers.ownerOf(me.id);
+  if(!ownerHook(ctx,workerId,token))return send(res,403,{error:"Owner worker required"});
   const r = floor.workers.spawn(desk, who, ask.prompt, worktree, 'agent', provider, ask.model, ask.effort, undefined, owner);
   if (typeof r === 'string') return send(res, 400, { error: r });
   ctx.toastFloor(floor, `${who} hired ${r.name}${ask.issue ? ` for issue #${ask.issue}` : ' with a task'}`);

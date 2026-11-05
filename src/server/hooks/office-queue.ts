@@ -1,4 +1,5 @@
 import type http from 'node:http';
+import {ownerHook} from '../owner-workers/hooks.js';
 import { DESK_BY_ID } from '../../shared/layout.js';
 import type { Ctx } from '../office/context.js';
 import { str } from '../office/input.js';
@@ -14,6 +15,7 @@ export async function officeQueue(ctx: Ctx, req: http.IncomingMessage, res: http
   const floor = ctx.workerFloor(workerId);
   const agent = floor?.workers.authenticate(workerId, token);
   if (!floor || !agent) return send(res, 401, { error: 'Send your own AGENT_OFFICE_WORKER_ID as ?worker= and AGENT_OFFICE_HOOK_TOKEN as the bearer token' });
+  if(!ownerHook(ctx,workerId,token))return send(res,403,{error:"Owner worker required"});
   if (!DESK_BY_ID.get(agent.deskId)?.station) return send(res, 403, { error: 'Only the agents standing by the boards can use the queue' });
   const view = () => {
     const q = floor.queue.state();
@@ -34,6 +36,7 @@ export async function officeQueue(ctx: Ctx, req: http.IncomingMessage, res: http
   } catch {
     return send(res, 400, { error: 'Send JSON: {"title": "…", "prompt": "…", "issue": 12}' });
   }
+  if(!ownerHook(ctx,workerId,token))return send(res,403,{error:"Owner worker required"});
   const issue = Number.isInteger(body?.issue) && (body.issue as number) > 0 ? (body.issue as number) : undefined;
   // Its tasks run as whoever the board agent runs as.
   const err = floor.queue.add(str(body?.prompt, 20000), agent.name, str(body?.title, 200) || undefined, issue, undefined, undefined, undefined, floor.workers.ownerOf(agent.id));

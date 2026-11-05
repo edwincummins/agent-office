@@ -1,5 +1,6 @@
 // Every message a browser can send, by type, and the features that keep something per person on a
 // floor. A new feature adds its handler file and a line here.
+import {ownerHandlers} from '../../owner-workers/access.js';
 import type { ClientMsg } from '../../../shared/protocol.js';
 import { accountsHandlers } from './accounts.js';
 import { ballHandlers, ballHooks, ballView } from './ball.js';
@@ -25,7 +26,7 @@ import { jailView, workerHandlers, workerHooks, workersView } from './workers.js
 import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
 
 /** Each domain's handlers put together, in alphabetical order. */
-export const handlers: HandlerMap<ClientMsg> = {
+export const handlers: HandlerMap<ClientMsg> = ownerHandlers({
   ...accountsHandlers,
   ...ballHandlers,
   ...cabinetHandlers,
@@ -47,7 +48,7 @@ export const handlers: HandlerMap<ClientMsg> = {
   ...usageHandlers,
   ...whiteboardHandlers,
   ...workerHandlers,
-};
+});
 
 /**
  * The features that keep something per person on a floor, in the order they let go of it when

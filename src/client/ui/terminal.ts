@@ -1,4 +1,5 @@
 import './terminal.css';
+import {canWork,ownerName} from '../shared/owner-workers';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -105,6 +106,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   }
   current?.modal.close();
   const info = store.workers.get(workerId);
+  const writable=()=>canWork();
   if (!info) return;
 
   const dot = h('span.dot', { style: `background:${info.color}` });
@@ -151,13 +153,20 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   // The keypad has an Esc of its own, and a 🎤 on its prompt box.
   const el = h('div.modal.term', { role: 'dialog', 'aria-label': `${info.name} terminal` }, h('header', {}, dot, title, pill, cost, viewers, typed, modelsBtn, keypad ? null : mic.button, keypad ? null : escBtn, onChanges ? changesBtn : null, hideBtn, closeBtn), tabs.bar, host, tabs.pages, keypad);
 
+  if(!writable()){
+    el.classList.add('read-only');
+    title.after(h('span.term-read-only',{},`Read-only · ${ownerName()}'s`));
+    el.append(h('footer.term-read-only-footer',{},`Only ${ownerName()} can type here`));
+    keypad?.remove();changesBtn.remove();tabs.bar.remove();tabs.pages.remove();escBtn.remove();modelsBtn.remove();mic.button?.remove();
+  }
   const term = new Terminal({
+    disableStdin:!writable(),
     fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
     // A few more columns on a phone's narrow screen.
     fontSize: opts.keypad ? 12 : 14,
     lineHeight: 1.1,
     theme: TERM_THEME,
-    cursorBlink: true,
+    cursorBlink: writable(),
     scrollback: 5000,
     allowProposedApi: true,
     macOptionIsMeta: true,
@@ -174,7 +183,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
    * looking doesn't reflow the terminal under whoever is working.
    */
   const sendSize = (typing = false) => {
-    if (!ready) return;
+    if (!ready||!writable()) return;
     if (!typing && (store.workers.get(workerId)?.viewers.length ?? 0) > 1) {
       const w = store.workers.get(workerId);
       if (w && (w.cols !== term.cols || w.rows !== term.rows)) term.resize(w.cols, w.rows);
@@ -241,6 +250,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   /** Tells the others here you're typing, about once a second while you are. */
   let typingSentAt = 0;
   const sayTyping = () => {
+    if(!writable())return;
     const now = Date.now();
     if (now - typingSentAt < 1000) return;
     typingSentAt = now;
@@ -264,11 +274,11 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
     renderPresence(w);
     const openCode = w.kind === 'agent' && resolvedProvider(w.provider, store.project) === 'opencode';
     modelsBtn.classList.toggle('hidden', !openCode);
-    modelsBtn.toggleAttribute('disabled', !openCode || !ready || isAsleep(w.status));
-    escBtn.toggleAttribute('disabled', !ready || isAsleep(w.status));
-    mic.button?.toggleAttribute('disabled', !ready || isAsleep(w.status));
-    for (const b of keys.children) b.toggleAttribute('disabled', !ready || isAsleep(w.status));
-    sayBtn.toggleAttribute('disabled', isAsleep(w.status));
+    modelsBtn.toggleAttribute('disabled', !openCode || !writable() || !ready || isAsleep(w.status));
+    escBtn.toggleAttribute('disabled', !writable() || !ready || isAsleep(w.status));
+    mic.button?.toggleAttribute('disabled', !writable() || !ready || isAsleep(w.status));
+    for (const b of keys.children) b.toggleAttribute('disabled', !writable() || !ready || isAsleep(w.status));
+    sayBtn.toggleAttribute('disabled', !writable()||isAsleep(w.status));
     // Someone else resized the shared PTY (the latest typist wins): follow it so this view renders
     // correctly. Typing here fits the terminal back to this window and reclaims the size.
     const ptySize = `${w.cols}x${w.rows}`;
@@ -401,6 +411,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
     return true;
   });
   term.onData((data) => {
+    if(!writable())return;
     sendSize(true);
     net.send({ t: 'term.input', workerId, data });
   });
@@ -413,7 +424,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   // where they are, as a terminal does with a file dragged into it: Claude Code attaches a picture.
   let uploading = 0;
   const insertFiles = async (files: File[]) => {
-    if (!files.length) return;
+    if (!files.length||!writable()) return;
     el.classList.toggle('uploading', ++uploading > 0);
     try {
       const paths = await Promise.all(files.map((f) => uploadDrop(workerId, f)));
@@ -488,7 +499,7 @@ export function openTerminal(net: Net, workerId: string, onChanges?: () => void,
   sayForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const prompt = say.value.trim();
-    if (!prompt || sayBtn.hasAttribute('disabled')) return;
+    if (!writable()||!prompt || sayBtn.hasAttribute('disabled')) return;
     sendSize(true);
     net.send({ t: 'worker.prompt', workerId, prompt });
     say.value = '';

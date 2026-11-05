@@ -1,3 +1,4 @@
+import {isOwner} from '../owner-workers/access.js';
 import { randomBytes } from 'node:crypto';
 import type { WebSocket } from 'ws';
 import type { Session } from '../auth.js';
@@ -89,12 +90,12 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
   broadcast({ t: 'peer.join', peer: client.peer }, id);
   if (account) accountsChanged(); // now online
   floorsChanged();
-  if (floor) {
+  if (floor && isOwner(ctx,client.accountId)) {
     floor.arrived();
     // Anyone whose process ended since (exited, or failed to resume) gets up as you walk in.
     floor.workers.wakeAll();
   }
-  limitsOf(client).refresh();
+  if(isOwner(ctx,client.accountId))limitsOf(client).refresh();
   if (account) {
     sendTo(client, { t: 'signins', state: signins.state(account.id) });
     void signins.look(account.id);

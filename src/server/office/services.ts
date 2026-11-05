@@ -1,4 +1,6 @@
 import path from 'node:path';
+import {isOwner} from '../owner-workers/access.js';
+import {ownerSignIns} from '../owner-workers/credentials.js';
 import { childEnv, resolveCommand } from '../workers.js';
 import { SignIns } from '../signins.js';
 import { agentProviders, configuredProvider } from '../agents.js';
@@ -48,18 +50,17 @@ export function createServices(ctx: Ctx): BuildingServices {
   );
 
   const claudeBin = configuredProvider(cfg.agentCmd) === 'claude' ? resolveCommand(cfg.agentCmd) : resolveCommand('claude');
-  // Everyone with an account runs on their own Claude and GitHub sign-ins (see signins.ts). On the
-  // shared password, with no accounts, the office's own are used, as they always were.
-  const signins = new SignIns(
+  // Only the execution owner may load provider credentials or opt into the machine's sign-ins.
+  const signins = ownerSignIns(ctx,new SignIns(
     cfg.dataDir,
     claudeBin,
     resolveCommand('gh'),
     childEnv,
-    (id) => accounts.get(id)?.role === 'admin',
+    (id) => isOwner(ctx,id),
     (id) => {
       for (const c of clients.values()) if (c.accountId === id && !c.out) ctx.sendTo(c, { t: 'signins', state: signins.state(id) });
     },
-  );
+  ));
   // Accounts revoked from the terminal while the office was closed leave their sign-ins behind.
   if (!accounts.unreadableFile) signins.prune(new Set(accounts.state(new Set()).accounts.map((a) => a.id)));
 
@@ -68,7 +69,7 @@ export function createServices(ctx: Ctx): BuildingServices {
   const limits = new PlanLimitsReader(
     claudeBin,
     childEnv(),
-    () => [...clients.values()].some((c) => limitsOf(c) === limits),
+    () => [...clients.values()].some((c) => isOwner(ctx,c.accountId)&&limitsOf(c) === limits),
     (state) => {
       for (const c of clients.values()) if (limitsOf(c) === limits) ctx.sendTo(c, { t: 'limits', state });
     },
@@ -77,7 +78,7 @@ export function createServices(ctx: Ctx): BuildingServices {
   /** Whose plan `c` sees: their own, on an account with its own Claude sign-in; else the office's. */
   const limitsOf = (c: Client): PlanLimitsReader => {
     const id = c.accountId;
-    const key = id && signins.claudeKey(id);
+    const key = id && isOwner(ctx,id) && signins.claudeKey(id);
     if (!id || !key) return limits;
     let a = accountLimits.get(id);
     if (a?.key !== key) {
@@ -85,7 +86,7 @@ export function createServices(ctx: Ctx): BuildingServices {
       const reader = new PlanLimitsReader(
         claudeBin,
         signins.apply(id, childEnv(), [], 'claude'),
-        () => [...clients.values()].some((o) => o.accountId === id),
+        () => isOwner(ctx,id)&&[...clients.values()].some((o) => o.accountId === id),
         (state) => {
           for (const o of clients.values()) if (o.accountId === id) ctx.sendTo(o, { t: 'limits', state });
         },

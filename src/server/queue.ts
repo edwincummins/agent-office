@@ -24,6 +24,7 @@ export interface QueueWorkers {
 }
 
 export interface QueueEvents {
+  mayRun?(owner:string|undefined):boolean;
   update(state: QueueState): void;
   toast(text: string, level: 'info' | 'warn' | 'error'): void;
   /** Mark the issue as taken, on the board at once and on GitHub (as `owner`, when it's an account's task), which keeps it In progress. Resolves to an error message when it can't. */
@@ -315,6 +316,7 @@ export class TaskQueue {
     let changed = false;
     for (const t of this.tasks) {
       if (t.status !== 'queued') continue;
+      if(this.events.mayRun?.(t.owner)===false)continue;
       if (this.busy() >= this.maxWorkers) break;
       // A spent budget holds the queue instead of failing every task; the pump seats them once hiring resumes.
       if (this.events.hiringPaused()) break;
