@@ -9,8 +9,13 @@ export function embedPage(url:string,token:string,officeOrigin:string) {
 <script nonce="${nonce}">
 const origin=${json(origin)},office=${json(officeOrigin)},token=${json(token)};
 const frame=document.createElement('iframe');frame.title='Cadre Web';frame.sandbox='allow-scripts allow-same-origin allow-forms';frame.referrerPolicy='no-referrer';frame.src=${json(url)};
-addEventListener('message',event=>{
+addEventListener('message',async event=>{
  if(event.source!==frame.contentWindow||event.origin!==origin)return;
+ if(event.data?.type==='cadre.web.version'&&typeof event.data.id==='string'&&/^[a-f0-9-]{36}$/.test(event.data.id)){
+  let status=502,value={error:'Version unavailable'};
+  try{const r=await fetch('/api/cadre/version',{cache:'no-store'});status=r.status;value=await r.json();}catch{}
+  frame.contentWindow.postMessage({type:'cadre.web.version.result',id:event.data.id,status,value},origin);return;
+ }
  if(event.data?.type==='cadre.web.ready')frame.contentWindow.postMessage({type:'cadre.web.authenticate',token},origin);
  if(['cadre.web.connected','cadre.web.heartbeat','cadre.web.close'].includes(event.data?.type))parent.postMessage({type:event.data.type},office);
 });

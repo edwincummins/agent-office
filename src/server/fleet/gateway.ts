@@ -2,19 +2,17 @@ import { createServer, type Server } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import type { Ctx } from '../office/context.js';
 import { readBody,send } from '../http/util.js';
-import { BuildVersion } from './build-version.js';
+import { withVersionBridge } from './version.js';
 import { auditCadre,cadreOwner } from './access.js';
 
 interface Grant {accountId:string; expires:number; upstream:string; token:string; officeOrigin:string; screens?:Map<string,number>; reads?:Set<string>}
 const gateways=new WeakMap<Ctx,Promise<Gateway>>();
 const TTL=30*60_000;
 class Gateway {
-  readonly buildVersion=new BuildVersion();
   readonly grants=new Map<string,Grant>();
   constructor(readonly server:Server,readonly port:number,readonly ctx:Ctx){}
   revoke(key:string){const grant=this.grants.get(key);if(!grant)return;this.grants.delete(key);const a=this.ctx.accounts.get(grant.accountId);if(a)for(const target of grant.screens?.keys()??[])auditCadre(this.ctx.cfg.dataDir,a,'screen.close',{target});}
   issue(grant:Omit<Grant,'expires'>){
-    this.buildVersion.configure(grant.upstream);
     for(const [key,value] of this.grants)if(value.expires<Date.now())this.revoke(key);
     if(this.grants.size>=128)this.revoke(this.grants.keys().next().value!);
     const key=randomBytes(32).toString('hex');this.grants.set(key,{...grant,expires:Date.now()+TTL});
@@ -44,17 +42,13 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
         if(!grant||req.headers.origin!==grant.officeOrigin)return send(res,403,{error:'Not available'});
         gateway.revoke(key);res.writeHead(204).end();return;
       }
-      if(req.method==='GET'&&req.url==='/version'&&!req.headers['transfer-encoding']&&(!req.headers['content-length']||req.headers['content-length']==='0')){
-        if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
-        const version=await gateway.buildVersion.read();return send(res,version.status,version.body);
-      }
       const bearer=req.headers.authorization?.startsWith('Bearer ')?req.headers.authorization.slice(7):'';
       const grant=gateway.grants.get(bearer);
       const account=grant&&grant.expires>Date.now()?cadreOwner(ctx,grant.accountId):undefined;
       if(!grant||!account)return send(res,403,{error:'Not available'});
       if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
       const route=url.pathname;
-      const read=req.method==='GET'&&['/app','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox'].includes(route);
+      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox'].includes(route);
       const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access'].includes(route);
       if(!read&&!action&&!(req.method==='POST'&&route==='/auth'))return send(res,404,{error:'Not available'});
       let body:string|undefined,detail:Record<string,string>={};
@@ -84,7 +78,7 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
         if(firstRead){grant.reads!.delete(readKey);auditCadre(ctx.cfg.dataDir,account,'read.result',{action:route.slice(5),target:readTarget,status:502});}
         throw error;
       }
-      const content=raw;
+      const content=route==='/app'?withVersionBridge(raw,grant.officeOrigin):raw;
       if(firstRead)auditCadre(ctx.cfg.dataDir,account,'read.result',{action:route.slice(5),target:readTarget,status:upstream.status});
       if(action)auditCadre(ctx.cfg.dataDir,account,'action.result',{...detail,status:upstream.status});
       if(route==='/app')res.setHeader('Content-Security-Policy',`default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors ${grant.officeOrigin}; base-uri 'none'; form-action 'none'`);
