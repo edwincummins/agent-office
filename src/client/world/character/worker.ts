@@ -17,6 +17,7 @@ import { DANCE, groove, type Dancing, type Stage } from './worker-dance';
 import { DEAD, STARVED, bones, crossedEyes, slump } from './worker-jail';
 import { packUp, waddle, type Leaving } from './worker-leave';
 import { dressUp, growBeard, wearGarb } from './worker-dress';
+import { WorkerLabels } from './worker-labels';
 /** The little Claude worker that sits at a desk. Forward is +z. */
 export class Worker {
   readonly root = new THREE.Group();
@@ -37,7 +38,7 @@ export class Worker {
   /** Its worktree was deleted outside the office (WorkerInfo.lost): its bubble says so until it's fixed. */
   private lost = false;
   private nameTag: THREE.Sprite | null = null;
-  private labelLift = 0;
+  private labels = new WorkerLabels();
   private eyes: THREE.Object3D[] = [];
   private blinkAt = Math.random() * 4;
   status: WorkerStatus = 'starting';
@@ -233,23 +234,11 @@ export class Worker {
 
   setName(name: string) {
     this.label = name;
-    if (this.nameTag) {
-      this.root.remove(this.nameTag);
-      disposeSprite(this.nameTag);
-    }
-    this.nameTag = textSprite(name, { bg: '#2b2d42', color: '#fffaf3', size: 36, border: '#fffaf3' });
-    this.nameTag.position.y = 1.55 + this.labelLift;
-    this.root.add(this.nameTag);
+    this.nameTag = this.labels.name(name, this.nameTag, this.root);
   }
 
   /** Raises the name and work card together for a map-authored station label offset. */
-  setLabelLift(metres: number) {
-    const next = Math.max(0, Math.min(2, metres));
-    const delta = next - this.labelLift;
-    this.labelLift = next;
-    if (this.nameTag) this.nameTag.position.y += delta;
-    if (this.bubble) this.bubble.position.y += delta;
-  }
+  setLabelLift(metres: number) { this.labels.setLift(metres, this.nameTag, this.bubble); }
 
   setStatus(status: WorkerStatus, bounce: boolean) {
     this.status = status;
@@ -343,7 +332,7 @@ export class Worker {
     this.bubbleKey = 'said';
     this.bubbleIsCard = false;
     this.bubble = textSprite(text, { bg: '#e9ecef', size: 34 });
-    if (!this.leaving) this.bubble.position.y = 1.95 + this.labelLift;
+    if (!this.leaving) this.bubble.position.y = 1.95 + this.labels.lift;
     this.root.add(this.bubble);
   }
 
@@ -411,7 +400,7 @@ export class Worker {
       disposeSprite(this.bubble);
     }
     this.bubble = textSprite(text, { bg: '#e9ecef', size: 30 });
-    this.bubble.position.y = 1.5 + this.labelLift;
+    this.bubble.position.y = 1.5 + this.labels.lift;
     this.root.add(this.bubble);
     this.mutterT = seconds;
   }
@@ -430,7 +419,7 @@ export class Worker {
         this.bubble = null;
       }
     }
-    if (this.nameTag) this.nameTag.position.y = (dead ? 0.95 : 1.4) + this.labelLift;
+    if (this.nameTag) this.nameTag.position.y = (dead ? 0.95 : 1.4) + this.labels.lift;
   }
 
   update(dt: number, t: number) {
@@ -502,8 +491,8 @@ export class Worker {
     this.props(dt, t);
     this.blink(dt, s.lid);
     this.bulbMesh.scale.setScalar(this.status === 'needs_input' ? 1 + Math.abs(Math.sin(t * 8)) * 0.5 : 1);
-    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + this.labelLift + (hopping ? this.body.position.y : 0) + Math.sin(t * 3) * 0.03;
-    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labelLift + (hopping ? this.body.position.y : 0);
+    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + this.labels.lift + (hopping ? this.body.position.y : 0) + Math.sin(t * 3) * 0.03;
+    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labels.lift + (hopping ? this.body.position.y : 0);
     // Walking in to a meeting: the same waddle as on the way out, without the box.
     if (this.walking || this.stride) {
       this.stride = this.walking ? this.stride + dt * 9 * this.pace * this.gait : 0;
@@ -549,8 +538,8 @@ export class Worker {
   private carry(l: NonNullable<Worker['leaving']>, dt: number, t: number) {
     waddle(this.rig, l, this.walking, dt);
     this.blink(dt);
-    if (this.bubble) this.bubble.position.y = 1.95 + this.labelLift + Math.sin(t * 3) * 0.03;
-    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labelLift;
+    if (this.bubble) this.bubble.position.y = 1.95 + this.labels.lift + Math.sin(t * 3) * 0.03;
+    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labels.lift;
   }
 
   /** Up on the desk dancing: hop up, groove side to side, twirl, jump twice, hop back down. */
@@ -564,8 +553,8 @@ export class Worker {
     }
     const lift = groove(this.rig, d, dt, t);
     this.blink(dt);
-    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + this.labelLift + lift + Math.sin(t * 3) * 0.03;
-    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labelLift + lift;
+    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + this.labels.lift + lift + Math.sin(t * 3) * 0.03;
+    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labels.lift + lift;
   }
 
   /** Back in its seat, standing straight, its light showing its status again. */
