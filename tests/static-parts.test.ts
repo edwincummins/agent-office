@@ -22,3 +22,27 @@ test('transparent, hidden, interactive, differing shadow state and distinct mate
  parts[3].material=mat.clone();parts[4].material=new THREE.MeshBasicMaterial({transparent:true});
  batchStaticParts(root);assert.deepEqual(root.children,parts);
 });
+import { toon, toonUnique } from '../src/client/world/toon.js';
+
+test('cached palette batching preserves linear vertex colours and separates animated and emissive materials', () => {
+ const root = new THREE.Group();
+ const colors = [toon('#ff8000'), toon('#0080ff')];
+ const animated = toonUnique('#ff8000');
+ const glow = toon('#ff8000', { emissive: '#ff8000' });
+ for (const material of [...colors, animated, glow]) root.add(new THREE.Mesh(new THREE.BoxGeometry(), material));
+ batchStaticParts(root);
+ assert.equal(root.children.length, 3);
+ const batch = root.children.find(n => n.name === 'static-fixture-batch') as THREE.Mesh;
+ const material = batch.material as THREE.MeshToonMaterial;
+ assert.equal(material.color.getHexString(), 'ffffff');
+ assert.equal(material.vertexColors, true);
+ const values = batch.geometry.getAttribute('color');
+ for (const [index, color] of colors.entries()) {
+  const actual = new THREE.Color().fromBufferAttribute(values, index * 36);
+  assert.ok(actual.toArray().every((n, i) => Math.abs(n - color.color.toArray()[i]) < 1e-6));
+ }
+ assert.equal(colors[0].vertexColors, false);
+ animated.color.set('green');
+ assert.ok(root.children.some(n => n instanceof THREE.Mesh && n.material === animated));
+ assert.ok(root.children.some(n => n instanceof THREE.Mesh && n.material === glow));
+});
