@@ -15,12 +15,18 @@ test('bounded opt-in profile; absent and malformed extras leave the renderer alo
   assert.equal(modelSurface({ envMap: 'file://' }), null);
   assert.deepEqual(modelSurface({ studioIntensity: 2.2, additive: true }), { studioIntensity: 2.2, additive: true });
 });
-test('sustained slow frames shed bloom before resolution; healthy frames do neither', () => {
+test('loaded 60 Hz frames keep quality; three consecutive 24 ms windows shed bloom before resolution', () => {
   const slow = new EffectsBudget();
-  for (let i = 0; i < 250; i++) slow.frame(1 / 60);
-  for (let i = 0; i < 101; i++) slow.frame(.02);
+  for (let i = 0; i < 600; i++) slow.frame(1 / 60);
+  for (let i = 0; i < 3000; i++) slow.frame(.02);
+  assert.equal(slow.bloom, true); assert.equal(slow.reduced, false);
+  for (let i = 0; i < 2 * 78; i++) slow.frame(.026);
+  assert.equal(slow.bloom, true); assert.equal(slow.reduced, false);
+  for (let i = 0; i < 78; i++) slow.frame(.026);
   assert.equal(slow.bloom, false); assert.equal(slow.reduced, false);
-  for (let i = 0; i < 101; i++) slow.frame(.02);
+  for (let i = 0; i < 2 * 78; i++) slow.frame(.026);
+  assert.equal(slow.reduced, false);
+  for (let i = 0; i < 78; i++) slow.frame(.026);
   assert.equal(slow.reduced, true);
   const normal = new EffectsBudget();
   for (let i = 0; i < 600; i++) normal.frame(1 / 60);
@@ -32,7 +38,7 @@ test('cold hitches are ignored and bloom retries after sustained healthy recover
   b.frame(.538); b.frame(.456);
   for (let i = 0; i < 600; i++) b.frame(1 / 60);
   assert.equal(b.bloom, true);
-  for (let i = 0; i < 200; i++) b.frame(.03);
+  for (let i = 0; i < 3 * 67; i++) b.frame(.03);
   assert.equal(b.bloom, false);
   for (let i = 0; i < 1000; i++) b.frame(1 / 60);
   assert.equal(b.bloom, true);
@@ -91,6 +97,19 @@ test('scene controls reject malformed values and clamp IBL intensity', async () 
   const { modelScene } = await import('../src/client/features/model-effects/scene.ts');
   assert.equal(modelScene({ environmentIntensity: 99 })!.environmentIntensity, 2);
   for (const bad of [null, [], { url: 'file://' }, { environmentIntensity: Infinity }, { background: 'blue' }, { fog: false }, { fog: { color: '#000000', near: 5, far: 4 } }, { fog: { color: '#000000', near: 0, far: 1001 } }]) assert.equal(modelEffects({ ...profile, scene: bad }), null);
+});
+test('a normal window breaks the consecutive slow-window streak and hidden time resets it', () => {
+  const b = new EffectsBudget();
+  for (let i = 0; i < 600; i++) b.frame(1 / 60);
+  for (let i = 0; i < 78; i++) b.frame(.026);
+  for (let i = 0; i < 78; i++) b.frame(.026);
+  for (let i = 0; i < 100; i++) b.frame(.02);
+  for (let i = 0; i < 78; i++) b.frame(.026);
+  for (let i = 0; i < 78; i++) b.frame(.026);
+  assert.equal(b.bloom, true);
+  b.frame(1 / 60, false);
+  for (let i = 0; i < 78; i++) b.frame(.026);
+  assert.equal(b.bloom, true);
 });
 test('scene controls override sky ticks and restore scene references and mood chain', async () => {
   const { applyModelScene } = await import('../src/client/features/model-effects/scene.ts');

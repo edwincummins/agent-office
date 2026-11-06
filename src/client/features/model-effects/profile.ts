@@ -42,25 +42,31 @@ export class EffectsBudget {
   private elapsed = 0;
   private frames = 0;
   private healthy = 0;
+  private slowWindows = 0;
   frame(seconds: number, visible = true) {
-    if (!visible) { this.elapsed = 0; this.frames = 0; this.healthy = 0; return; }
+    if (!visible) { this.elapsed = 0; this.frames = 0; this.healthy = 0; this.slowWindows = 0; return; }
     if (!Number.isFinite(seconds) || seconds <= 0) return;
     if (this.warm > 0) { this.warm -= Math.min(seconds, .25); return; }
     if (seconds > .25) return;
     this.elapsed += seconds; this.frames++;
     if (this.elapsed < 2) return;
     const average = this.elapsed / this.frames;
-    if (average > .018) {
+    if (average >= .024) {
       this.healthy = 0;
-      if (this.bloom) { this.bloom = false; return this.finish('Bloom paused: sustained slow frames'); }
-      if (!this.reduced) { this.reduced = true; return this.finish('Resolution reduced: sustained slow frames'); }
+      this.slowWindows++;
+      if (this.slowWindows >= 3) {
+        this.slowWindows = 0;
+        if (this.bloom) { this.bloom = false; return this.finish('Bloom paused: sustained slow frames'); }
+        if (!this.reduced) { this.reduced = true; return this.finish('Resolution reduced: sustained slow frames'); }
+      }
     } else if (average < .0175 && !this.bloom) {
+      this.slowWindows = 0;
       this.healthy += this.elapsed;
       if (this.healthy >= 12) {
         this.bloom = true; this.healthy = 0; this.warm = 4;
         return this.finish('Retrying bloom after sustained recovery');
       }
-    } else this.healthy = 0;
+    } else { this.healthy = 0; this.slowWindows = 0; }
     this.finish();
   }
   private finish(message?: string) { this.elapsed = 0; this.frames = 0; return message; }
