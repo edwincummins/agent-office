@@ -120,6 +120,17 @@ test('real collision stepping climbs and descends the synthetic flight without a
   assert.equal(b.pos.y, 0);
   assert.ok(b.pos.z < -6);
 });
+test('a nominal .3m rise survives floating-point rounding but a genuinely taller step stays blocked', () => {
+  const roundedTop = 5.4;
+  assert.ok(roundedTop - 5.1 > 0.3);
+  const rounded = { pos: new THREE.Vector3(0, 5.1, 0), colliders: [{ minX: .2, maxX: 1, minZ: -.5, maxZ: .5, bottom: 5.1, top: roundedTop }], grounded: true, stepOffset: 0 };
+  stepTo(rounded, .1, 0);
+  assert.equal(rounded.pos.y, roundedTop);
+
+  const tooTall = { pos: new THREE.Vector3(0, 5.1, 0), colliders: [{ minX: .2, maxX: 1, minZ: -.5, maxZ: .5, bottom: 5.1, top: 5.400002 }], grounded: true, stepOffset: 0 };
+  stepTo(tooTall, .1, 0);
+  assert.equal(tooTall.pos.y, 5.1);
+});
 test('rail blocks an upper walker but allows the lower floor underneath', () => {
   const p = plan(),
     b = { pos: new THREE.Vector3(3, 3, 0.6), colliders: p.solids, grounded: true, stepOffset: 0 };
