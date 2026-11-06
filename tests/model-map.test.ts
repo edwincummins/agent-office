@@ -27,6 +27,23 @@ test('model maps retain all stable seat ids and explicit zero coordinates',()=>{
  assert.equal(p.desks[4].x,0);assert.equal(p.desks[4].z,0);assert.equal(p.desks[19].id,'desk-20');assert.equal(p.overflow[11].id,'beanbag-12');
  assert.equal(p.config!.model!.asset,'room.glb');
 });
+test('model seat anchors preserve their authored chair type and reject unsupported types',()=>{
+ const value=model();value.seats[0]={...value.seats[0],chairType:'task'};
+ const checked=checkModel(value,bounds,10);
+ assert.equal(checked.seats[0].chairType,'task');
+ assert.throws(()=>checkModel({...value,seats:value.seats.map((s,i)=>i? s:{...s,chairType:'beanbag'})},bounds,10),/chairType is not supported/);
+});
+test('a resolved model plan keeps its checked config independent from caller-owned map data',()=>{
+ const input={...CASTLE,id:'config-snapshot',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,hideDeskSigns:['desk-1'],model:model()};
+ const plan=planMap(input);
+ assert.notEqual(plan.config,input);
+ assert.notEqual(plan.config!.model,input.model);
+ assert.notEqual(plan.config!.model!.seats,input.model.seats);
+ assert.notEqual(plan.config!.hideDeskSigns,input.hideDeskSigns);
+ input.model.seats[0].x=18;input.hideDeskSigns[0]='desk-2';
+ assert.equal(plan.config!.model!.seats[0].x,-12);
+ assert.deepEqual(plan.config!.hideDeskSigns,['desk-1']);
+});
 test('models reject missing, duplicate, nonfinite and wall-covered seats and external assets',()=>{
  assert.throws(()=>checkModel({...model(),seats:[]},bounds,10),/20 desks then 12/);
  const duplicate=model();duplicate.seats[1]=duplicate.seats[0];assert.throws(()=>checkModel(duplicate,bounds,10),/distinct/);
@@ -73,13 +90,66 @@ test('source furniture preserves 32 worker ids and five explicit council chairs 
  const value=model();
  const chairs=value.seats.map(s=>({x:s.x,z:s.z+.85,rotY:Math.PI,y:.4}));
  const council=Array.from({length:5},(_,i)=>({x:-8+i*2,z:-12,rotY:0,y:.4}));
- const source={chairs,council,meetingBoard:value.whiteboard};
+ const source={chairs,council,meetingBoard:value.whiteboard,stations:['issues' as const,'queue' as const]};
  const config={...CASTLE,id:'source-room',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:{...value,source}};
  const plan=planMap(config);
  assert.equal(plan.meeting.length,5);assert.equal(plan.desks.length+plan.overflow.length,32);
+ assert.deepEqual(plan.config!.model!.source!.stations,['issues','queue']);
  for(const [i,d] of plan.meeting.entries())assert.ok(Math.hypot(d.x+Math.sin(d.rotY)*.85-council[i].x,d.z+Math.cos(d.rotY)*.85-council[i].z)<1e-10);
  assert.throws(()=>checkModel({...value,source:{...source,council:[]}},bounds,10),/exactly 5/);
- assert.throws(()=>checkModel({...value,source:{...source,chairs:chairs.map(p=>({...p,x:p.x+1}))}},bounds,10),/approach/);
+ assert.throws(()=>checkModel({...value,source:{...source,chairs:chairs.map(p=>({...p,x:p.x+1}))}},bounds,10),/authored sit offset/);
+ assert.throws(()=>checkModel({...value,source:{...source,stations:['issues','issues']}},bounds,10),/distinct list/);
+});
+
+test('model station label offsets are bounded and limited to known stations',()=>{
+ const checked=checkModel({...model(),stationLabelOffsets:{queue:1.5}},bounds,10);
+ assert.equal(checked.stationLabelOffsets?.queue,1.5);
+ assert.throws(()=>checkModel({...model(),stationLabelOffsets:{queue:2.01}},bounds,10),/between|at most|stationLabelOffsets/);
+ assert.throws(()=>checkModel({...model(),stationLabelOffsets:{unknown:1}},bounds,10),/unknown station/);
+});
+
+test('model-authored station chairs place board workers on their proxy sit points',()=>{
+ const value=model();
+ const chairs=value.seats.map(s=>({x:s.x,z:s.z+.85,rotY:Math.PI,y:.47}));
+ const council=Array.from({length:5},(_,i)=>({x:-8+i*2,z:-12,rotY:0,y:.47}));
+ const source={chairs,council,meetingBoard:value.whiteboard,stations:['issues' as const,'pulls' as const,'queue' as const],stationChairs:{queue:{x:0,z:-8,rotY:Math.PI,y:.47,chairType:'task' as const,sit:{forward:.03,y:.47}}}};
+ const config={...CASTLE,id:'station-chair-room',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:{...value,source}};
+ const plan=planMap(config);const queue=plan.stations.find(s=>s.station==='queue')!;
+ assert.ok(Math.hypot(queue.x,queue.z-(-8.03))<1e-10);
+ assert.equal(queue.rotY,Math.PI);
+});
+
+test('model-authored chair sit offsets preserve proxy types and replace the legacy 0.85 m offset',()=>{
+ const value=model();
+ const chairs=value.seats.map(s=>({
+  x:s.x-Math.sin(s.rotY)*.03,z:s.z-Math.cos(s.rotY)*.03,rotY:s.rotY,y:.47,
+  chairType:'task' as const,sit:{forward:.03,y:.47},
+ }));
+ const council=Array.from({length:5},(_,i)=>({x:-8+i*2,z:-12,rotY:0,y:.47,chairType:'conference' as const,sit:{forward:.03,y:.47}}));
+ const checked=checkModel({...value,source:{chairs,council,meetingBoard:value.whiteboard}},bounds,10);
+ assert.equal(checked.source!.chairs[0].chairType,'task');
+ assert.deepEqual(checked.source!.chairs[0].sit,{forward:.03,y:.47});
+ const config={...CASTLE,id:'proxy-sit-room',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:{...value,source:{chairs,council,meetingBoard:value.whiteboard}}};
+ const plan=planMap(config);
+ assert.ok(Math.hypot(plan.meeting[0].x-(council[0].x+Math.sin(council[0].rotY)*.03),plan.meeting[0].z-(council[0].z+Math.cos(council[0].rotY)*.03))<1e-10);
+ assert.equal(plan.meeting[0].rotY,council[0].rotY);
+ const bad=chairs.map((c,i)=>i?c:{...c,sit:{forward:.4,y:.47}});
+ assert.throws(()=>checkModel({...value,source:{chairs:bad,council,meetingBoard:value.whiteboard}},bounds,10),/authored sit offset/);
+});
+
+test('sofa-seat and pouf entries sit exactly at their authored centres',()=>{
+ const value=model();
+ value.seats=value.seats.map((s,i)=>({...s,chairType:i<30?'task' as const:'pouf' as const}));
+ const chairs=value.seats.map((s,i)=>i<30
+  ?{x:s.x,z:s.z-.03,rotY:s.rotY,y:.47,chairType:'task' as const,sit:{forward:.03,y:.47}}
+  :{x:s.x,z:s.z,rotY:s.rotY,y:.44,chairType:'pouf' as const,sit:{forward:0,y:.44}});
+ const council=Array.from({length:5},(_,i)=>({x:-8+i*2,z:-12,rotY:0,y:.47,chairType:'conference' as const,sit:{forward:.03,y:.47}}));
+ const config={...CASTLE,id:'sofa-centres',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:{...value,source:{chairs,council,meetingBoard:value.whiteboard}}};
+ const plan=planMap(config);
+ assert.equal(plan.config!.model!.seats[30].chairType,'pouf');
+ assert.deepEqual(plan.config!.model!.source!.chairs[30].sit,{forward:0,y:.44});
+ assert.deepEqual({x:plan.overflow[10].x,z:plan.overflow[10].z},{x:value.seats[30].x,z:value.seats[30].z});
+ assert.deepEqual({x:plan.overflow[11].x,z:plan.overflow[11].z},{x:value.seats[31].x,z:value.seats[31].z});
 });
 
 import {modelColliders} from '../src/client/world/model/colliders.js';

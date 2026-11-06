@@ -6,7 +6,7 @@ import { CASTLE } from '../src/shared/maps/castle.js';
 import { STATION } from '../src/shared/maps/station.js';
 import { DESK_BY_ID } from '../src/shared/layout.js';
 import { NavGrid, pathLength } from '../src/shared/nav.js';
-import { BUILTIN_MAPS, DEFAULT_DAIS, OFFICE_PLAN, checkCustomMaps, mapChoices, planMap, planOf, seatHereOn, type MapConfig } from '../src/shared/maps/index.js';
+import { BUILTIN_MAPS, DEFAULT_DAIS, OFFICE_PLAN, checkCustomMaps, mapChoices, planMap, planOf, seatHereOn, visibleDeskSignLabels, type MapConfig } from '../src/shared/maps/index.js';
 import { clockWork, workedMs } from '../src/server/workers.js';
 import type { WorkerInfo } from '../src/shared/protocol.js';
 
@@ -21,6 +21,44 @@ test('every built-in map places every seat the office has, by the same ids', () 
       assert.equal(!!d.room, !!office.room, `${id} is a meeting chair on both`);
     }
   }
+});
+
+test('a map can hide only selected desk signs without changing its floor-plan labels', () => {
+  const labels = { 'desk-1': { text: 'North pod' }, 'desk-2': { text: 'South pod' } };
+  assert.deepEqual(visibleDeskSignLabels(labels, ['desk-1']), { 'desk-2': { text: 'South pod' } });
+  assert.deepEqual(labels, { 'desk-1': { text: 'North pod' }, 'desk-2': { text: 'South pod' } });
+});
+
+test('custom map desk-sign exclusions are validated and exposed in the resolved config', () => {
+  const [map] = checkCustomMaps([{ file: 'signs.json', json: {
+    id: 'signs', name: 'Signs', extends: 'castle', hideDeskSigns: ['desk-3', 'desk-7'],
+  } }]);
+  assert.equal(map.error, undefined);
+  assert.deepEqual(planOf('signs', [map]).config?.hideDeskSigns, ['desk-3', 'desk-7']);
+
+  const bad = checkCustomMaps([
+    { file: 'bad-id.json', json: { id: 'bad-id', name: 'Bad id', extends: 'castle', hideDeskSigns: ['beanbag-1'] } },
+    { file: 'duplicate.json', json: { id: 'duplicate', name: 'Duplicate', extends: 'castle', hideDeskSigns: ['desk-3', 'desk-3'] } },
+  ]);
+  assert.match(bad[0].error ?? '', /desk-1 through desk-20/);
+  assert.match(bad[1].error ?? '', /distinct desk ids/);
+});
+
+test('resolved configs preserve maps without desk-sign exclusions and retain explicit exclusions', () => {
+  for (const config of [CASTLE, STATION]) {
+    const resolved = planMap(config).config!;
+    assert.deepEqual(resolved, config, `${config.id} keeps its authored config shape`);
+    assert.equal(JSON.stringify(resolved), JSON.stringify(config), `${config.id} keeps the same serialized config`);
+  }
+
+  for (const id of ['castle', 'station']) {
+    const file = path.join(import.meta.dirname, '..', 'docs', 'maps', `${id}.json`);
+    const config = JSON.parse(readFileSync(file, 'utf8')) as MapConfig;
+    assert.equal(JSON.stringify(planMap(config).config), JSON.stringify(config), `docs/maps/${id}.json round-trips unchanged`);
+  }
+
+  const withHiddenSigns = { ...CASTLE, id: 'castle-with-hidden-signs', hideDeskSigns: ['desk-3'] };
+  assert.deepEqual(planMap(withHiddenSigns).config?.hideDeskSigns, ['desk-3']);
 });
 
 test('in the castle every worker can walk from its seat to the door and to the front of the line', () => {

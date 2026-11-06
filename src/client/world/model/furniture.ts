@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import type {ModelChair} from '../../../shared/maps/model';
+import type {StationKind} from '../../../shared/layout';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { DeskDef } from '../../../shared/layout';
 import type { DeskView, Interactable } from '../types';
 import { mergeByMaterial } from '../toon';
 
-export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0) {
+export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0, sourceStations: readonly StationKind[] = []) {
   const still = new THREE.Group();
   const oak = new THREE.MeshStandardMaterial({ color: '#aa8260', roughness: .6 });
   const metal = new THREE.MeshStandardMaterial({ color: '#30353b', roughness: .5, metalness: .3 });
@@ -42,6 +43,8 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
       cushion.scale.set(1,.6,1.05); cushion.position.set(0,.2192,.85); shape.add(cushion);
       const contact = new THREE.Mesh(new THREE.CylinderGeometry(.363,.363,.005,16),fabric);
       contact.scale.z=1.05;contact.position.set(0,.027,.85);shape.add(contact);
+    } else if (def.station && sourceStations.includes(def.station)) {
+      // The model supplies this kiosk; keep only its interaction and seat anchors.
     } else if (!def.room) {
       box(shape,[1.6,.07,.8],[0,.75,0],oak);
       box(shape,[.42,.018,.15],[0,.797,.17],metal);
@@ -62,7 +65,12 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
     still.add(shape);
     const laptopAnchor = new THREE.Object3D(); laptopAnchor.position.set(0,soft?.4:.8,0); g.add(laptopAnchor);
     const seatAnchor = new THREE.Object3D(); seatAnchor.position.set(0,soft?.18:.38,.85); seatAnchor.rotation.y=Math.PI; seatAnchor.scale.setScalar(.82); g.add(seatAnchor);
-    const anchored=source?.get(def.id);if(anchored){seatAnchor.position.y=anchored.y-y;seatAnchor.rotation.y=anchored.rotY-def.rotY;laptopAnchor.position.y=.8;}
+    const anchored=source?.get(def.id);if(anchored){
+      seatAnchor.position.y=anchored.y-y;
+      if(anchored.sit)seatAnchor.position.z=0;
+      seatAnchor.rotation.y=anchored.rotY-def.rotY;
+      laptopAnchor.position.y=.8;
+    }
     const stage = new THREE.Object3D(); stage.position.set(.55,0,.85); g.add(stage);
     const vacancy = new THREE.Group(); if(def.station) vacancy.add(seatAnchor.clone()); g.add(vacancy);
     const it: Interactable = {kind:def.station?'station':'desk',deskId:def.id,x:def.x+Math.sin(def.rotY)*1.1,y,z:def.z+Math.cos(def.rotY)*1.1,radius:1.25};

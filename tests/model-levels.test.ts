@@ -41,6 +41,17 @@ test('authored model chair anchors stay absolute while their laptops follow the 
   assert.equal(view.laptopAnchor.getWorldPosition(new THREE.Vector3()).y, 3.8);
 });
 
+test('proxy sit anchors place the seated avatar at the authored map seat point',()=>{
+  const p=planMap(structuredClone(TWO_LEVEL_MODEL)),d=p.desks[8],group=new THREE.Group();
+  const chairs=new Map([[d.id,{x:d.x,z:d.z-.03,rotY:d.rotY,y:3.47,sit:{forward:.03,y:.47}}]]);
+  const view=furnishings(group,[d],[],[],chairs,(id)=>seatFloor(p,id)).get(d.id)!;
+  group.updateMatrixWorld(true);
+  const anchor=view.seatAnchor.getWorldPosition(new THREE.Vector3());
+  assert.ok(Math.abs(anchor.x-d.x)<1e-10);
+  assert.ok(Math.abs(anchor.z-d.z)<1e-10);
+  assert.equal(anchor.y,3.47);
+});
+
 test('upper model walls retain their underside and reject invalid spans', () => {
   const c = structuredClone(TWO_LEVEL_MODEL);
   c.model!.walls = [{ minX: -12, maxX: -11, minZ: -2, maxZ: -1, bottom: 3, top: 6 }];
