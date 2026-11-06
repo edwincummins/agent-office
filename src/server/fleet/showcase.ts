@@ -180,18 +180,9 @@ export const cadreShowApi: Route = {
     const team = url.searchParams.get('team') ?? (url.searchParams.get('seat') ? fleetSeatTeam(ctx, url.searchParams.get('seat')!) : null);
     if (team && !visible(team)) return send(res, 403, { error: 'Not available' });
     if (route === '/api/stream') {
-      const seat = url.searchParams.get('seat') ?? '';
-      if (guest) return streamScreens(ctx, res, req, seat, true);
-      // Fetty himself: the real stream, piped.
-      const stop = new AbortController(); req.on('close', () => stop.abort()); res.on('close', () => stop.abort());
-      try {
-        const up = await fetch(new URL(`/api/stream${url.search}`, engine.url), { headers: { Authorization: `Bearer ${engine.token}` }, signal: stop.signal });
-        const head: Record<string, string> = { 'content-type': 'application/octet-stream' };
-        for (const k of ['x-cols', 'x-rows']) { const v = up.headers.get(k); if (v) head[k] = v; }
-        res.writeHead(up.status, head);
-        if (up.body) for await (const chunk of up.body as unknown as AsyncIterable<Uint8Array>) res.write(chunk);
-      } catch { /* the tile closed */ }
-      return res.end();
+      // Everyone off the PC shares one stream per seat (screens.ts), however many are watching: each live stream is a
+      // terminal observer on his PC (11-06: 12 of them, ~4.5% CPU each, made the machine sputter). Guests get it masked.
+      return streamScreens(ctx, res, req, url.searchParams.get('seat') ?? '', guest);
     }
     let up: Response, raw: Buffer;
     try {
