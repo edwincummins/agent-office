@@ -694,9 +694,7 @@ export class Sky {
     }
     this.lightning(t, dt);
     const flash = this.flash;
-    // Lightning lights the room only faintly when you're under the roof (Fetty 11-06: it shouldn't show inside the
-    // building, only through the windows). The sky itself (seen through the panes) still flashes in full below.
-    const roomFlash = this.sheltered(this.camPos.x, this.camPos.z) ? flash * 0.12 : flash;
+    const roomFlash = this.sheltered(this.camPos.x, this.camPos.z) ? flash * 0.12 : flash; // under the roof: faint (the sky through the panes still flashes)
     const sunI = 2.2 * smooth(-3, 10, elD) * (1 - 0.8 * this.cover) * (1 - 0.6 * this.fog) * (1 - 0.65 * sp);
     const moonI = 0.4 * smooth(-4, -12, elD) * (1 - 0.75 * this.cover);
     const hemiI = lerp(0.38, 1.5 * (1 - 0.25 * this.cover) * (1 - 0.35 * this.storm), day);
