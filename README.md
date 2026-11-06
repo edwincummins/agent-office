@@ -453,3 +453,7 @@ Two-level maps bound shared avatar coordinates to the hall and use a shorter thi
 Opt-in model effects can also bound environment intensity, background and fog without changing other maps; see [model effects](docs/maps.md).
 
 Model effects also support an optional environment tint without loading new HDR assets.
+
+### Named travel
+
+Press **J** or the compass beside Workers for named destinations. **Home** returns the owner to the standing arrival behind the Hustle Labs HQ owner chair. HQ ground-floor and mezzanine lift lobbies are listed alongside project floors. Shared map changes remain in Settings. See [Travel controls](docs/controls.md#named-travel).

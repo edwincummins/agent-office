@@ -1,0 +1,10 @@
+.travel-panel { width: min(440px, calc(100vw - 24px)); max-height: 80vh; }
+.travel-panel .body { display: grid; gap: 8px; overflow: auto; }
+.travel-panel .floor-item, .travel-panel .floor-no { border-radius: 5px; }
+.travel-panel .floor-no { background: #3a3326; }
+.travel-panel .floor-item:disabled { opacity: .65; }
+.travel-panel .floor-item:focus-visible { outline: 3px solid #bd8b31; outline-offset: 2px; }
+.travel-panel [data-place=home] { min-height: 68px; }
+.travel-panel footer { font-size: 12px; }
+#dock [data-action=travel] { width: 40px; height: 40px; padding: 0; border-radius: 5px; }
+@media (max-width: 440px) { .travel-panel .floor-stats { font-size: 10px; gap: 3px; } }

@@ -49,3 +49,13 @@ The prompt edits the way it does in your own terminal (iTerm2's *Natural Text Ed
 | ⌘ + ← / → | Jump to the start / end of the line (Mac) |
 
 In third-person view, walls and other collision boxes pull the camera closer so they do not cover your character. The camera eases back to the selected zoom distance when the path clears. First-person view is unchanged.
+
+## Named travel
+
+**J** or the square compass button beside Workers opens Go to. Use arrow keys and Enter, or 1–9 for the first nine rows. The current destination is disabled and marked “you are here”. Close with the top-right ✕ or Esc to resume mouse-look.
+
+**Home** takes the owner to a standing arrival behind the owner chair in Hustle Labs HQ. It does not sit the player or grant chair permissions. The room label follows the active map name. HQ ground-floor and mezzanine destinations use the existing lift lobbies. Trips stop walking and active activities; an obstructed arrival or active lift ride is refused. Home and J respect the existing text-entry, terminal and modal key guards.
+
+Project-floor travel uses the existing floor switch and elevator behavior. The rooftop and garage are offered on the stock office map, where those destinations exist. Other maps are visible but disabled: changing the map changes the building for everyone, so use Settings. Home is likewise unavailable while another map is active; it never switches everyone to HQ. The existing double-click teleport behavior is unchanged.
+
+The travel menu adds **0 scene draw calls**: it is DOM UI only. Headless UI checks do not establish GPU frame rate on a populated HQ.
