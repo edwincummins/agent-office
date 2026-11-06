@@ -4,10 +4,11 @@ import type { StationKind } from '../layout.js';
 import { isObj, num, MapError } from './check.js';
 
 const MODEL_STATIONS: readonly StationKind[] = ['issues','pulls','queue'];
+export type ModelChairType = 'task'|'executive'|'guest'|'conference'|'lounge'|'sofaSeat'|'pouf'|'barStool';
 
 export interface ModelChair extends Required<Place> {
   y:number;
-  chairType?: 'task'|'executive'|'guest'|'conference'|'lounge'|'sofaSeat'|'pouf'|'barStool';
+  chairType?: ModelChairType;
   /** A model-authored seat point relative to this chair. Omitted maps retain the legacy 0.85 m approach. */
   sit?: {forward:number;y:number};
 }
@@ -15,7 +16,7 @@ export interface ModelMapData {
   source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace;stations?:StationKind[];stationChairs?:Partial<Record<StationKind,ModelChair>>};
   stationLabelOffsets?: Partial<Record<StationKind,number>>;
   asset: string;
-  seats: Required<Place>[];
+  seats: (Required<Place> & {chairType?:ModelChairType})[];
   walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number; bottom?: number }[];
   platforms?: ModelMapData['walls'];
   labels?: (Required<Place> & {text:string})[];
@@ -31,8 +32,16 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
     if (!isObj(v)) throw new MapError(`${label} must be a position`);
     return { x: num(v.x, `${label}.x`, bounds.minX + .2, bounds.maxX - .2), z: num(v.z, `${label}.z`, bounds.minZ + .2, bounds.maxZ - .2), rotY: num(v.rotY ?? 0, `${label}.rotY`) };
   };
+  const chairType = (value: unknown, label: string): ModelChairType | undefined => {
+    if(value===undefined)return undefined;
+    if(typeof value!=='string'||!['task','executive','guest','conference','lounge','sofaSeat','pouf','barStool'].includes(value))throw new MapError(`${label}.chairType is not supported`);
+    return value as ModelChairType;
+  };
   if (!Array.isArray(value.seats) || value.seats.length !== 32) throw new MapError('model.seats must contain exactly 20 desks then 12 soft seats');
-  const seats = value.seats.map((s, i) => point(s, `model.seats[${i}]`));
+  const seats = value.seats.map((s, i) => {
+    const label=`model.seats[${i}]`,type=isObj(s)?chairType(s.chairType,label):undefined;
+    return {...point(s,label),...(type===undefined?{}:{chairType:type})};
+  });
   if (new Set(seats.map(s => `${s.x},${s.z}`)).size !== 32) throw new MapError('model seats must have distinct positions');
   if (!Array.isArray(value.walls) || value.walls.length > 300) throw new MapError('model.walls must be a list of at most 300 collision rectangles');
   const rectangles = (items: unknown[], label:string) => items.map((w, i) => {
@@ -93,14 +102,13 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
       if(!Array.isArray(raw)||raw.length!==count)throw new MapError(`${label} needs exactly ${count} anchors`);
       const result=raw.map((v,i)=>{
         const p=v as Record<string,unknown>;
-        const chairType=p.chairType;
-        if(chairType!==undefined&&!['task','executive','guest','conference','lounge','sofaSeat','pouf','barStool'].includes(String(chairType)))throw new MapError(`${label}[${i}].chairType is not supported`);
+        const type=chairType(p.chairType,`${label}[${i}]`);
         let sit:ModelChair['sit'];
         if(p.sit!==undefined){
           if(!isObj(p.sit))throw new MapError(`${label}[${i}].sit must be an anchor offset`);
           sit={forward:num(p.sit.forward,`${label}[${i}].sit.forward`,-.5,.5),y:num(p.sit.y,`${label}[${i}].sit.y`,.2,1.2)};
         }
-        return {...point(v,`${label}[${i}]`),y:num(p.y,`${label}[${i}].y`,0,height),...(chairType===undefined?{}:{chairType:chairType as NonNullable<ModelChair['chairType']>}),...(sit?{sit}:{})};
+        return {...point(v,`${label}[${i}]`),y:num(p.y,`${label}[${i}].y`,0,height),...(type===undefined?{}:{chairType:type}),...(sit?{sit}:{})};
       });
       if(new Set(result.map(p=>`${p.x},${p.z}`)).size!==count)throw new MapError(`${label} anchors must be distinct`);
       for(const p of result)if(walls.some(w=>w.top>p.y && (w.bottom??0)<p.y+1.2 && p.x>w.minX&&p.x<w.maxX&&p.z>w.minZ&&p.z<w.maxZ))throw new MapError(`${label} anchor is inside a wall`);
@@ -115,10 +123,9 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
       for(const [station,raw] of Object.entries(value.source.stationChairs)){
         if(!MODEL_STATIONS.includes(station as StationKind))throw new MapError(`model.source.stationChairs has unknown station ${station}`);
         if(!isObj(raw))throw new MapError(`model.source.stationChairs.${station} must be a chair anchor`);
-        const chairType=raw.chairType;
-        if(chairType!==undefined&&!['task','executive','guest','conference','lounge','sofaSeat','pouf','barStool'].includes(String(chairType)))throw new MapError(`model.source.stationChairs.${station}.chairType is not supported`);
+        const type=chairType(raw.chairType,`model.source.stationChairs.${station}`);
         if(!isObj(raw.sit))throw new MapError(`model.source.stationChairs.${station}.sit must describe its proxy seat`);
-        stationChairs[station as StationKind]={...point(raw,`model.source.stationChairs.${station}`),y:num(raw.y,`model.source.stationChairs.${station}.y`,0,height),chairType:chairType as NonNullable<ModelChair['chairType']>,sit:{forward:num(raw.sit.forward,`model.source.stationChairs.${station}.sit.forward`,-.5,.5),y:num(raw.sit.y,`model.source.stationChairs.${station}.sit.y`,.2,1.2)}};
+        stationChairs[station as StationKind]={...point(raw,`model.source.stationChairs.${station}`),y:num(raw.y,`model.source.stationChairs.${station}.y`,0,height),...(type===undefined?{}:{chairType:type}),sit:{forward:num(raw.sit.forward,`model.source.stationChairs.${station}.sit.forward`,-.5,.5),y:num(raw.sit.y,`model.source.stationChairs.${station}.sit.y`,.2,1.2)}};
       }
     }
     source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard'),stations,stationChairs};
