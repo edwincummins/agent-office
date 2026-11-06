@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import { FLOOR, WING, beanbagsOut, deskBuilt, vacantSeats, wingMinZ, wingRowZ } from '../../../shared/layout';
-import { OFFICE_PLAN, visibleDeskSignLabels } from '../../../shared/maps';
+import { OFFICE_PLAN } from '../../../shared/maps';
 import { MEETING_PATTERNS } from '../../../shared/meetings';
 import type { WorkerInfo, WorkerTask } from '../../../shared/protocol';
 import { workerPr } from '../../../shared/status';
@@ -336,7 +336,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
       p.set(level ? side : p.x, 0, level ? wingMinZ(level) + 0.6 : FLOOR.minZ + 1.6);
     }
     office.setWing(level);
-    office.signs.set(visibleDeskSignLabels(fp.labels, plan().config?.hideDeskSigns), (d) => deskBuilt(d, level));
+    office.signs.set(fp.labels, (d) => deskBuilt(d, level), plan().config?.hideDeskSigns);
     player.wing = sound.wing = level;
     sky.setWing(level);
     parts.travel.syncStack();
