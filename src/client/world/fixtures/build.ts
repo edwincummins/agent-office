@@ -49,7 +49,7 @@ export function withFixtures(build:(plan:MapPlan)=>World):(plan:MapPlan)=>World{
   }
   setFixtures(world,handles);
   if(world.acoustics&&world.gong)world.acoustics.gong={x:world.gong.top.x,y:world.gong.top.y-1.8,z:world.gong.top.z};
-  if(owned.length&&plan.obstacles)world.nav=new NavGrid(plan.bounds,{rects:[...plan.obstacles.rects,...world.colliders.filter(c=>!c.fence&&c.top>.3).map(c=>[c.minX,c.maxX,c.minZ,c.maxZ] as [number,number,number,number])],circles:plan.obstacles.circles});
+  if(owned.length&&plan.obstacles)world.nav=(world.navigation??(obstacles=>new NavGrid(plan.bounds,obstacles)))({rects:[...plan.obstacles.rects,...world.colliders.filter(c=>!c.fence&&c.top>.3).map(c=>[c.minX,c.maxX,c.minZ,c.maxZ] as [number,number,number,number])],circles:plan.obstacles.circles});
   const update=world.update;world.update=(t,dt,people)=>{update(t,dt,people);for(const u of updates)u(t,dt);};
   const dispose=world.dispose;world.dispose=()=>{for(const o of owned){o.removeFromParent();o.traverse(node=>{if(node instanceof THREE.Mesh)node.geometry.dispose();});}for(const texture of textures)texture.dispose();for(const material of materials)material.dispose();dispose?.();};
   return world;

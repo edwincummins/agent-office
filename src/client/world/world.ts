@@ -3,7 +3,7 @@ import type * as THREE from 'three';
 import type { FloorPalette } from '../../shared/floors';
 import { LOFT, WALL_HEIGHT, WALL_T, FLOOR, type DeskDef } from '../../shared/layout';
 import { OFFICE_PLAN, type BoardKey, type MapPlan, type Spot } from '../../shared/maps';
-import { officeNav, wayHome, wayIn, wayToBalcony, type Bounds, type NavGrid, type Pt } from '../../shared/nav';
+import { officeNav, wayHome, wayIn, wayToBalcony, type Bounds, type Obstacles, type NavGrid, type Pt } from '../../shared/nav';
 import type { DungeonView } from './dungeon';
 import type { AirlockView } from './station/airlock';
 import type { Person } from './character';
@@ -47,6 +47,8 @@ export interface World {
   /** The gong a merged pull request rings, if the map has one. */
   gong?: Gong;
   nav: NavGrid;
+  /** Rebuild navigation after fixtures add obstacles, preserving map-specific seat approaches. */
+  navigation?(obstacles: Obstacles): NavGrid;
   ways: Ways;
   /** Where confetti rains when a pull request merges, and from how high over each spot. */
   rain: { area: Area; top: (x: number, z: number) => number }[];
