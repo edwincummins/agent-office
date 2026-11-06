@@ -47,7 +47,7 @@ export function buildModel(plan: MapPlan): World {
   const meeting: Interactable={kind:'meeting',x:cp.x,z:cp.z,radius:2.5}; table.userData.interact=meeting; interactables.push(meeting);
   const boardAt=config.source?.meetingBoard??{x:cp.x-Math.sin(cp.rotY)*3.1,z:cp.z-Math.cos(cp.rotY)*3.1,y:1.95,width:2.3,height:1.4,rotY:cp.rotY};
   const meetingBoard=face(boardAt,'meeting');
-  const meetingSign=face({...boardAt,y:.9,width:1.2,height:.34},'meeting');
+  const meetingSign=config.source?undefined:face({...boardAt,y:.9,width:1.2,height:.34},'meeting');
   const screen=config.screen?face(config.screen,'tv'):null;
   const whiteboard=face(config.whiteboard,'whiteboard');
   // Interaction rays use low-poly furniture and wall proxies, never the architectural triangle soup.
