@@ -42,7 +42,7 @@ window.fetch=function(u,o){if(typeof u==='string'&&u.charAt(0)==='/')u=B+u;retur
 function mem(){var d={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}
 try{Object.defineProperty(window,'localStorage',{value:mem(),configurable:true})}catch(e){}
 try{Object.defineProperty(window,'sessionStorage',{value:mem(),configurable:true})}catch(e){}
-window.open=function(){return null};
+window.open=function(){return null};window.CADRE_READONLY=true;
 var LOOK='[data-tab],[data-team],[data-cols],[data-go="needs"],[data-go="inbox"],[data-go="routines"],[data-seatjump],[data-seatpick],[data-ct="bell"],[data-ct="usage"],[data-ct="more"],[data-ct="theme"],[data-ct="skin"],[data-ct="zoom"],[data-ct="ttext"],[data-ct="tbig"],[data-ct="slim"],[data-ct="close"],[data-ct="go-needs"],[data-ct="go-tasks"],[data-ct="tt"],[data-ct="tt-x"],[data-ct="need"]';
 var ACTS='button,a,[data-act],[data-ct],[data-sv],[data-tk-act],[data-go],[onclick],select,input[type=checkbox],input[type=range]';
 function guard(e){var t=e.target&&e.target.closest&&e.target.closest(ACTS);if(!t||t.closest(LOOK))return;e.stopImmediatePropagation();e.preventDefault()}
