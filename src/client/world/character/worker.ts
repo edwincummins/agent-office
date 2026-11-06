@@ -1,3 +1,5 @@
+import { workerEyes } from './worker-eyes';
+import { batchRigidParts } from '../rigid-batch';
 import * as THREE from 'three';
 import type { Theme, WorkerAction, WorkerStatus, WorkerTask } from '../../../shared/protocol';
 import { isAsleep, type WorkerPr } from '../../../shared/status';
@@ -97,6 +99,7 @@ export class Worker {
   /** Something it's muttering in its cell, and for how many more seconds. */
   private mutterT = 0;
   private label = '';
+  private releaseBatches = () => {};
 
   constructor(
     name: string,
@@ -110,16 +113,7 @@ export class Worker {
     // Bean-shaped body
     const bean = mesh(new THREE.CapsuleGeometry(0.28, 0.3, 8, 16), skin, 0, 0.55, 0);
     this.body.add(bean);
-    // Big cartoon eyes
-    for (const sx of [-1, 1]) {
-      const eye = mesh(new THREE.SphereGeometry(0.09, 12, 10), white, sx * 0.11, 0.7, 0.23, false);
-      eye.scale.z = 0.6;
-      this.body.add(eye);
-      const pupil = mesh(new THREE.SphereGeometry(0.045, 10, 8), ink, sx * 0.11, 0.7, 0.29, false);
-      this.body.add(pupil);
-      this.eyes.push(eye, pupil);
-      this.pupils.push(pupil);
-    }
+    ({ eyes: this.eyes, pupils: this.pupils } = workerEyes(this.body, white, ink));
     // Headset: band + mic
     const band = mesh(new THREE.TorusGeometry(0.29, 0.025, 6, 20, Math.PI), toon('#2b2d42'), 0, 0.72, 0, false);
     band.rotation.y = Math.PI / 2;
@@ -163,6 +157,7 @@ export class Worker {
 
     this.rig = { root: this.root, body: this.body, skin: this.skin, armL: this.armL, armR: this.armR, feet: this.feet, pupils: this.pupils, bulb: this.bulb, bulbMesh: this.bulbMesh, props: [this.papers.group, this.globe.group] };
     this.setName(name);
+    this.releaseBatches = batchRigidParts(this.body, [skin, white, ink]);
   }
 
   /** Where the globe floats, in its own space: beside its laptop, where the card over its head doesn't hide it. */
@@ -588,6 +583,7 @@ export class Worker {
   }
 
   dispose() {
+    this.releaseBatches();
     if (this.bubble) disposeSprite(this.bubble);
     if (this.nameTag) disposeSprite(this.nameTag);
     undress(this.crosses);

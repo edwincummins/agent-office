@@ -420,3 +420,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+Worker rendering batches same-material body parts to reduce draw calls while preserving animation and picking. No configuration is required.
