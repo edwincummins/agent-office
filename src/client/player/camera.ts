@@ -106,14 +106,14 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     else if (side === 2) cam.z = R.minZ - e;
     else cam.z = R.maxZ + e;
   }
-  shortenCameraBoom(target, cam, p.colliders);
   clampLevelCamera(target, cam, p.colliders);
+  shortenCameraBoom(target, cam, p.colliders);
   if (snap) camera.position.copy(cam);
   else {
     camera.position.lerp(cam, 0.25);
     // Pull inward immediately, including when a new map puts a wall across the old camera pose.
-    shortenCameraBoom(target, camera.position, p.colliders);
     clampLevelCamera(target, camera.position, p.colliders);
+    shortenCameraBoom(target, camera.position, p.colliders);
   }
   camera.lookAt(target);
 }
