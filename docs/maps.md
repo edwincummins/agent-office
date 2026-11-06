@@ -282,6 +282,20 @@ A map without a dungeon can still have a script: a guard who walks each worker t
 
 ## Local model maps
 
+### Optional model effects
+
+A GLB node can opt its model into ACES Filmic rendering with an `officeEffects` extra:
+
+```json
+{"officeEffects":{"exposure":1,"bloom":{"strength":0.9,"radius":0.3,"threshold":3.5}}}
+```
+
+Put this on the root node containing all the affected model materials. Exposure accepts 0.1–2, bloom strength 0–2, radius 0–1 and threshold 0–10. Missing or malformed profiles do nothing. No external resources are fetched. The existing view-filter registry captures the scene and hands once into a half-float target; bloom runs at half resolution before the output tone/color conversion. All fullscreen passes count toward frame draw calls.
+
+Materials can separately carry `officeSurface` extras: `studioIntensity` (0–4) assigns a neutral RoomEnvironment PMREM to that material alone; `additive: true` selects transparent additive blending without depth writes; `emissiveIntensity` (0–8) overrides the model material's emission strength. These settings are applied only under an opted-in root. Keep unrelated room materials on the room environment. Author emission above the bloom threshold only where a glow is wanted.
+
+Activation compiles and renders an off-screen warm-up frame. After a four-second warm-up, bloom is disabled only after at least twelve seconds of measured frame windows averaging 28 ms or slower; DPR is reduced to 1 only after another twelve seconds at or above that threshold. This waits for sustained slow frames at roughly 36 FPS or lower, so normal 18–24 ms loaded frames do not shed quality. Hidden-tab frames and individual stalls over 250 ms are excluded, and any window below the threshold breaks the slow-time streak. Twelve seconds below 17.5 ms retry bloom with another warm-up; resolution stays reduced for the visit. Quality changes are reported in the console. Leaving the model or entering the roof disposes owned render targets and restores tone mapping, exposure, DPR and material settings. Re-entering starts a fresh quality trial. Stock maps never allocate these targets. The opted-in node's `userData.officeEffectsRuntime` reports the active bloom and resolution fallback for headless checks. Budget and compare the complete frame on the target hardware; bloom is optional, not a guarantee of a particular frame rate.
+
 For glass materials, names containing `glass` and either `interior` or `partition` (case-insensitive) use neutral tint at 0.13 opacity so stacked interior panes stay clear. Other material names containing `glass` use a faint blue tint at 0.3 opacity for facade glazing. Keep these materials distinct when merging meshes.
 
 The `model` style places the office's working furniture inside a local architectural GLB. Keep licensed models and their map configurations outside the source repository. Put the model at `<project>/.agent-office/maps/assets/room.glb` and the map JSON directly in `<project>/.agent-office/maps/`. Start the office with that project, then select the map in Settings → Building → Map. The authenticated server serves that file locally; it does not upload it.
@@ -313,3 +327,15 @@ A model that includes its own desks and chairs can provide `model.source`: `chai
 `model.screen: null` omits the legacy presentation plane when a separate fixture supplies the TV. In source-furniture mode, platforms higher than 0.3 m also block navigation, so source tables can be represented without treating them as full-height walls.
 
 Authored chairs use a finer navigation grid and collision-checked side approaches. If no safe approach exists, a newly hired worker appears seated and a departing worker finishes at its chair; neither walks through a wall. Validate inbound and outbound routes for every authored chair, including the last hop, before distributing a local map. Fixture installation preserves the model's navigation factory when rebuilding around additional obstacles.
+
+The optional `officeEffects.lights` profile replaces the model's existing daylight contribution, without adding lights or shadow passes:
+
+```json
+{"hemi":{"sky":"#ffd9a8","ground":"#2a2d33","intensity":0.45},"directional":{"color":"#ffb46b","intensity":0.5}}
+```
+
+Colours must be six-digit hex. Finite intensities are clamped to 0–2; zero disables that contribution. Invalid shapes, non-finite numbers and unknown fields reject the profile. The directional setting reuses the existing sun light as the room's directional light, so no daylight sun remains in addition to it. Omit `lights` to keep the map's existing mood unchanged. Colours and intensities, and the original mood callback, are restored when leaving the model. Environment reflections remain unchanged.
+
+The optional `officeEffects.scene` object accepts `environmentIntensity` (finite, clamped 0–2), `background` (`#RRGGBB`), and `fog: {color, near, far}` (hex colour; 0 <= near < far <= 1000 metres). Put fog beyond the room to keep interiors clear. Omitted fields retain existing behavior; leaving restores the previous scene references and environment intensity. This uses the current environment texture and never loads a remote environment. Sign materials with their own environment remain independent.
+
+The optional scene environmentTint is a hex colour multiplying the existing CubeUV PMREM once into a disposable linear half-float copy. It adds no steady-frame pass, never mutates the source, and restores it on exit. Other environment types remain unchanged. No HDR file or URL is loaded.

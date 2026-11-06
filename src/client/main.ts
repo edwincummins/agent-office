@@ -63,6 +63,7 @@ import { installWaiting } from './features/waiting';
 import { installWalking } from './features/walking';
 import { installWhiteboard } from './features/whiteboard';
 import { installModelMap } from './features/model-map';
+import { installModelEffects } from './features/model-effects';
 import { installWorkerActions } from './features/workers/actions';
 import { installWorkerViews } from './features/workers/views';
 
@@ -184,6 +185,8 @@ parts.hud = installHud(ctx, core, parts);
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);
+// Innermost filter: tone-map into any outer view filter's target.
+installModelEffects(ctx);
 const frame = frameLoop(ctx, loading);
 
 // ---- Boot ------------------------------------------------------------------------------------------
