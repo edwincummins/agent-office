@@ -30,6 +30,7 @@ import type { installDog } from '../features/dog';
 import type { installEmotes } from '../features/emotes';
 import type { installGolf } from '../features/golf';
 import type { installGallery, installHanging } from '../features/hanging';
+import type { installArrange } from '../features/arrange';
 import type { installHud } from '../features/hud';
 import type { installJukebox } from '../features/jukebox';
 import type { installMeeting } from '../features/meeting';
@@ -105,6 +106,7 @@ export interface Parts {
   golf: Made<typeof installGolf>;
   bargames: Made<typeof installBarGames>;
   hanging: Made<typeof installHanging>;
+  arrange: Made<typeof installArrange>;
   climbing: Made<typeof installClimbing>;
   cars: Made<typeof installCars>;
   peers: Made<typeof installPeers>;

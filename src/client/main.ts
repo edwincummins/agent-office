@@ -49,6 +49,7 @@ import { installEmotes } from './features/emotes';
 import { installGolf } from './features/golf';
 import { installGong } from './features/gong';
 import { installGallery, installHanging } from './features/hanging';
+import { installArrange } from './features/arrange';
 import { installHerald } from './features/herald';
 import { installHud } from './features/hud';
 import { installJukebox } from './features/jukebox';
@@ -143,6 +144,7 @@ const reach = () => parts.you.reach();
 parts.golf = installGolf(ctx, { standUp, stopWalking, stopSmoking: () => parts.smoking.stop(), personOf });
 parts.bargames = installBarGames(ctx, { roof: parts.rooftop.roof, standUp, stopWalking, personOf });
 parts.hanging = installHanging(ctx, { gallery: parts.gallery, reach });
+parts.arrange = installArrange(ctx);
 parts.climbing = installClimbing(ctx, { travel: (floorId, how, at) => parts.travel.travel(floorId, how, at), standUp, stopWalking });
 parts.cars = installCars(ctx, { standUp, stopWalking });
 

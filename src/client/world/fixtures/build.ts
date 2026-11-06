@@ -15,6 +15,7 @@ import type {Collider,Interactable,OfficeHandles} from '../types';
 import {setFixtures,type FixtureHandles} from './handles';
 import {mediaPanels} from './media-wall';
 import {transformFixture} from './transform';
+import {isArrangeFixture} from '../../../shared/arrange';
 const registry:Partial<Record<SlotKind,Fixture<any>>>={tv,jukebox,arcade:cabinet,lounge,gong};
 /** Decorate any map builder through the same registry; no architectural mesh enters picking. */
 export function withFixtures(build:(plan:MapPlan)=>World):(plan:MapPlan)=>World{
@@ -33,7 +34,9 @@ export function withFixtures(build:(plan:MapPlan)=>World):(plan:MapPlan)=>World{
    if(key==='lounge')for(const child of children)child.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry=o.geometry.clone();});
    for(const child of children)child.traverse(o=>{const material=(o as THREE.Mesh).material;for(const m of Array.isArray(material)?material:material?[material]:[]){if(sharedToon(m))continue;materials.add(m);const map=(m as THREE.MeshBasicMaterial).map;if(map)textures.add(map);}});
    transformFixture(NATIVE_SLOTS[key]!,slot,children,colliders,interactables);
-   for(const child of children){world.group.add(child);owned.push(child);}
+   // The ones Arrange mode moves are gathered under one pivot at their slot: moving it is moving the slot.
+   if(isArrangeFixture(key)){const pivot=new THREE.Group();pivot.name=`Fixture__${key}`;pivot.position.set(slot.position.x,slot.position.y,slot.position.z);pivot.rotation.y=slot.rotY;pivot.userData.arrange={kind:'fixture',id:key};world.group.add(pivot);for(const child of children)pivot.attach(child);owned.push(pivot);}
+   else for(const child of children){world.group.add(child);owned.push(child);}
    world.colliders.push(...colliders);world.interactables.push(...interactables);
    // Pick one cheap box per fixture. Room geometry never participates.
    for(const it of interactables){

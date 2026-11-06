@@ -12,6 +12,7 @@ import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
 import { seatFloor } from '../../../shared/levels/attach';
 import { mergeOpaqueModelMeshes } from './merge';
+import { modelDecor } from './decor';
 import type { ModelChair } from '../../../shared/maps/model';
 
 export interface ModelSurfaces {
@@ -70,6 +71,8 @@ export function buildModel(plan: MapPlan): World {
   const chairs=new Map(config.source?[...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]]):[]);
   const navigation=(obstacles: Obstacles)=>config.source?new ModelNav(plan.bounds,obstacles,chairs):new NavGrid(plan.bounds,obstacles);
   const nav=navigation(plan.obstacles!);
+  // Plants, signs and lamps the owner can move one by one (Arrange mode): never merged into the room.
+  const decor=modelDecor(group,plan.config!.decor);
   let disposed=false;const download=new AbortController();
   let loaded:THREE.Group|undefined;
   const doors: {node:THREE.Object3D;closed:THREE.Vector3;center:THREE.Vector3;amount:number}[]=[];
@@ -109,7 +112,7 @@ export function buildModel(plan: MapPlan): World {
       for(const d of doors){const near=positions.some(p=>Math.hypot(p.x-d.center.x,p.z-d.center.z)<2.2&&Math.abs(p.y-d.center.y)<2.2);d.amount=THREE.MathUtils.damp(d.amount,near?1:0,9,dt);d.node.position.copy(d.closed);d.node.position.y+=d.amount*2.8;}
     },
     mood(lights){lights.hemi.intensity=.65;lights.hemi.color.set(0xe2efff);lights.hemi.groundColor.set(0x8c887b);lights.ambient.intensity=0;lights.sun.intensity=1.8;lights.sun.color.set(0xffedcf);lights.sun.position.set(-35,30,-12);lights.sun.target.position.set(12,0,-5);lights.sun.target.updateMatrixWorld();if(lights.scene.background instanceof THREE.Color)lights.scene.background.set('#c8d8e5'); if(lights.scene.fog instanceof THREE.Fog){lights.scene.fog.near=150;lights.scene.fog.far=300;}},
-    dispose(){disposed=true;download.abort();if(loaded){group.remove(loaded);releaseModel(loaded);}group.traverse(o=>{if(o instanceof THREE.Mesh){o.userData.ownedTexture?.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});},
+    dispose(){disposed=true;download.abort();decor.dispose();if(loaded){group.remove(loaded);releaseModel(loaded);}group.traverse(o=>{if(o instanceof THREE.Mesh){o.userData.ownedTexture?.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});},
   };
   modelSurfaces.set(world,status);
   return world;

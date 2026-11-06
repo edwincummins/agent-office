@@ -39,6 +39,8 @@ export function installMaps(ctx: Ctx, core: CoreState, parts: MapsParts) {
     const { worlds, views, boards, travel } = parts;
     const next = worlds.worldFor(store.plan());
     if (next.world === worlds.world()) return;
+    // The same map put up again (the owner arranged things, or its file was edited): you stay where you are.
+    const rebuilt = next.world.plan.id === worlds.world().plan.id;
     // Everyone gets up from the old map's seats; they sit down in the new one's below.
     for (const [id, v] of views.workerViews) {
       worlds.court()?.release(id);
@@ -90,7 +92,7 @@ export function installMaps(ctx: Ctx, core: CoreState, parts: MapsParts) {
     boards.renderPullsBoard();
     boards.renderServicesBoard();
     boards.renderQueueBoard();
-    if (store.floor && !core.upTop && !core.trip) {
+    if (store.floor && !core.upTop && !core.trip && !rebuilt) {
       parts.place.placeInCar();
       // Back in the office, in its elevator: the doors open onto it.
       travel.lift()?.setOpen(true);

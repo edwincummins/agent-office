@@ -1,0 +1,55 @@
+/* Arrange mode's bar (features/arrange/ui.ts): along the bottom, over the room, out of the way of the gizmo. */
+#arrange-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 30;
+  max-width: calc(100% - 32px);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #1d1a17ee;
+  border: 1px solid #f2c14e;
+  color: #f4ede2;
+  font: 13px 'Segoe UI', sans-serif;
+  box-shadow: 0 6px 24px #0008;
+}
+#arrange-bar .arrange-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#arrange-bar .arrange-row[hidden] {
+  display: none;
+}
+#arrange-bar .arrange-what {
+  min-width: 190px;
+  margin-right: 6px;
+  font-weight: 600;
+}
+#arrange-bar button {
+  padding: 5px 11px;
+  border-radius: 5px;
+  border: 1px solid #5a5148;
+  background: #2b2621;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+#arrange-bar button:hover:not(:disabled) {
+  border-color: #f2c14e;
+}
+#arrange-bar button.on {
+  background: #f2c14e;
+  color: #1d1a17;
+  border-color: #f2c14e;
+}
+#arrange-bar button.primary:not(:disabled) {
+  background: #3f7d4f;
+  border-color: #5fae73;
+}
+#arrange-bar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
