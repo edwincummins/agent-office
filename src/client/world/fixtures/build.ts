@@ -13,6 +13,7 @@ import {cabinet} from '../../features/cabinet/world';
 import {gong} from '../../features/gong/world';
 import type {Collider,Interactable,OfficeHandles} from '../types';
 import {setFixtures,type FixtureHandles} from './handles';
+import {mediaPanels} from './media-wall';
 import {transformFixture} from './transform';
 const registry:Partial<Record<SlotKind,Fixture<any>>>={tv,jukebox,arcade:cabinet,lounge,gong};
 /** Decorate any map builder through the same registry; no architectural mesh enters picking. */
@@ -47,6 +48,8 @@ export function withFixtures(build:(plan:MapPlan)=>World):(plan:MapPlan)=>World{
    if(given?.gong){world.gong=given.gong;const p=slotPoint(NATIVE_SLOTS.gong!,slot,given.gong.top);given.gong.top.set(p.x,p.y,p.z);}
    if(built.update)updates.push(built.update);
   }
+  if(handles.tv&&plan.slots.mediaWall)owned.push(handles.tv);
+  if(handles.tv)for(const frame of mediaPanels(world,plan.slots,handles.tv)){owned.push(frame);materials.add(frame.material as THREE.Material);}
   setFixtures(world,handles);
   if(world.acoustics&&world.gong)world.acoustics.gong={x:world.gong.top.x,y:world.gong.top.y-1.8,z:world.gong.top.z};
   if(owned.length&&plan.obstacles)world.nav=(world.navigation??(obstacles=>new NavGrid(plan.bounds,obstacles)))({rects:[...plan.obstacles.rects,...world.colliders.filter(c=>!c.fence&&c.top>.3).map(c=>[c.minX,c.maxX,c.minZ,c.maxZ] as [number,number,number,number])],circles:plan.obstacles.circles});
