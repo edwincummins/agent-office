@@ -34,7 +34,7 @@ export function placeCrew(feed:FleetSnapshot|null,slot:CrewSlot,previous:readonl
   const available=positions.filter(p=>!overflowReserved(p.place,slot,seats.length>entries.length));
   const used=new Set<CrewPlace>(),kept=new Map<string,{place:CrewPlace;zone:CrewZone}>();
   for(const e of entries){const old=previous.find(p=>p.seat.session===e.seat.session);if(old&&available.some(p=>p.place===old.place)&&!used.has(old.place)){kept.set(e.seat.session,old);used.add(old.place);}}
-  for(const e of entries){const old=kept.get(e.seat.session);if(old){e.place=old.place;e.zone=old.zone;}else{const free=available.find(p=>!used.has(p.place));if(free){e.place=free.place;e.zone=free.zone;used.add(free.place);}}}
+  for(const e of entries){const old=kept.get(e.seat.session);if(old){e.place=old.place;e.zone=old.zone;}else{const free=available.find(p=>p.place===e.place&&!used.has(p.place))??available.find(p=>!used.has(p.place));if(free){e.place=free.place;e.zone=free.zone;used.add(free.place);}}}
   entries.sort((a,b)=>positions.findIndex(p=>p.place===a.place)-positions.findIndex(p=>p.place===b.place));
   if(slot.zones.length>1){const last=slot.zones.at(-1)!;for(const e of entries.filter(e=>e.zone===last&&urgent(e.seat))){const reverse=[...entries].reverse(),other=reverse.find(v=>v.zone!==last&&v.seat.state==='idle')??reverse.find(v=>v.zone!==last&&!urgent(v.seat));if(other){const seat=other.seat;other.seat=e.seat;e.seat=seat;}}}
  }

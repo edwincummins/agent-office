@@ -85,6 +85,7 @@ test('surviving crew keep places through removal, refill and feed reorder',()=>{
  const refill=feed(21);const filled=placeCrew(refill,STOCK_CREW,result).entries;
  for(const e of result)assert.equal(filled.find(n=>n.seat.session===e.seat.session)!.place,e.place);
  assert.equal(new Set(filled.map(e=>e.place)).size,filled.length);
+ const added=filled.find(e=>e.seat.session==='s20')!,existing=filled.filter(e=>e.seat.rig==='b'&&e!==added);assert.ok(existing.every(e=>STOCK_CREW.zones[0].places.indexOf(e.place)<STOCK_CREW.zones[0].places.indexOf(added.place)));
 });
 test('team changes reform blocks and urgent seats reach the hall without idle seats',()=>{
  const slot=structuredClone(STOCK_CREW);slot.zones.push({...slot.zones[0],id:'lobby',places:slot.zones[0].places.splice(16)});
