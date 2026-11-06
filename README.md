@@ -422,3 +422,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+Custom maps can also describe mezzanine slabs, stair links, glass rails and passenger lifts. Worker routes use stairs between levels; people can walk or ride the lift. See [multi-level maps](docs/maps.md#multiple-levels-and-lifts) and the synthetic fixture in `tests/fixtures/two-level-map.ts`.

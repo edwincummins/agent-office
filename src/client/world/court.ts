@@ -1,3 +1,4 @@
+import { elevated } from '../../shared/levels/navigation';
 import * as THREE from 'three';
 import type { MapPlan } from '../../shared/maps';
 import type { NavGrid, Pt } from '../../shared/nav';
@@ -91,7 +92,7 @@ export class Court {
     this.freeSpots();
     if (c.state === 'seated') return undefined;
     const p = c.model.root.position;
-    return [p.x, p.z];
+    return elevated(p.x, p.z, Math.max(0, p.y + FEET));
   }
 
   /** Whether `id` is up out of its seat. */
@@ -182,7 +183,7 @@ export class Court {
       return;
     }
     const p = c.model.root.position;
-    const here: Pt = [p.x, p.z];
+    const here: Pt = elevated(p.x, p.z, Math.max(0, p.y + 0.07));
     // Mid-hop onto its seat and wanted back in line: it finishes the hop, and gets straight down again.
     if (c.state === 'up' && target) {
       c.state = 'seated';
@@ -192,6 +193,7 @@ export class Court {
     // Still getting down: from where it lands, it heads the new way.
     if (c.state === 'down') {
       const land = c.way[0];
+      if (!land) { this.seat(c); return; }
       c.way = [land, ...(target ? this.nav.route(land, target) : this.nav.wayTo(land, c.desk.def)).slice(1)];
       return;
     }

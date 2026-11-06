@@ -1,3 +1,5 @@
+import { onLevel } from '../levels/elevate';
+import { seatFloor } from '../../../shared/levels/attach';
 import * as THREE from 'three';
 import type { FloorPalette } from '../../../shared/floors';
 import type { MapPlan } from '../../../shared/maps';
@@ -71,14 +73,14 @@ export function buildCastle(plan: MapPlan): World {
   );
   buildTables(kit, plan);
   const overflow = new Map<string, Interactable>();
-  for (const def of plan.desks) kit.desks.set(def.id, placeSetting(kit, def, false).view);
+  for (const def of plan.desks) kit.desks.set(def.id, onLevel(kit, seatFloor(plan, def.id), () => placeSetting(kit, def, false)).view);
   for (const def of plan.overflow) {
-    const { view, it } = placeSetting(kit, def, true);
+    const { view, it } = onLevel(kit, seatFloor(plan, def.id), () => placeSetting(kit, def, true));
     kit.desks.set(def.id, view);
     overflow.set(def.id, it);
   }
-  for (const def of plan.stations) kit.desks.set(def.id, lectern(kit, def));
-  const council = buildCouncil(kit, plan);
+  for (const def of plan.stations) kit.desks.set(def.id, onLevel(kit, seatFloor(plan, def.id), () => lectern(kit, def)));
+  const council = onLevel(kit, seatFloor(plan, plan.meeting[0]?.id ?? ""), () => buildCouncil(kit, plan));
   const boardMeshes = buildBoards(kit, plan);
   const herald = buildHerald(kit, plan);
   // The dungeon under the floor, the torches down there, and whoever keeps watch over it.

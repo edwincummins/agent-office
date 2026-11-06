@@ -1,3 +1,4 @@
+import {attachLevels} from '../levels/attach.js';
 import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
@@ -383,7 +384,7 @@ export function planMap(input: unknown): MapPlan {
   const ageMinutes = c.agents?.ageMinutes === undefined ? 0 : num(c.agents.ageMinutes, 'agents.ageMinutes', 0, 100000);
   const byId = new Map([...desks, ...overflow, ...stations, ...meeting].map((d) => [d.id, d]));
   for (const d of byId.values()) inside(d.x, d.z, d.label);
-  return {
+  return attachLevels({
     id,
     name,
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
@@ -414,7 +415,7 @@ export function planMap(input: unknown): MapPlan {
     ...(airlock ? { airlock } : {}),
     ...(openings ? { openings } : {}),
     ...(sendHome ? { sendHome } : {}),
-  };
+  });
 }
 
 // ---- Which maps there are -------------------------------------------------------------------------

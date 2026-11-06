@@ -1,3 +1,4 @@
+import {routeHeight} from '../../../shared/levels/follow';
 import * as THREE from 'three';
 import { BALCONY, PARACHUTE } from '../../../shared/layout';
 import { walkOff, type Pt } from '../../../shared/nav';
@@ -282,7 +283,7 @@ export class Departures {
       }
     }
     // Down the steps a stair at a time.
-    const g = this.ground(pos.x, pos.z, pos.y + FEET) - FEET;
+    const g = this.ground(pos.x, pos.z, routeHeight(l.way,l.next,pos.y + FEET)) - FEET;
     pos.y += (g - pos.y) * Math.min(1, dt * 14);
     root.rotation.y += wrap(l.heading - root.rotation.y) * Math.min(1, dt * 8);
     if (l.next < l.way.length) {
@@ -540,7 +541,7 @@ export class Arrivals {
         move = 0;
       }
     }
-    const g = this.ground(pos.x, pos.z, pos.y + FEET) - FEET;
+    const g = this.ground(pos.x, pos.z, routeHeight(w.way,w.next,pos.y + FEET)) - FEET;
     pos.y += (g - pos.y) * Math.min(1, dt * 14);
     root.rotation.y += wrap(w.heading - root.rotation.y) * Math.min(1, dt * 8);
     w.model.walking = w.next < w.way.length;

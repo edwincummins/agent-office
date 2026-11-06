@@ -1,3 +1,4 @@
+import {installLevels} from './features/levels';
 import './style.css';
 import { Net } from './net';
 import { DesktopNotifier } from './notify';
@@ -170,6 +171,7 @@ parts.cards = installCarrying(ctx, {
   showMeeting: parts.meeting.showMeeting,
 });
 parts.seating = installSeating(ctx, { shares: () => parts.talk.currentShares(), watchShare: () => parts.talk.watchShare(), arcade: parts.arcade, showBar: parts.bar.showBar, usable: () => parts.pointer.usable() });
+installLevels(ctx);
 installGong(ctx, { burstOver: parts.views.burstOver, workerViews: parts.views.workerViews, court: () => parts.worlds.court(), idleAgents: () => parts.worlds.idleAgents() });
 
 parts.hintbar = installHintBar(ctx, core, parts);

@@ -1,3 +1,4 @@
+import { elevated } from '../../../shared/levels/navigation';
 import * as THREE from 'three';
 import { levelRoute, type SendHomePlace, type SendHomeStep } from '../../../shared/maps';
 import type { Pt } from '../../../shared/nav';
@@ -564,7 +565,7 @@ export class Sendoffs {
   // ---- Bits -----------------------------------------------------------------------------------
 
   private at(o: THREE.Object3D): Pt {
-    return [o.position.x, o.position.z];
+    return elevated(o.position.x, o.position.z, Math.max(0, o.position.y + 0.07));
   }
 
   /** Whether feet at `y` are down in the dungeon. */

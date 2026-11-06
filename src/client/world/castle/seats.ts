@@ -1,3 +1,4 @@
+import { elevation, tableFloor } from '../levels/elevate';
 import * as THREE from 'three';
 import { KIOSK, STATION_AGENT, deskSeat, type DeskDef, type StationKind } from '../../../shared/layout';
 import { BENCH_OUT, COUNCIL, type MapPlan } from '../../../shared/maps';
@@ -17,6 +18,7 @@ import { box } from './shapes';
 export function buildTables(kit: Kit, plan: MapPlan) {
   const { mats } = kit;
   for (const t of plan.tables) {
+    const elevated = elevation(kit, tableFloor(plan, t.name));
     const g = new THREE.Group();
     g.position.set(t.x, 0, t.z);
     g.rotation.y = t.rotY;
@@ -46,6 +48,7 @@ export function buildTables(kit: Kit, plan: MapPlan) {
     }
     kit.group.add(g);
     collide(kit, t.x, t.z, t.width, t.length, t.rotY, TABLE_TOP);
+    elevated();
   }
 }
 
