@@ -33,6 +33,12 @@ test('loaded 60 Hz frames keep quality; three consecutive 24 ms windows shed blo
   normal.frame(NaN); normal.frame(100, false);
   assert.equal(normal.bloom, true); assert.equal(normal.reduced, false);
 });
+test('a loaded near-60 Hz display averaging 18 ms never sheds quality', () => {
+  const b = new EffectsBudget();
+  for (let i = 0; i < 2400; i++) b.frame(.018);
+  assert.equal(b.bloom, true);
+  assert.equal(b.reduced, false);
+});
 test('cold hitches are ignored and bloom retries after sustained healthy recovery', () => {
   const b = new EffectsBudget();
   b.frame(.538); b.frame(.456);
