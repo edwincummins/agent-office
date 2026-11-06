@@ -24,3 +24,4 @@
 .cadre-panel .cadre-body{display:flex;flex-direction:column}.cadre-body>div{flex:1;min-height:0;display:flex;flex-direction:column}
 .cadre-grid{flex:1;min-height:0;grid-auto-rows:minmax(260px,1fr)}.cadre-grid .cadre-team{margin:0;display:flex;flex-direction:column;min-height:0}
 .cadre-grid .cadre-tail{flex:1;min-height:0;max-height:none}
+.cadre-grid .cadre-tail{white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:auto}
