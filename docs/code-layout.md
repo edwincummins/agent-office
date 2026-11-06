@@ -42,6 +42,10 @@ They're in `core/registry.ts`, and each is a field of `ctx`. Every registration 
 - **`sound/`** is the office's sound. `OfficeSound` (`sound/index.ts`, the `ctx.sound` every part uses) is a facade over `AudioCore` (`sound/core.ts`: the audio context, its buses, where your ears are) and the recipes, each in a file of its own, here (`weather.ts`, `steps.ts`) or in its feature's folder (`features/gong/sound.ts`).
 - **`shared/`** (`src/client/shared/`) is what the 3D office and the 2D view at `/lite` both use: the tab title and hiring. The 2D view loads no three.js and nothing from `core/`, `features/`, `input/`, `world/` or `player/`; `tests/client-structure.test.ts` follows `lite.ts`'s imports to check.
 
+### Static fixture geometry
+
+`world/static-parts.ts` batches rigid sibling meshes at construction time. Call it only on known static parts; group pivots, meshes with children, interactable meshes and transparent effects stay separate. Cached `toon()` colours can become vertex colours when every other material setting agrees. Use `toonUnique()` for animated colours; those materials retain their identity. Shared palette materials are cached across world rebuilds, like the original toon palette. Worker headsets use a retained group so outfit visibility still applies to the whole headset.
+
 ### Stylesheets
 
 `style.css` is the 3D office's sheet. It pulls in `styles/base.css` (the colors, the reset, panels, buttons and the window frame, which the 2D view's `lite.css` loads too), `styles/hud.css` and `styles/loading.css`. Every other sheet sits next to its module and comes in with it. A module's sheet loads in no fixed order against `base.css`, so a module rule that overrides a base rule of the same specificity has to be more specific, or live at the end of `base.css` with the others there.
