@@ -453,3 +453,4 @@ Two-level maps bound shared avatar coordinates to the hall and use a shorter thi
 Opt-in model effects can also bound environment intensity, background and fog without changing other maps; see [model effects](docs/maps.md).
 
 Model effects also support an optional environment tint without loading new HDR assets.
+Owner-authorized Cadre seats can appear as batched people in map-authored crew places. See [Crew places](docs/cadre-crew.md) for privacy, map data and limits.
