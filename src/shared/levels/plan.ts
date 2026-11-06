@@ -109,9 +109,11 @@ export function checkLevels(raw: unknown, bounds: Bounds, roof: number, seatIds:
     if (stops.length < 2 || new Set(stops.map((s) => s.level)).size !== stops.length) throw new MapError(`${what} needs at least two distinct stops`);
     if (floor(stops[0].level).y !== 0 || stops.some((s, i) => i > 0 && floor(s.level).y <= floor(stops[i - 1].level).y))
       throw new MapError(`${what} stops must start at ground and ascend`);
+    const facing=stops[0].z<z?-1:1;
     for (const s of stops) {
-      if (Math.abs(s.x - x) > 0.01 || s.z < z + depth / 2 + 0.35 || s.z > z + depth / 2 + 1.5)
-        throw new MapError(`${what} stops must face the car's +z doors, 0.35 to 1.5 m in front`);
+      const distance=(s.z-z)*facing-depth/2;
+      if (Math.abs(s.x - x) > 0.01 || distance < 0.35 || distance > 1.5)
+        throw new MapError(`${what} stops must face the same car doors (+z or -z), 0.35 to 1.5 m in front`);
     }
     const top = Math.max(...stops.map((s) => floor(s.level).y));
     if (top + 2.7 > roof) throw new MapError(`${what} needs 2.7 m car clearance above its highest stop`);

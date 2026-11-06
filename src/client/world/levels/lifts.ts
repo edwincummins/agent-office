@@ -28,6 +28,7 @@ export function buildLifts(w: World) {
     return mesh;
   };
   for (const spec of levels.lifts) {
+    const facing=spec.stops[0].z<spec.z?-1:1;
     const heights = spec.stops.map((s) => levels.floors.find((f) => f.id === s.level)!.y),
       max = Math.max(...heights),
       min = Math.min(...heights);
@@ -42,7 +43,7 @@ export function buildLifts(w: World) {
     box(car, 0, 2.5, 0, spec.width, 0.12, spec.depth, metal);
     const carControl: Interactable = { kind: 'levellift', x: spec.x, z: spec.z, y: heights[0], radius: Math.min(spec.width, spec.depth) / 2, seatId: spec.id };
     w.interactables.push(carControl);
-    box(car, spec.width / 2 - 0.12, 1.2, spec.depth / 2 - 0.25, 0.12, 0.3, 0.2, button).userData.interact = carControl;
+    box(car, spec.width / 2 - 0.12, 1.2, (spec.depth / 2 - 0.25)*facing, 0.12, 0.3, 0.2, button).userData.interact = carControl;
     const floor: Collider = {
       minX: spec.x - spec.width / 2,
       maxX: spec.x + spec.width / 2,
@@ -67,12 +68,13 @@ export function buildLifts(w: World) {
         levelSurface: true,
       });
     }
-    box(group, spec.x, (max + 2.7 + min) / 2, floor.minZ - 0.07, spec.width, 0.0 + max + 2.7 - min, 0.14, glass);
+    const back=spec.z-facing*(spec.depth/2+.07);
+    box(group, spec.x, (max + 2.7 + min) / 2, back, spec.width, 0.0 + max + 2.7 - min, 0.14, glass);
     w.colliders.push({
       minX: floor.minX,
       maxX: floor.maxX,
-      minZ: floor.minZ - 0.14,
-      maxZ: floor.minZ,
+      minZ: back-.07,
+      maxZ: back+.07,
       bottom: min,
       top: max + 2.7,
       fence: true,
@@ -81,11 +83,11 @@ export function buildLifts(w: World) {
     const gates: LiftView['gates'] = [];
     for (const [i, y] of heights.entries()) {
       const stop = spec.stops[i],
-        front = floor.maxZ;
-      const bridge = stop.z - front;
+        front = spec.z+facing*spec.depth/2;
+      const bridge = Math.abs(stop.z - front);
       if (bridge > 0.05) {
-        box(group, spec.x, y - 0.1, front + bridge / 2, spec.width, 0.2, bridge, metal);
-        w.colliders.push({ minX: floor.minX, maxX: floor.maxX, minZ: front, maxZ: stop.z, bottom: y - 0.2, top: y });
+        box(group, spec.x, y - 0.1, front + facing*bridge / 2, spec.width, 0.2, bridge, metal);
+        w.colliders.push({ minX: floor.minX, maxX: floor.maxX, minZ: Math.min(front,stop.z), maxZ: Math.max(front,stop.z), bottom: y - 0.2, top: y });
       }
       const panels = [-1, 1].map((side) => box(group, spec.x + (side * spec.width) / 4, y + 1.2, front, spec.width / 2, 2.4, 0.08, metal));
       const solid: Collider = {

@@ -10,6 +10,7 @@ import { TWO_LEVEL_MODEL } from './fixtures/two-level-model.js';
 import { crossesRect } from '../src/shared/levels/segment.js';
 import { withLevels } from '../src/client/world/levels/index.js';
 import type { World } from '../src/client/world/world.js';
+import {liftViews} from '../src/client/world/levels/lifts.js';
 
 test('model furniture, laptops, proxies and colliders share their assigned elevation', () => {
   const p = planMap(structuredClone(TWO_LEVEL_MODEL)),
@@ -60,6 +61,16 @@ test('fixture navigation rebuild uses its physical height instead of flattening 
   const nav = w.navigation!(p.obstacles!);
   assert.ok(nav.route(Object.assign([0, 8], { height: 0 }), Object.assign([0, 12], { height: 0 })).length);
   assert.equal(nav.clearLine(Object.assign([0, 8], { height: 3 }), Object.assign([0, 12], { height: 3 })), false);
+});
+
+test('north-facing lift mirrors doors, bridge and back wall while retaining clear car access',()=>{
+ const c=structuredClone(TWO_LEVEL_MODEL);
+ const mirror=(v:any):void=>{if(!v||typeof v!=='object')return;if(typeof v.z==='number')v.z=-v.z;if(typeof v.minZ==='number')[v.minZ,v.maxZ]=[-v.maxZ,-v.minZ];if(typeof v.rotY==='number')v.rotY=Math.PI-v.rotY;for(const x of Object.values(v))mirror(x);};mirror(c);
+ const p=planMap(c),base={plan:p,group:new THREE.Group(),colliders:[],pickables:[],interactables:[],desks:new Map()} as unknown as World;
+ const w=withLevels(()=>base)(p),view=[...liftViews.get(w)!.values()][0];
+ assert.equal(view.spec.z,1.5);assert.equal(view.gates[0].panels[0].position.z,.5);
+ assert.ok(w.colliders.some(c=>Math.abs(c.minZ-2.5)<1e-8&&c.maxZ>2.6));
+ assert.ok(w.colliders.some(c=>c.minZ===-.5&&c.maxZ===.5&&c.top===3));
 });
 
 test('a thin partition blocks an authored-chair sit hop continuously', () => {
