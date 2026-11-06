@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HAIR_STYLES } from '../../../shared/avatar';
 import { mesh } from '../toon';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /** Hair is a set of shapes on the head (whose center is 0,0,0; the face looks down +z), in `style` (of HAIR_STYLES). */
 export function styleHair(hair: THREE.Group, m: THREE.MeshToonMaterial, style: number) {
@@ -66,6 +67,21 @@ export function styleHair(hair: THREE.Group, m: THREE.MeshToonMaterial, style: n
     }
     case 'Bald':
       break;
+  }
+  // Hair moves with the head as one rigid piece, including after a look change.
+  if (hair.children.length > 1) {
+    const parts = hair.children as THREE.Mesh[];
+    const copies = parts.map(part => {
+      part.updateMatrix();
+      return part.geometry.clone().applyMatrix4(part.matrix);
+    });
+    const combined = mergeGeometries(copies, false);
+    copies.forEach(g => g.dispose());
+    if (combined) {
+      parts.forEach(part => part.geometry.dispose());
+      hair.clear();
+      hair.add(mesh(combined, m));
+    }
   }
   hair.traverse((o) => ((o as THREE.Mesh).castShadow = true));
 }

@@ -420,3 +420,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+Avatar hairstyles keep their existing appearance while batching rigid hair parts into one mesh, reducing rendering cost in third person and crowded rooms. See [features](docs/features.md).
