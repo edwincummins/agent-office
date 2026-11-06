@@ -31,7 +31,7 @@ export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => 
     const merged = mergeByMaterial(group);
     w.group.add(merged);
     w.pickables.push(merged);
-    w.nav = new LevelNav(plan.bounds, levels, [
+    const solids = [
       ...staticSolids,
       ...levels.solids,
       ...levels.lifts.map((l) => ({
@@ -42,12 +42,28 @@ export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => 
         bottom: 0,
         top: plan.height,
       })),
-    ]);
+    ];
+    // Fixture builders may rebuild navigation; retain the vertical layer in that factory.
+    const original = plan.obstacles!;
+    const chairs = plan.config?.model?.source;
+    const anchors = new Map(
+      chairs ? [...plan.desks, ...plan.overflow, ...plan.meeting].map((d, i) => [d.id, i < 32 ? chairs.chairs[i] : chairs.council[i - 32]]) : [],
+    );
+    const baseColliders = new Set(w.colliders);
+    w.navigation = () =>
+      new LevelNav(
+        plan.bounds,
+        levels,
+        [...solids, ...w.colliders.filter((c) => !baseColliders.has(c)).map((c) => ({ ...c, bottom: c.bottom ?? 0 }))],
+        anchors,
+      );
+    w.nav = w.navigation(original);
     w.ways = {
       in: (seat) => w.nav.wayTo([plan.door.x, plan.door.z], seat),
       home: (seat, from) => ({ way: from ? w.nav.route(from, [plan.door.x, plan.door.z]) : w.nav.wayFrom(seat, [plan.door.x, plan.door.z]), chute: false }),
     };
     buildLifts(w);
+    for (const c of w.colliders) baseColliders.add(c);
     w.group.updateMatrixWorld(true);
     return w;
   };

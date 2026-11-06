@@ -38,6 +38,7 @@ export interface LevelsConfig {
   spawn?: string;
 }
 export interface LevelSolid extends Bounds {
+  seatId?: string;
   bottom: number;
   top: number;
   fence?: boolean;

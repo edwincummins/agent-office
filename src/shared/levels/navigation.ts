@@ -2,6 +2,7 @@ import { NavGrid, deskPoint, pathLength, type Bounds, type Obstacles, type Pt } 
 import type { DeskDef } from '../layout.js';
 import type { Level, LevelsPlan, LevelSolid, Stair } from './types.js';
 import { slabPortal } from './portals.js';
+import { crossesRect } from './segment.js';
 
 export type LevelPoint = Pt & { height?: number };
 export function elevated(x: number, z: number, height: number): LevelPoint {
@@ -15,12 +16,15 @@ export class LevelNav extends NavGrid {
   private grids = new Map<string, NavGrid>();
   private blocks = new Map<string, Obstacles>();
   private flightBlocks: readonly LevelSolid[];
+  private solids: readonly LevelSolid[];
   constructor(
     bounds: Bounds,
     readonly levels: LevelsPlan,
     solids: readonly LevelSolid[],
+    private readonly chairs: ReadonlyMap<string, { x: number; z: number; rotY: number }> = new Map(),
   ) {
     super(bounds, { rects: [], circles: [] });
+    this.solids = solids;
     this.flightBlocks = solids.filter(
       (s) => !levels.solids.includes(s) || s.fence || levels.floors.some((f) => f.y === s.top && f.y - f.thickness === s.bottom),
     );
@@ -33,7 +37,7 @@ export class LevelNav extends NavGrid {
       this.blocks.set(f.id, blocks);
       // Cell-centre clearance alone can cut a physical corner when paths are simplified.
       const gridBlocks: Obstacles = { rects: blocks.rects.map(([a, b, c, d]) => [a - 0.2, b + 0.2, c - 0.2, d + 0.2]), circles: [] };
-      this.grids.set(f.id, new NavGrid(f, gridBlocks, (x, z) => inside(f, x, z)));
+      this.grids.set(f.id, new NavGrid(f, gridBlocks, (x, z) => inside(f, x, z), chairs.size ? 0.2 : undefined));
     }
   }
   private floor(p: LevelPoint): Level | undefined {
@@ -141,6 +145,26 @@ export class LevelNav extends NavGrid {
   }
   override wayTo(from: Pt, seat: DeskDef): Pt[] {
     const y = this.levels.floors.find((f) => f.id === this.levels.seats[seat.id])?.y ?? 0;
+    const chair = this.chairs.get(seat.id);
+    if (chair) {
+      const paths: Pt[][] = [];
+      for (const side of [-1, 1])
+        for (const offset of [0.65, 0.75, 0.85])
+          for (const back of [0, 0.3, -0.2]) {
+            const target = elevated(
+              chair.x + Math.cos(chair.rotY) * side * offset - Math.sin(chair.rotY) * back,
+              chair.z - Math.sin(chair.rotY) * side * offset - Math.cos(chair.rotY) * back,
+              y,
+            );
+            // The final sit hop must not cross a thin authored partition.
+            const floor = this.floor(target);
+            if (!floor) continue;
+            if (this.solids.some((s) => s.seatId !== seat.id && s.top > y + 0.3 && s.bottom < y + 1.7 && crossesRect(target, [chair.x, chair.z], s))) continue;
+            const path = this.route(from, target);
+            if (path.length) paths.push(path);
+          }
+      return paths.sort((a, b) => length(a) - length(b))[0] ?? [];
+    }
     const routes = [-1, 1]
       .map((side) => {
         const p = deskPoint(seat, side * 0.85, seat.station ? -1 : 1.6);
@@ -150,6 +174,7 @@ export class LevelNav extends NavGrid {
     return routes.sort((a, b) => length(a) - length(b))[0] ?? [];
   }
   override wayFrom(seat: DeskDef, to: Pt): Pt[] {
+    if (this.chairs.has(seat.id)) return this.wayTo(to, seat).reverse();
     const y = this.levels.floors.find((f) => f.id === this.levels.seats[seat.id])?.y ?? 0;
     const routes = [-1, 1]
       .map((side) => {

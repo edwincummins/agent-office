@@ -7,7 +7,7 @@ export interface ModelMapData {
   source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace};
   asset: string;
   seats: Required<Place>[];
-  walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number }[];
+  walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number; bottom?: number }[];
   platforms?: ModelMapData['walls'];
   labels?: (Required<Place> & {text:string})[];
   lounges?: (Required<Place> & {rugLength:number})[];
@@ -15,7 +15,7 @@ export interface ModelMapData {
   whiteboard: BoardPlace;
 }
 
-export function checkModel(value: unknown, bounds: Bounds, height: number): ModelMapData {
+export function checkModel(value: unknown, bounds: Bounds, height: number, seatHeights: readonly number[] = []): ModelMapData {
   if (!isObj(value)) throw new MapError('model needs an asset, 32 seats, walls, screen and whiteboard');
   if (typeof value.asset !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}\.glb$/.test(value.asset)) throw new MapError('model.asset must be a local filename like room.glb');
   const point = (v: unknown, label: string): Required<Place> => {
@@ -32,7 +32,8 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
     const maxX = num(w.maxX, 'wall.maxX', minX + .001, bounds.maxX);
     const minZ = num(w.minZ, 'wall.minZ', bounds.minZ, bounds.maxZ);
     const maxZ = num(w.maxZ, 'wall.maxZ', minZ + .001, bounds.maxZ);
-    return { minX, maxX, minZ, maxZ, top: num(w.top, 'wall.top', .1, height) };
+    const top=num(w.top, 'wall.top', .1, height);
+    return { minX, maxX, minZ, maxZ, top, ...(w.bottom===undefined?{}:{bottom:num(w.bottom,'wall.bottom',0,top-.01)}) };
   });
   const walls=rectangles(value.walls,'model.walls');
   if(value.platforms!==undefined && (!Array.isArray(value.platforms)||value.platforms.length>300))throw new MapError('model.platforms must be a list of at most 300 rectangles');
@@ -41,11 +42,11 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
     const x=s.x+Math.sin(s.rotY)*.85,z=s.z+Math.cos(s.rotY)*.85;
     if(platforms.some(w=>Math.hypot(x-Math.max(w.minX,Math.min(x,w.maxX)),z-Math.max(w.minZ,Math.min(z,w.maxZ)))<.578))throw new MapError('a soft seat overlaps a raised platform');
   }
-  for (const s of seats) if (walls.some(w => s.x > w.minX && s.x < w.maxX && s.z > w.minZ && s.z < w.maxZ)) throw new MapError('a model seat is inside a wall');
+  for (const [i,s] of seats.entries()) if (walls.some(w => w.top>(seatHeights[i]??0) && (w.bottom??0)<(seatHeights[i]??0)+1.7 && s.x > w.minX && s.x < w.maxX && s.z > w.minZ && s.z < w.maxZ)) throw new MapError('a model seat is inside a wall');
   for(const [i,s] of seats.entries())for(const distance of [.85,1.1]){
     const x=s.x+Math.sin(s.rotY)*distance,z=s.z+Math.cos(s.rotY)*distance,r=.22;
     if(x-r<bounds.minX||x+r>bounds.maxX||z-r<bounds.minZ||z+r>bounds.maxZ)throw new MapError(`model.seats[${i}] chair or approach is outside the hall`);
-    if(walls.some(w=>x+r>w.minX&&x-r<w.maxX&&z+r>w.minZ&&z-r<w.maxZ))throw new MapError(`model.seats[${i}] chair or approach overlaps a wall`);
+    if(walls.some(w=>w.top>(seatHeights[i]??0) && (w.bottom??0)<(seatHeights[i]??0)+1.7 && x+r>w.minX&&x-r<w.maxX&&z+r>w.minZ&&z-r<w.maxZ))throw new MapError(`model.seats[${i}] chair or approach overlaps a wall`);
   }
   const surface = (v: unknown, label: string): BoardPlace => {
     const p = point(v, label);
@@ -74,7 +75,7 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
       if(!Array.isArray(raw)||raw.length!==count)throw new MapError(`${label} needs exactly ${count} anchors`);
       const result=raw.map((v,i)=>({...point(v,`${label}[${i}]`),y:num((v as Record<string,unknown>).y,`${label}[${i}].y`,0,height)}));
       if(new Set(result.map(p=>`${p.x},${p.z}`)).size!==count)throw new MapError(`${label} anchors must be distinct`);
-      for(const p of result)if(walls.some(w=>p.x>w.minX&&p.x<w.maxX&&p.z>w.minZ&&p.z<w.maxZ))throw new MapError(`${label} anchor is inside a wall`);
+      for(const p of result)if(walls.some(w=>w.top>p.y && (w.bottom??0)<p.y+1.2 && p.x>w.minX&&p.x<w.maxX&&p.z>w.minZ&&p.z<w.maxZ))throw new MapError(`${label} anchor is inside a wall`);
       return result;
     };
     source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard')};

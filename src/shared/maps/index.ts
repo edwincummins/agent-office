@@ -1,3 +1,4 @@
+import {checkLevels} from '../levels/plan.js';
 import {attachLevels} from '../levels/attach.js';
 import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
@@ -159,7 +160,8 @@ export function planMap(input: unknown): MapPlan {
   const opt = (v: unknown, what: string, min: number, max: number) => (v === undefined ? undefined : num(v, what, min, max));
   const rects: Rect[] = [];
   const circles: Circle[] = [];
-  const model = style === 'model' ? checkModel(c.model, bounds, height) : undefined;
+  const checkedLevels=style==='model'?checkLevels(c.levels,bounds,height,[...MAP_DESKS,...BEANBAGS,...STATIONS,...MEETING_SEATS].map(d=>d.id)):undefined;
+  const model = style === 'model' ? checkModel(c.model, bounds, height,[...MAP_DESKS,...BEANBAGS].map(d=>checkedLevels?.floors.find(f=>f.id===checkedLevels.seats[d.id])?.y??0)) : undefined;
   if (model) {
     if(c.tables?.length || c.throne || c.herald || c.dungeon || c.lineup || c.sendHome || c.airlock) throw new MapError('model maps use explicit seats and walls; remove tables, throne, herald, dungeon, lineup, sendHome and airlock');
     if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
