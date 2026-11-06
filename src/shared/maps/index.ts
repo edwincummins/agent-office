@@ -1,3 +1,5 @@
+import {checkLevels} from '../levels/plan.js';
+import {attachLevels} from '../levels/attach.js';
 import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
@@ -158,11 +160,12 @@ export function planMap(input: unknown): MapPlan {
   const opt = (v: unknown, what: string, min: number, max: number) => (v === undefined ? undefined : num(v, what, min, max));
   const rects: Rect[] = [];
   const circles: Circle[] = [];
-  const model = style === 'model' ? checkModel(c.model, bounds, height) : undefined;
+  const checkedLevels=style==='model'?checkLevels(c.levels,bounds,height,[...MAP_DESKS,...BEANBAGS,...STATIONS,...MEETING_SEATS].map(d=>d.id)):undefined;
+  const model = style === 'model' ? checkModel(c.model, bounds, height,[...MAP_DESKS,...BEANBAGS].map(d=>checkedLevels?.floors.find(f=>f.id===checkedLevels.seats[d.id])?.y??0)) : undefined;
   if (model) {
     if(c.tables?.length || c.throne || c.herald || c.dungeon || c.lineup || c.sendHome || c.airlock) throw new MapError('model maps use explicit seats and walls; remove tables, throne, herald, dungeon, lineup, sendHome and airlock');
-    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
-    rects.push(...model.walls.map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
+    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3 && (w.bottom??0)<1.7).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
+    rects.push(...model.walls.filter(w=>(w.bottom??0)<1.7).map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
     if(!model.source)rects.push(...model.seats.slice(0,20).map(s=>boxFootprint(s.x,s.z,1.6,.8,s.rotY)));
     rects.push(...(model.lounges??[]).map(s=>boxFootprint(s.x,s.z,.6,1.2,0)));
   }
@@ -383,7 +386,7 @@ export function planMap(input: unknown): MapPlan {
   const ageMinutes = c.agents?.ageMinutes === undefined ? 0 : num(c.agents.ageMinutes, 'agents.ageMinutes', 0, 100000);
   const byId = new Map([...desks, ...overflow, ...stations, ...meeting].map((d) => [d.id, d]));
   for (const d of byId.values()) inside(d.x, d.z, d.label);
-  return {
+  return attachLevels({
     id,
     name,
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
@@ -414,7 +417,7 @@ export function planMap(input: unknown): MapPlan {
     ...(airlock ? { airlock } : {}),
     ...(openings ? { openings } : {}),
     ...(sendHome ? { sendHome } : {}),
-  };
+  });
 }
 
 // ---- Which maps there are -------------------------------------------------------------------------

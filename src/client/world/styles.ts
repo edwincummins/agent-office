@@ -3,6 +3,7 @@ import { buildCastle } from './castle';
 import { buildStation } from './station';
 import { buildModel } from './model';
 import type { World } from './world';
+import {withLevels} from './levels';
 
 /*
  * How each style of map is put up (see shared/maps): the castle's stone hall, the station's deck in
@@ -14,3 +15,5 @@ export const BUILDERS: Record<MapStyle, (plan: MapPlan) => World> = {
   station: buildStation,
   model: buildModel,
 };
+
+for (const style of Object.keys(BUILDERS) as MapStyle[]) BUILDERS[style] = withLevels(BUILDERS[style]);

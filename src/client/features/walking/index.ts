@@ -1,3 +1,4 @@
+import { walkingRoute } from '../../../shared/levels/walking';
 /**
  * Walking over to someone (clicked in the sidebar, or in the palette), riding the elevator first if
  * they're on another floor; and walking over to something to use it (Shift+Enter in the palette).
@@ -78,7 +79,7 @@ export function installWalking(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'wo
     if (now < walkingTo.replanAt) return;
     walkingTo.replanAt = now + 800;
     // Round the office's rooms and up its stairs; on a map of its own, round what's in the way on its floor.
-    player.walkPath(inOffice() ? wayTo(player.pos, at, officeWing()) : ctx.world().nav.route([player.pos.x, player.pos.z], [at.x, at.z]).slice(1).map(([x, z]) => ({ x, z })));
+    player.walkPath(inOffice() ? wayTo(player.pos, at, officeWing()) : walkingRoute(ctx.world().nav, player.pos, at));
   }
 
   ctx.ticks.add('steer', ({ now }) => walkTick(now));
@@ -91,7 +92,7 @@ export function installWalking(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'wo
     if (!p) return stopWalking();
     const at = whereIs(p);
     // As near as the way goes (they're behind a desk, or on the couch): that'll do.
-    if (Math.hypot(at.x - player.pos.x, at.z - player.pos.z) < 3) return arrivedAt(at);
+    if (Math.hypot(at.x - player.pos.x, at.z - player.pos.z) < 3 && Math.abs(at.y - player.pos.y) < 1) return arrivedAt(at);
     if (why === 'stuck') {
       toast(`🚧 Couldn't find a way over to ${p.name}`, 'warn');
       stopWalking();
@@ -117,7 +118,7 @@ export function installWalking(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'wo
     toast(`🚶 Walking over to ${what}`);
     const to = { x: at.x, y: at.y ?? 0, z: at.z };
     // As walkTick does: round the office's rooms (and its back office), or round what's in the way on a map of its own.
-    player.walkPath(inOffice() ? wayTo(player.pos, to, officeWing()) : ctx.world().nav.route([player.pos.x, player.pos.z], [to.x, to.z]).slice(1).map(([x, z]) => ({ x, z })));
+    player.walkPath(inOffice() ? wayTo(player.pos, to, officeWing()) : walkingRoute(ctx.world().nav, player.pos, to));
   }
 
   function errandEnd(why: 'arrived' | 'cancelled' | 'stuck') {

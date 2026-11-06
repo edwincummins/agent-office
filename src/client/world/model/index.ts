@@ -10,6 +10,7 @@ import { ModelNav } from './navigation';
 import {retryModelLoad} from './retry';
 import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
+import { seatFloor } from '../../../shared/levels/attach';
 
 export interface ModelSurfaces {
   screen: THREE.Mesh | null;
@@ -24,11 +25,11 @@ export function buildModel(plan: MapPlan): World {
   const group = new THREE.Group();
   const interactables: Interactable[] = [];
   const colliders=modelColliders(plan,config);
-  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,config.source?new Map([...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]])):undefined);
+  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,config.source?new Map([...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]])):undefined,id=>seatFloor(plan,id));
   const face = (p: BoardPlace, kind: Interactable['kind']) => {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(p.width,p.height),new THREE.MeshBasicMaterial({color:'#d9e3e8',toneMapped:false}));
     mesh.position.set(p.x,p.y,p.z); mesh.rotation.y=p.rotY;
-    const it: Interactable={kind,x:p.x+Math.sin(p.rotY)*1.2,z:p.z+Math.cos(p.rotY)*1.2,radius:2.4};
+    const it: Interactable={kind,x:p.x+Math.sin(p.rotY)*1.2,z:p.z+Math.cos(p.rotY)*1.2,y:Math.max(0,...(plan.levels?.floors.filter(f=>f.y<=p.y-p.height/2+.3&&p.x>=f.minX&&p.x<=f.maxX&&p.z>=f.minZ&&p.z<=f.maxZ).map(f=>f.y)??[])),radius:2.4};
     mesh.userData.interact=it; interactables.push(it); group.add(mesh); return mesh;
   };
   const boardMeshes = {} as Record<BoardKey,THREE.Mesh>;
@@ -41,22 +42,22 @@ export function buildModel(plan: MapPlan): World {
     const sign=roomSign(label.text);
     sign.position.set(label.x,2.2,label.z);sign.rotation.y=label.rotY;group.add(sign);
   }
-  const cp=plan.council!;
+  const cp=plan.council!, councilY=seatFloor(plan,plan.meeting[0].id);
   const table=new THREE.Mesh(new THREE.CylinderGeometry(1.3,1.3,.08,24),new THREE.MeshStandardMaterial({color:'#927052',roughness:.6}));
-  table.position.set(cp.x,.74,cp.z); table.material.visible=!config.source;group.add(table);
-  const leg=new THREE.Mesh(new THREE.CylinderGeometry(.16,.35,.7,16),new THREE.MeshStandardMaterial({color:'#30353b',roughness:.6}));leg.position.set(cp.x,.35,cp.z);if(!config.source)group.add(leg);else{leg.geometry.dispose();leg.material.dispose();}
-  const meeting: Interactable={kind:'meeting',x:cp.x,z:cp.z,radius:2.5}; table.userData.interact=meeting; interactables.push(meeting);
-  const boardAt=config.source?.meetingBoard??{x:cp.x-Math.sin(cp.rotY)*3.1,z:cp.z-Math.cos(cp.rotY)*3.1,y:1.95,width:2.3,height:1.4,rotY:cp.rotY};
+  table.position.set(cp.x,councilY+.74,cp.z); table.material.visible=!config.source;group.add(table);
+  const leg=new THREE.Mesh(new THREE.CylinderGeometry(.16,.35,.7,16),new THREE.MeshStandardMaterial({color:'#30353b',roughness:.6}));leg.position.set(cp.x,councilY+.35,cp.z);if(!config.source)group.add(leg);else{leg.geometry.dispose();leg.material.dispose();}
+  const meeting: Interactable={kind:'meeting',x:cp.x,y:councilY,z:cp.z,radius:2.5}; table.userData.interact=meeting; interactables.push(meeting);
+  const boardAt=config.source?.meetingBoard??{x:cp.x-Math.sin(cp.rotY)*3.1,z:cp.z-Math.cos(cp.rotY)*3.1,y:councilY+1.95,width:2.3,height:1.4,rotY:cp.rotY};
   const meetingBoard=face(boardAt,'meeting');
-  const meetingSign=config.source?undefined:face({...boardAt,y:.9,width:1.2,height:.34},'meeting');
+  const meetingSign=config.source?undefined:face({...boardAt,y:councilY+.9,width:1.2,height:.34},'meeting');
   const screen=config.screen?face(config.screen,'tv'):null;
   const whiteboard=face(config.whiteboard,'whiteboard');
   // Interaction rays use low-poly furniture and wall proxies, never the architectural triangle soup.
   const pickables: THREE.Object3D[]=[...group.children];
   const invisible=new THREE.MeshBasicMaterial({visible:false});
   for(const w of config.walls){
-    const proxy=new THREE.Mesh(new THREE.BoxGeometry(w.maxX-w.minX,w.top,w.maxZ-w.minZ),invisible);
-    proxy.position.set((w.minX+w.maxX)/2,w.top/2,(w.minZ+w.maxZ)/2);group.add(proxy);pickables.push(proxy);
+    const proxy=new THREE.Mesh(new THREE.BoxGeometry(w.maxX-w.minX,w.top-(w.bottom??0),w.maxZ-w.minZ),invisible);
+    proxy.position.set((w.minX+w.maxX)/2,(w.top+(w.bottom??0))/2,(w.minZ+w.maxZ)/2);group.add(proxy);pickables.push(proxy);
   }
   const chairs=new Map(config.source?[...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]]):[]);
   const navigation=(obstacles: Obstacles)=>config.source?new ModelNav(plan.bounds,obstacles,chairs):new NavGrid(plan.bounds,obstacles);

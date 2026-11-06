@@ -56,7 +56,7 @@ export class PlayerController extends PlayerInput {
   /** You got up by walking off or jumping (not by stand()). */
   onStand: (() => void) | null = null;
   /** Corners still to walk through on your own (see walkPath), or null while you're steering. */
-  private path: { x: number; z: number }[] | null = null;
+  private path: { x: number; y?: number; z: number }[] | null = null;
   /** How long a walk along `path` has been getting nowhere. */
   private stuckFor = 0;
   /** A walk along a path ended: at its end, by a key of yours, or up against something. */
@@ -136,7 +136,7 @@ export class PlayerController extends PlayerInput {
   }
 
   /** Walks you through these corners by yourself until you get there, or take a step or a jump of your own. */
-  walkPath(points: { x: number; z: number }[]) {
+  walkPath(points: { x: number; y?: number; z: number }[]) {
     this.path = points.length ? points.map((p) => ({ ...p })) : null;
     this.stuckFor = 0;
   }
@@ -255,7 +255,7 @@ export class PlayerController extends PlayerInput {
     const dx = next.x - this.pos.x;
     const dz = next.z - this.pos.z;
     const dist = Math.hypot(dx, dz);
-    if (dist < 0.25) {
+    if (dist < 0.25 && (next.y === undefined || Math.abs(next.y - this.pos.y) < .35)) {
       path.shift();
       if (!path.length) {
         this.path = null;

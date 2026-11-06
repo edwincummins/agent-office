@@ -313,3 +313,44 @@ A model that includes its own desks and chairs can provide `model.source`: `chai
 `model.screen: null` omits the legacy presentation plane when a separate fixture supplies the TV. In source-furniture mode, platforms higher than 0.3 m also block navigation, so source tables can be represented without treating them as full-height walls.
 
 Authored chairs use a finer navigation grid and collision-checked side approaches. If no safe approach exists, a newly hired worker appears seated and a departing worker finishes at its chair; neither walks through a wall. Validate inbound and outbound routes for every authored chair, including the last hop, before distributing a local map. Fixture installation preserves the model's navigation factory when rebuilding around additional obstacles.
+
+## Multiple levels and lifts
+
+An optional `levels` object adds walking surfaces above the existing ground. Omit it to retain the previous map geometry, navigation and rendering. This is room data, separate from the office's project floors.
+
+```json
+{
+  "levels": {
+    "floors": [
+      {"id":"ground","minX":-8,"maxX":8,"minZ":-8,"maxZ":8,"y":0,"thickness":0.2},
+      {"id":"upper","minX":-8,"maxX":8,"minZ":0,"maxZ":8,"y":3,"thickness":0.25}
+    ],
+    "stairs": [{"id":"stairs","from":{"x":0,"z":-6,"level":"ground"},"to":{"x":0,"z":0,"level":"upper"},"width":2,"steps":12}],
+    "rails": [{"level":"upper","minX":1.1,"maxX":8,"minZ":0,"maxZ":0.1,"height":1.1}],
+    "lifts": [{"id":"lift","x":6,"z":-1.5,"width":2,"depth":2,"stops":[{"x":6,"z":0.5,"level":"ground"},{"x":6,"z":0.5,"level":"upper"}]}],
+    "seats": {},
+    "spawn": "ground"
+  }
+}
+```
+
+This fragment illustrates the schema; the complete public, synthetic hall is `tests/fixtures/two-level-map.ts`. It includes the office's required worker seats and boards. Its data contains no purchased assets or real office layout.
+
+- `floors`: up to 16 bounded rectangular slabs; exactly one ground slab at `y: 0`. Upper slabs need 2.2 m clear headroom below and above. Adjacent slabs at the same height connect across a shared edge at least 0.8 m wide; point contacts do not connect. Split an L-shaped mezzanine into adjoining rectangles. Overlapping slabs at the same height are rejected.
+- `stairs`: up to 32 axis-aligned ascending flights, each joining named floor landings. Risers must be at most 0.30 m, treads at least 0.32 m, and width 1–8 m. For a turning staircase, author an intermediate landing slab and two flights. The slab cannot obstruct the flight's headroom. Routes reject walls or furniture crossing a flight.
+- `rails`: explicit rectangular glass barriers, 1.1–3 m high, relative to the named floor. Author rails on exposed edges, leaving gaps at stairs and lift doors. Unguarded edges permit falling under the existing player physics; rails are not generated automatically. Stair sides need authored guards where a fall would be undesirable.
+- `lifts`: up to four cars, with at least two distinct level stops. Doors face **+z or -z**, inferred from the first landing; every landing must be on the same side. Stops align with the car's x coordinate and sit 0.35–1.5 m beyond its front. Slabs must leave the shaft open. Cars require 2.7 m overhead clearance. Ground is beneath the shaft, so the lowest stop must be at ground for a flush entrance. Use E at a landing to call, or E in the car to ride to the next stop. Doors close for 600 ms before travel; clients interpolate the same eased motion. Other people see riders' height through normal presence updates. Disconnecting during a ride places the local player at the nearest landing and releases the ride controller.
+- `seats`: maps worker desk, overflow, station or council IDs to a floor ID. Omitted IDs stay on ground. All seats sharing a table, and all council chairs, must share a level. Castle, station and model builders raise generated furniture, collision and interactions together **before** batching geometry. Boards retain their authored absolute `y`; raise a station's board in map data when needed.
+- `spawn`: optional floor ID. The spawn x/z must lie inside that floor.
+
+Levels are resolved as `plan().levels`, including collision solids. Workers use height-aware stair routes rather than waiting for passenger lifts. Unreachable arrivals remain safely seated and departures finish without attempting a nonexistent path. The third-person camera clips its boom against local slabs, including after interpolation; first-person positioning is unchanged. This composes with the internal-wall camera change independently.
+
+New world builders must register inside `BUILDERS`, and apply the `onLevel`/`elevation` assembly seam before merging furniture. Model geometry authored at its final elevation is not raised a second time. Source chair `y` remains absolute; generated laptops, proxies and interactions use the assigned seat floor. Model walls/platforms accept an optional absolute `bottom` (default 0), with `bottom < top`, for upper partitions. Fixture navigation rebuilds use the actual collider heights. Source council chairs remain obstacles at their own level; only the destination chair is exempted during a collision-checked sit hop. The public `tests/fixtures/two-level-model.ts` exercises this model path. No per-frame room-mesh raycast is used.
+
+Validation: `node --import tsx --import=#tests/css --test tests/map-levels.test.ts tests/level-lifts.test.ts` covers stair stepping, rails, slab undersides, camera clearance, connected slabs, blocked flights, lift requests and floor-local synchronization.
+
+Level maps reject out-of-hall or out-of-height avatar positions before relaying them. This bounds untrusted coordinates; it is not authoritative movement simulation or anti-teleport enforcement. Passenger lifts remain available to visitors. When composed with an owner-only worker gate, allow only the walking messages `levels.sync` and `levels.lift` through that gate.
+
+The third-person boom retracts before either end or side of a staircase, including backwards approaches, and expands after leaving it. Slab intersection checks remain active throughout; first-person and maps without levels retain their camera behavior.
+
+Third-person cameras anticipate low slab edges by shortening the boom before it reaches the ceiling footprint. Collision clipping still runs before and after camera interpolation; this avoids easing through a slab. First-person cameras are unchanged.

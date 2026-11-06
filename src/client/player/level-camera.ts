@@ -1,0 +1,65 @@
+import type { Vector3 } from 'three';
+import type { Collider } from '../world/types';
+
+declare module '../world/types' {
+  interface Collider {
+    levelSurface?: boolean;
+    stairSurface?: boolean;
+  }
+}
+
+/** Clip the actual boom segment against local slabs, including after camera easing. */
+export function clampLevelCamera(target: Vector3, camera: Vector3, solids: readonly Collider[]) {
+  const start = [target.x, target.y, target.z],
+    delta = [camera.x - target.x, camera.y - target.y, camera.z - target.z];
+  let fraction = 1;
+  for (const s of solids) {
+    if (!s.levelSurface) continue;
+    const low = [s.minX - 0.18, (s.bottom ?? 0) - 0.18, s.minZ - 0.18],
+      high = [s.maxX + 0.18, s.top + 0.18, s.maxZ + 0.18];
+    if (start.every((v, i) => v >= low[i] && v <= high[i])) continue;
+    let enter = 0,
+      leave = fraction;
+    for (let i = 0; i < 3; i++) {
+      if (Math.abs(delta[i]) < 1e-12) {
+        if (start[i] < low[i] || start[i] > high[i]) {
+          leave = -1;
+          break;
+        }
+      } else {
+        const a = (low[i] - start[i]) / delta[i],
+          b = (high[i] - start[i]) / delta[i];
+        enter = Math.max(enter, Math.min(a, b));
+        leave = Math.min(leave, Math.max(a, b));
+      }
+    }
+    if (enter <= leave && leave >= 0) fraction = Math.min(fraction, enter);
+  }
+  if (fraction < 1) camera.set(target.x + delta[0] * fraction, target.y + delta[1] * fraction, target.z + delta[2] * fraction);
+}
+
+/** Retract before reaching a stair, independent of approach direction or camera yaw. */
+export function levelBoomDistance(position: Vector3, distance: number, solids: readonly Collider[], pitch = 0) {
+  let near = Infinity;
+  for (const s of solids) {
+    if (!s.stairSurface || position.y < (s.bottom ?? 0) - 2 || position.y > s.top + 2) continue;
+    near = Math.min(near, Math.hypot(Math.max(s.minX-position.x,0,position.x-s.maxX),Math.max(s.minZ-position.z,0,position.z-s.maxZ)));
+  }
+  const band = Math.max(3, (distance - .6) / 2);
+  const blend = Math.max(0, Math.min(1, (near - 1.5) / band));
+  let boom = Math.min(distance, .6 + Math.max(0, distance-.6)*blend);
+  // Anticipate a low slab before the trailing camera reaches its footprint.
+  // Reducing the target boom first keeps post-easing collision clipping as a safety net.
+  const rise = Math.sin(pitch), eye = position.y + 1.3;
+  if (rise > 0) for (const s of solids) {
+    const bottom = s.bottom ?? 0;
+    if (!s.levelSurface || s.stairSurface || bottom <= eye + .3 || bottom >= position.y + 3.8) continue;
+    const safe = Math.max(.6, (bottom - .3 - eye) / rise);
+    if (safe >= boom) continue;
+    const gap = Math.hypot(Math.max(s.minX-position.x,0,position.x-s.maxX),Math.max(s.minZ-position.z,0,position.z-s.maxZ));
+    const reach = distance * Math.abs(Math.cos(pitch)) + 1.5;
+    const approach = Math.max(0, Math.min(1, (gap - reach) / Math.max(3, (distance-safe)/2)));
+    boom = Math.min(boom, safe + (distance-safe)*approach);
+  }
+  return boom;
+}
