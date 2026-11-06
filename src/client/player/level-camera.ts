@@ -4,6 +4,7 @@ import type { Collider } from '../world/types';
 declare module '../world/types' {
   interface Collider {
     levelSurface?: boolean;
+    stairSurface?: boolean;
   }
 }
 
@@ -35,4 +36,16 @@ export function clampLevelCamera(target: Vector3, camera: Vector3, solids: reado
     if (enter <= leave && leave >= 0) fraction = Math.min(fraction, enter);
   }
   if (fraction < 1) camera.set(target.x + delta[0] * fraction, target.y + delta[1] * fraction, target.z + delta[2] * fraction);
+}
+
+/** Retract before reaching a stair, independent of approach direction or camera yaw. */
+export function levelBoomDistance(position: Vector3, distance: number, solids: readonly Collider[]) {
+  let near = Infinity;
+  for (const s of solids) {
+    if (!s.stairSurface || position.y < (s.bottom ?? 0) - 2 || position.y > s.top + 2) continue;
+    near = Math.min(near, Math.hypot(Math.max(s.minX-position.x,0,position.x-s.maxX),Math.max(s.minZ-position.z,0,position.z-s.maxZ)));
+  }
+  const band = Math.max(3, (distance - .6) / 2);
+  const blend = Math.max(0, Math.min(1, (near - 1.5) / band));
+  return Math.min(distance, .6 + Math.max(0, distance-.6)*blend);
 }

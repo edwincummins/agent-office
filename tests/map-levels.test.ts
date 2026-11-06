@@ -6,7 +6,7 @@ import { LevelNav, elevated, type LevelPoint } from '../src/shared/levels/naviga
 import { routeHeight } from '../src/shared/levels/follow.js';
 import { groundAt, ceilingAt, stepTo, blockerAt } from '../src/client/player/collide.js';
 import { TWO_LEVELS } from './fixtures/two-level.js';
-import { clampLevelCamera } from '../src/client/player/level-camera.js';
+import { clampLevelCamera, levelBoomDistance } from '../src/client/player/level-camera.js';
 import { liftHeight, liftMoving } from '../src/shared/levels/lift.js';
 import { planMap } from '../src/shared/maps/index.js';
 import { TWO_LEVEL_MAP } from './fixtures/two-level-map.js';
@@ -159,4 +159,18 @@ test('exact decimal headroom accepts rounding but rejects insufficient clearance
   assert.doesNotThrow(() => checkLevels(c, bounds, 7, []));
   c.floors[1].thickness = 0.201;
   assert.throws(() => checkLevels(c, bounds, 7, []), /clearance|headroom/);
+});
+
+test('stair boom retracts before either landing and leaves distant/legacy cameras alone',()=>{
+ const solid={minX:-1,maxX:1,minZ:-6,maxZ:0,bottom:0,top:3,stairSurface:true};
+ assert.equal(levelBoomDistance(new THREE.Vector3(0,0,-11),7,[solid]),7);
+ assert.equal(levelBoomDistance(new THREE.Vector3(0,0,-7),7,[solid]),.6);
+ assert.equal(levelBoomDistance(new THREE.Vector3(0,3,1),7,[solid]),.6);
+ assert.equal(levelBoomDistance(new THREE.Vector3(0,0,-7),7,[]),7);
+ let last=7;for(let z=-11;z<=-6;z+=.1){const next=levelBoomDistance(new THREE.Vector3(0,0,z),7,[solid]);assert.ok(Math.abs(next-last)<.25);last=next;}
+});
+
+test('maximum camera zoom anticipates early enough for a running approach',()=>{
+ const solid={minX:-1,maxX:1,minZ:-6,maxZ:0,bottom:0,top:3,stairSurface:true};
+ let last=16;for(let z=-17;z<=-6;z+=7.5/60){const next=levelBoomDistance(new THREE.Vector3(0,0,z),16,[solid]);assert.ok(Math.abs(next-last)+7.5/60<.5);last=next;}
 });

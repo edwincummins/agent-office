@@ -143,7 +143,7 @@ export function checkLevels(raw: unknown, bounds: Bounds, roof: number, seatIds:
   }
   for (const f of floors) if (!connected.has(f.id)) throw new MapError(`${f.id} needs a walkable stair route from ground`);
   const solids: LevelSolid[] = floors.filter((f) => f.y > 0).map((f) => ({ ...f, bottom: f.y - f.thickness, top: f.y }));
-  for (const s of stairs) solids.push(...stairSolids(s, floor(s.from.level).y, floor(s.to.level).y));
+  for (const s of stairs) solids.push(...stairSolids(s, floor(s.from.level).y, floor(s.to.level).y).map(c=>({...c,stairSurface:true})));
   for (const r of rails) solids.push({ ...r, bottom: floor(r.level).y, top: floor(r.level).y + r.height, fence: true });
   return { floors, stairs, rails, lifts, seats, solids, ...(raw.spawn === undefined ? {} : { spawn: floor(raw.spawn).id }) };
 }

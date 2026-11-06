@@ -3,7 +3,7 @@ import { FLOOR, SLAB, STREET_Y, WING, inWing, wingMinZ } from '../../shared/layo
 import type { ViewMode } from '../state';
 import type { Collider } from '../world/types';
 import { ceilingAt, groundAt } from './collide';
-import { clampLevelCamera } from './level-camera';
+import { clampLevelCamera, levelBoomDistance } from './level-camera';
 
 // The camera: your eyes in first person, or following you round in third without going through the
 // walls, and the view trembling after too much coffee or rolling after too much to drink.
@@ -54,7 +54,7 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     Math.sin(p.camYaw) * Math.cos(p.camPitch),
     Math.sin(p.camPitch),
     Math.cos(p.camYaw) * Math.cos(p.camPitch),
-  ).multiplyScalar(p.camDist);
+  ).multiplyScalar(levelBoomDistance(p.pos, p.camDist, p.colliders));
   const cam = target.clone().add(off);
   // Keep the camera on your side of the outside walls, so they never block the view: inside the
   // room while you're in the office, out of the building while you're outside or on the balcony.

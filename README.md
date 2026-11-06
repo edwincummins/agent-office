@@ -424,3 +424,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 [MIT](LICENSE)
 
 Custom maps can also describe mezzanine slabs, stair links, glass rails and passenger lifts. Worker routes use stairs between levels; people can walk or ride the lift. See [multi-level maps](docs/maps.md#multiple-levels-and-lifts) and the synthetic fixture in `tests/fixtures/two-level-map.ts`.
+
+Two-level maps bound shared avatar coordinates to the hall and use a shorter third-person camera near stairs. Lifts are visitor walking interactions; owner-only worker permissions do not restrict passenger travel. These bounds do not replace server-authoritative movement for a hosted office.

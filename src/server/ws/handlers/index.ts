@@ -1,3 +1,4 @@
+import { withBoundedMoves } from '../../levels/moves.js';
 import {levelsHandlers} from './levels.js';
 // Every message a browser can send, by type, and the features that keep something per person on a
 // floor. A new feature adds its handler file and a line here.
@@ -40,7 +41,7 @@ export const handlers: HandlerMap<ClientMsg> = {
   ...jukeboxHandlers,
   ...meetingHandlers,
   ...planHandlers,
-  ...presenceHandlers,
+  ...withBoundedMoves(presenceHandlers),
   ...queueHandlers,
   ...rooftopHandlers,
   ...settingsHandlers,
