@@ -12,6 +12,7 @@ import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
 import { seatFloor } from '../../../shared/levels/attach';
 import { mergeOpaqueModelMeshes } from './merge';
+import { authoredEmissionMaterials } from '../../features/model-effects/emission';
 import type { ModelChair } from '../../../shared/maps/model';
 
 export interface ModelSurfaces {
@@ -84,6 +85,7 @@ export function buildModel(plan: MapPlan): World {
     if(disposed){releaseModel(gltf.scene);return;}
     loaded=gltf.scene;retainModelTextures(loaded);
     gltf.scene.updateMatrixWorld(true);
+    const authoredEmission = authoredEmissionMaterials(gltf.scene);
     gltf.scene.traverse(o=>{
       if(o.name.startsWith('Door__')) doors.push({node:o,closed:o.position.clone(),center:new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()),amount:0});
       if(!(o instanceof THREE.Mesh)) return;
@@ -94,7 +96,7 @@ export function buildModel(plan: MapPlan): World {
         const n=m.name.toLowerCase();
         if(n.includes('glass')) {const interior=n.includes('interior')||n.includes('partition');m.transparent=true;m.opacity=interior?.13:.3;m.depthWrite=false;m.color.set(interior?'#c4c6c5':'#91b7c5');m.roughness=.05;m.metalness=0;m.normalMap=null;m.side=THREE.DoubleSide;m.forceSinglePass=true;}
         else if(n.includes('marble')||n.includes('tiles')) {m.roughness=.2;m.envMapIntensity=1.2;}
-        if(n.includes('poster')||n.includes('glow')) {m.emissive.set('#ffffff');m.emissiveMap=m.map;m.emissiveIntensity=1.6;}
+        if(!authoredEmission.has(m)&&(n.includes('poster')||n.includes('glow'))) {m.emissive.set('#ffffff');m.emissiveMap=m.map;m.emissiveIntensity=1.6;}
       }
     });
     mergeOpaqueModelMeshes(gltf.scene);
