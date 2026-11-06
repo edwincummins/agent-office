@@ -33,7 +33,7 @@ export function buildModel(plan: MapPlan): World {
   const boardMeshes = {} as Record<BoardKey,THREE.Mesh>;
   for (const key of BOARD_KEYS) {
     const p=plan.boards[key]; boardMeshes[key]=face(p,key);
-    const label=roomSign(p.label);
+    const label=roomSign(p.label); boardMeshes[key].userData.boardLabel=label;
     label.position.set(p.x,p.y+p.height/2+.3,p.z); label.rotation.y=p.rotY; group.add(label);
   }
   for(const label of config.labels??[]){
