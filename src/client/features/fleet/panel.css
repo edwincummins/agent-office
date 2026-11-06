@@ -20,3 +20,7 @@
 .cadre-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cadre-team{min-width:0}.cadre-tail{overflow:auto;max-height:408px;scrollbar-width:thin;scrollbar-color:#8b8676 #17191c;scrollbar-gutter:stable;white-space:pre;font:16px/24px 'Cascadia Mono',Consolas,monospace;color:#d8d3c4;margin:0}.cadre-reason{color:#e2605f;overflow-wrap:anywhere}
 @media(max-width:700px){.cadre-grid{grid-template-columns:1fr}}
+/* The watch view fills the panel like live Cadre (Fetty, 11-06: on his Mac the seats stopped halfway at the 408px cap). */
+.cadre-panel .cadre-body{display:flex;flex-direction:column}.cadre-body>div{flex:1;min-height:0;display:flex;flex-direction:column}
+.cadre-grid{flex:1;min-height:0;grid-auto-rows:minmax(260px,1fr)}.cadre-grid .cadre-team{margin:0;display:flex;flex-direction:column;min-height:0}
+.cadre-grid .cadre-tail{flex:1;min-height:0;max-height:none}
