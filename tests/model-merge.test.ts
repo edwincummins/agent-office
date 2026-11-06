@@ -28,3 +28,32 @@ test('model batching merges opaque static siblings by material and keeps moving 
   assert.ok(root.getObjectByName('Door__north'));
   assert.equal(pane.parent, root);
 });
+
+test('model batching leaves reflected geometry and hidden named subtrees intact', () => {
+  const root = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ color: '#735642' });
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const regular = new THREE.Mesh(geometry, material);
+  regular.name = 'visible-a';
+  const other = new THREE.Mesh(geometry, material);
+  other.name = 'visible-b';
+  const reflected = new THREE.Mesh(geometry, material);
+  reflected.scale.x = -1;
+  const hiddenGroup = new THREE.Group();
+  hiddenGroup.name = 'hide-by-name';
+  hiddenGroup.visible = false;
+  hiddenGroup.add(new THREE.Mesh(geometry, material));
+  root.add(regular, other, reflected, hiddenGroup);
+
+  assert.equal(mergeOpaqueModelMeshes(root), 1);
+  assert.equal(regular.parent, null);
+  assert.equal(other.parent, null);
+  assert.equal(reflected.parent, root);
+  assert.equal(hiddenGroup.children.length, 1);
+  assert.equal(root.getObjectByName('hide-by-name'), hiddenGroup);
+  hiddenGroup.visible = true;
+  assert.equal(root.getObjectByName('hide-by-name')?.visible, true);
+  const batch = root.children.find((child) => child.name.startsWith('local-model-batch:')) as THREE.Mesh;
+  assert.equal(batch.frustumCulled, true);
+  assert.deepEqual(batch.userData.sourceNames, ['visible-a', 'visible-b']);
+});
