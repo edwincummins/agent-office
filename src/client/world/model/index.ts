@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { NavGrid } from '../../../shared/nav';
+import { NavGrid, type Obstacles } from '../../../shared/nav';
 import { BOARD_KEYS, type BoardPlace, type MapPlan, type BoardKey } from '../../../shared/maps';
 import type { World } from '../world';
 import type { Collider, Interactable } from '../types';
 import { roomSign } from './sign';
 import { releaseModel,retainModelTextures } from './resources';
+import { ModelNav } from './navigation';
 import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
 
@@ -56,7 +57,9 @@ export function buildModel(plan: MapPlan): World {
     const proxy=new THREE.Mesh(new THREE.BoxGeometry(w.maxX-w.minX,w.top,w.maxZ-w.minZ),invisible);
     proxy.position.set((w.minX+w.maxX)/2,w.top/2,(w.minZ+w.maxZ)/2);group.add(proxy);pickables.push(proxy);
   }
-  const nav=new NavGrid(plan.bounds,plan.obstacles!);
+  const chairs=new Map(config.source?[...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]]):[]);
+  const navigation=(obstacles: Obstacles)=>config.source?new ModelNav(plan.bounds,obstacles,chairs):new NavGrid(plan.bounds,obstacles);
+  const nav=navigation(plan.obstacles!);
   let disposed=false;
   let loaded:THREE.Group|undefined;
   const doors: {node:THREE.Object3D;closed:THREE.Vector3;center:THREE.Vector3;amount:number}[]=[];
@@ -87,7 +90,7 @@ export function buildModel(plan: MapPlan): World {
     group.add(gltf.scene);
   }).catch(error=>{status.error=String(error);console.error('Model map failed',error);});
   const world: World={
-    plan,group,colliders,interactables,pickables,desks,boardMeshes,meetingBoard,meetingSign,nav,
+    plan,group,colliders,interactables,pickables,desks,boardMeshes,meetingBoard,meetingSign,nav,navigation,
     ways:{home:(seat,from)=>({way:from?world.nav.route(from,[plan.door.x,plan.door.z]):world.nav.wayFrom(seat,[plan.door.x,plan.door.z]),chute:false}),in:seat=>world.nav.wayTo([plan.door.x,plan.door.z],seat)},
     rain:[{area:plan.bounds,top:()=>plan.height}],device:'laptop',room:{wall:.2,enclosed:true},
     setBeanbags(){return [];},setLook(){},setProjectName(){},update(_t,dt,people){

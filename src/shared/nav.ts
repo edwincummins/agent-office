@@ -128,23 +128,24 @@ export class NavGrid {
     readonly bounds: Bounds,
     obstacles: Obstacles,
     private readonly on: Floorplan = within(bounds),
+    private readonly cellSize = CELL,
   ) {
-    this.cols = Math.ceil((bounds.maxX - bounds.minX) / CELL);
-    this.rows = Math.ceil((bounds.maxZ - bounds.minZ) / CELL);
+    this.cols = Math.ceil((bounds.maxX - bounds.minX) / this.cellSize);
+    this.rows = Math.ceil((bounds.maxZ - bounds.minZ) / this.cellSize);
     this.grid = new Uint8Array(this.cols * this.rows);
-    for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) this.grid[r * this.cols + c] = isBlocked(bounds.minX + (c + 0.5) * CELL, bounds.minZ + (r + 0.5) * CELL, on, obstacles) ? 1 : 0;
+    for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) this.grid[r * this.cols + c] = isBlocked(bounds.minX + (c + 0.5) * this.cellSize, bounds.minZ + (r + 0.5) * this.cellSize, on, obstacles) ? 1 : 0;
   }
 
   private colOf(x: number) {
-    return Math.max(0, Math.min(this.cols - 1, Math.floor((x - this.bounds.minX) / CELL)));
+    return Math.max(0, Math.min(this.cols - 1, Math.floor((x - this.bounds.minX) / this.cellSize)));
   }
 
   private rowOf(z: number) {
-    return Math.max(0, Math.min(this.rows - 1, Math.floor((z - this.bounds.minZ) / CELL)));
+    return Math.max(0, Math.min(this.rows - 1, Math.floor((z - this.bounds.minZ) / this.cellSize)));
   }
 
   private centerOf(i: number): Pt {
-    return [this.bounds.minX + ((i % this.cols) + 0.5) * CELL, this.bounds.minZ + (Math.floor(i / this.cols) + 0.5) * CELL];
+    return [this.bounds.minX + ((i % this.cols) + 0.5) * this.cellSize, this.bounds.minZ + (Math.floor(i / this.cols) + 0.5) * this.cellSize];
   }
 
   walkable(x: number, z: number): boolean {
@@ -162,10 +163,10 @@ export class NavGrid {
     const dz = b[1] - a[1];
     const sc = Math.sign(dx);
     const sr = Math.sign(dz);
-    const stepC = sc ? CELL / Math.abs(dx) : Infinity;
-    const stepR = sr ? CELL / Math.abs(dz) : Infinity;
-    let nextC = sc ? (this.bounds.minX + (c + (sc > 0 ? 1 : 0)) * CELL - a[0]) / dx : Infinity;
-    let nextR = sr ? (this.bounds.minZ + (r + (sr > 0 ? 1 : 0)) * CELL - a[1]) / dz : Infinity;
+    const stepC = sc ? this.cellSize / Math.abs(dx) : Infinity;
+    const stepR = sr ? this.cellSize / Math.abs(dz) : Infinity;
+    let nextC = sc ? (this.bounds.minX + (c + (sc > 0 ? 1 : 0)) * this.cellSize - a[0]) / dx : Infinity;
+    let nextR = sr ? (this.bounds.minZ + (r + (sr > 0 ? 1 : 0)) * this.cellSize - a[1]) / dz : Infinity;
     for (let n = 0; n <= cols + rows; n++) {
       if (grid[r * cols + c]) return false;
       if (c === c1 && r === r1) return true;
