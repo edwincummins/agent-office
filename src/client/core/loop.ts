@@ -213,12 +213,21 @@ export function installLoop(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'stage
  */
 export function frameLoop(ctx: Ctx, loading: { drew(): void }): (ts?: number) => void {
   const timer = new THREE.Timer();
+  // A frame budget, as games keep one (Fetty, 11-06: the office drew every frame the monitor offered, idle or behind a
+  // panel, and Chrome took ~3.7 cores): 60 fps while he's moving, 30 once he's left it alone, 8 behind a full panel such
+  // as Cadre. A hidden tab already gets no frames at all.
+  let last = 0, lastInput = performance.now();
+  for (const kind of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'] as const) addEventListener(kind, () => (lastInput = performance.now()), { passive: true, capture: true });
+  const budget = (now: number) => (document.querySelector('.modal.cadre-panel, .modal.fullscreen') ? 8 : now - lastInput > 15000 ? 30 : 60);
   function frame(ts?: number) {
+    requestAnimationFrame(frame);
+    const now = ts ?? performance.now();
+    if (last && now - last < 1000 / budget(now) - 2) return;
+    last = now;
     timer.update(ts);
     const delta = timer.getDelta();
     ctx.ticks.run({ delta, dt: Math.min(delta, 0.1), t: timer.getElapsed(), now: performance.now() });
     loading.drew();
-    requestAnimationFrame(frame);
   }
   return frame;
 }
