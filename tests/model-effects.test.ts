@@ -26,7 +26,7 @@ test('loaded 60 Hz frames keep quality; twelve seconds of 28 ms frames shed bloo
   assert.equal(slow.bloom, false); assert.equal(slow.reduced, false);
   for (let i = 0; i < 8 * 34; i++) slow.frame(.03);
   assert.equal(slow.reduced, false);
-  for (let i = 0; i < 5 * 34; i++) slow.frame(.03);
+  for (let i = 0; i < 55 * 34; i++) slow.frame(.03);
   assert.equal(slow.reduced, true);
   const normal = new EffectsBudget();
   for (let i = 0; i < 600; i++) normal.frame(1 / 60);
@@ -60,7 +60,7 @@ test('cold hitches are ignored and bloom retries after sustained healthy recover
   assert.equal(b.bloom, true);
   for (let i = 0; i < 7 * 34; i++) b.frame(.03);
   assert.equal(b.bloom, false);
-  for (let i = 0; i < 1000; i++) b.frame(1 / 60);
+  for (let i = 0; i < 6500; i++) b.frame(.01);
   assert.equal(b.bloom, true);
   for (let i = 0; i < 20; i++) b.frame(2, false);
   assert.equal(b.bloom, true);
@@ -68,18 +68,19 @@ test('cold hitches are ignored and bloom retries after sustained healthy recover
 test('reduced resolution recovers only after bloom returns and another sustained healthy period', () => {
   const b = new EffectsBudget();
   for (let i = 0; i < 600; i++) b.frame(1 / 60);
-  for (let i = 0; i < 2400; i++) b.frame(.03);
+  for (let i = 0; i < 3200; i++) b.frame(.03);
   assert.equal(b.bloom, false);
   assert.equal(b.reduced, true);
 
-  for (let i = 0; i < 1100; i++) b.frame(1 / 60);
+  for (let i = 0; i < 6500; i++) b.frame(.01);
   assert.equal(b.bloom, true);
   assert.equal(b.reduced, true);
-  for (let i = 0; i < 960; i++) b.frame(1 / 60);
+  for (let i = 0; i < 6500; i++) b.frame(.01);
   assert.equal(b.bloom, true);
   assert.equal(b.reduced, false);
 });
 test('leaving an opted-in model restores renderer settings and disables the filter', (t) => {
+  const logs = t.mock.method(console, 'info', () => {});
   t.mock.method(ModelBloom.prototype, 'prepare', () => {});
   const group = new THREE.Group(), root = new THREE.Group();
   root.userData.officeEffects = profile; group.add(root);
@@ -94,13 +95,14 @@ test('leaving an opted-in model restores renderer settings and disables the filt
     ticks.get('hud')![0]({ delta: 1 / 60 });
     assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
     assert.equal(renderer.toneMappingExposure, 1);
-    for (let i = 0; i < 2400; i++) ticks.get('hud')![0]({ delta: .03 });
+    for (let i = 0; i < 3200; i++) ticks.get('hud')![0]({ delta: .03 });
     assert.equal(ratio, 1);
-    for (let i = 0; i < 1100; i++) ticks.get('hud')![0]({ delta: 1 / 60 });
+    for (let i = 0; i < 6500; i++) ticks.get('hud')![0]({ delta: .01 });
     assert.deepEqual(root.userData.officeEffectsRuntime, { bloom: true, reducedResolution: true });
-    for (let i = 0; i < 960; i++) ticks.get('hud')![0]({ delta: 1 / 60 });
+    for (let i = 0; i < 6500; i++) ticks.get('hud')![0]({ delta: .01 });
     assert.equal(ratio, 1.25);
     assert.deepEqual(root.userData.officeEffectsRuntime, { bloom: true, reducedResolution: false });
+    assert.equal(logs.mock.callCount(), 4, 'one console event per bloom or DPR transition');
     rooftop = true; ticks.get('pre')![0]({ delta: 1 / 60 });
     assert.equal(renderer.toneMapping, THREE.AgXToneMapping);
     assert.equal(renderer.toneMappingExposure, .8); assert.equal(ratio, 1.25);
@@ -184,4 +186,20 @@ test('environment tint validates and preserves original PMREM ownership', async 
   assert.equal(scene.environment!.mapping, THREE.CubeUVReflectionMapping);
   restore(); assert.equal(scene.environment, original); assert.equal(sourceDisposed, false);
   scene.environment = null; tintEnvironment(renderer as never, scene, '#ffffff')(); assert.equal(renders, 1);
+});
+
+test('maps without a valid effects profile never allocate or change renderer quality', (t) => {
+  const prepare = t.mock.method(ModelBloom.prototype, 'prepare', () => {});
+  const log = t.mock.method(console, 'info', () => {});
+  for (const style of ['office', 'model']) {
+    const group = new THREE.Group();
+    let ratio = 1.25;
+    const renderer = { toneMapping: THREE.AgXToneMapping, toneMappingExposure: .8, getPixelRatio: () => ratio, setPixelRatio: (n: number) => { ratio = n; } };
+    const ticks = new Map<string, ((f: { delta: number }) => void)[]>();
+    installModelEffects({ renderer, world: () => ({ group }), upTop: () => false, plan: () => ({ style }), ticks: { add: (p: string, fn: (f: { delta: number }) => void) => ticks.set(p, [...(ticks.get(p) ?? []), fn]) }, view: { add() {} } } as never);
+    for (let i = 0; i < 6000; i++) ticks.get('hud')![0]({ delta: .03 });
+    assert.equal(ratio, 1.25); assert.equal(renderer.toneMapping, THREE.AgXToneMapping);
+    assert.equal(renderer.toneMappingExposure, .8);
+  }
+  assert.equal(prepare.mock.callCount(), 0); assert.equal(log.mock.callCount(), 0);
 });

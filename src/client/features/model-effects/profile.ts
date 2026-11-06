@@ -39,6 +39,7 @@ export class EffectsBudget {
   bloom = true;
   reduced = false;
   private warm = 4;
+  private hold = 0;
   private elapsed = 0;
   private frames = 0;
   private healthy = 0;
@@ -46,6 +47,7 @@ export class EffectsBudget {
   frame(seconds: number, visible = true) {
     if (!visible) { this.elapsed = 0; this.frames = 0; this.healthy = 0; this.slow = 0; return; }
     if (!Number.isFinite(seconds) || seconds <= 0) return;
+    if (seconds <= .25) this.hold = Math.max(0, this.hold - seconds);
     if (this.warm > 0) { this.warm -= Math.min(seconds, .25); return; }
     if (seconds > .25) return;
     this.elapsed += seconds; this.frames++;
@@ -54,15 +56,15 @@ export class EffectsBudget {
     if (average >= .028) {
       this.healthy = 0;
       this.slow += this.elapsed;
-      if (this.slow >= 12) {
+      if (this.slow >= 12 && this.hold === 0) {
         this.slow = 0;
         if (this.bloom) { this.bloom = false; return this.finish('Bloom paused: sustained slow frames'); }
         if (!this.reduced) { this.reduced = true; return this.finish('Resolution reduced: sustained slow frames'); }
       }
-    } else if (average < .0175 && (!this.bloom || this.reduced)) {
+    } else if (average < .015 - Number.EPSILON && (!this.bloom || this.reduced)) {
       this.slow = 0;
       this.healthy += this.elapsed;
-      if (this.healthy >= 12) {
+      if (this.healthy >= 20 && this.hold === 0) {
         if (!this.bloom) {
           this.bloom = true; this.healthy = 0; this.warm = 4;
           return this.finish('Retrying bloom after sustained recovery');
@@ -73,5 +75,9 @@ export class EffectsBudget {
     } else { this.healthy = 0; this.slow = 0; }
     this.finish();
   }
-  private finish(message?: string) { this.elapsed = 0; this.frames = 0; return message; }
+  private finish(message?: string) {
+    this.elapsed = 0; this.frames = 0;
+    if (message) { this.hold = 60; this.healthy = 0; this.slow = 0; }
+    return message;
+  }
 }
