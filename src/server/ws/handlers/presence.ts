@@ -1,3 +1,4 @@
+import { saveAccountProfile } from '../../office/account-profiles.js';
 // People in the office: walking about, reaching for things, sitting, carrying issue cards, emotes,
 // their name and look, what they have open, voice and screen sharing, and chat.
 import type { ChatLine, PresenceClientMsg } from '../../../shared/protocol.js';
@@ -91,6 +92,7 @@ export const presenceHandlers = {
     if (name && !c.accountId) c.peer.name = name;
     if (COLOR_RE.test(msg.color)) c.peer.color = msg.color;
     c.peer.look = sanitizeLook(msg.look, c.peer.look);
+    if (c.accountId) saveAccountProfile(ctx.cfg.dataDir, c.accountId, c.peer.color, c.peer.look);
     ctx.broadcast({ t: 'peer.update', peer: c.peer });
   },
   voice(ctx, c, msg) {

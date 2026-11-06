@@ -1,3 +1,4 @@
+import { accountProfile, saveAccountProfile } from '../office/account-profiles.js';
 import {isOwner} from '../owner-workers/access.js';
 import { randomBytes } from 'node:crypto';
 import type { WebSocket } from 'ws';
@@ -62,6 +63,8 @@ export function onConnection(ctx: Ctx, ws: WebSocket, url: URL, session: Session
   if (maps.reload()) mapNews(ctx, mapWas);
   clients.set(id, client);
   if (account) accounts.seen(account.id);
+  // The first browser an account comes in from seeds its saved character (account-profiles.ts).
+  if (account && !accountProfile(cfg.dataDir, account.id)) saveAccountProfile(cfg.dataDir, account.id, client.peer.color, client.peer.look);
   ws.on('pong', () => (client.isAlive = true));
 
   sendTo(client, {

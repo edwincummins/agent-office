@@ -11,6 +11,8 @@ export interface Me {
   account?: { name: string; role: AccountRole };
   /** May invite, list and revoke accounts. */
   admin: boolean;
+  /** Your account's saved character, so every browser you sign in from looks the same. */
+  profile?: { color: string; look: import('../avatar.js').Look };
 }
 
 /** What someone signs in to for their own workers: Claude Code, and the GitHub CLI. */

@@ -81,7 +81,11 @@ export function installVoice(ctx: Ctx, deps: VoiceDeps) {
         .map(([who, s]) => {
           const v = h('video', { autoplay: true, playsinline: true, muted: true }) as HTMLVideoElement;
           v.srcObject = s;
-          return h('div.share-thumb', { onclick: () => watchShare(), title: 'Watch full screen' }, v, h('span.who', {}, `🖥️ ${who}`));
+          // The owner takes the screen right here, one click, no menu or walking (Fetty, 11-06).
+          const take = store.me.owner === true
+            ? [h('button.share-take', { type: 'button', title: 'Stop their share and put yours up', onclick: (e: Event) => { e.stopPropagation(); void toggleShare(); } }, '📺 Take over')]
+            : [];
+          return h('div.share-thumb', { onclick: () => watchShare(), title: 'Watch full screen' }, v, h('span.who', {}, `🖥️ ${who}`), ...take);
         }),
     );
     ctx.hint.invalidate();

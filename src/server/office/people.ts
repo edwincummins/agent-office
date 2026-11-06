@@ -1,6 +1,7 @@
 import {isOwner,ownerId} from '../owner-workers/access.js';
 import type { Accounts } from '../accounts.js';
 import type { Me } from '../../shared/protocol.js';
+import { accountProfile } from './account-profiles.js';
 import type { Ctx, People } from './context.js';
 import type { Client } from './client.js';
 
@@ -13,7 +14,8 @@ export function people(ctx: Ctx): People {
   const meOf = (accountId: string | undefined): Me => {
     const a = ctx.accounts.get(accountId);
     const ownerName=ctx.accounts.get(ownerId(ctx))?.name;
-    return a ? { ownerName, account: { name: a.name, role: a.role }, admin: a.role === 'admin', owner:isOwner(ctx,accountId) } : { admin: !accountId, owner:false, ownerName };
+    const profile = a ? accountProfile(ctx.cfg.dataDir, a.id) : undefined;
+    return a ? { ownerName, account: { name: a.name, role: a.role }, admin: a.role === 'admin', owner:isOwner(ctx,accountId), ...(profile ? { profile } : {}) } : { admin: !accountId, owner:false, ownerName };
   };
   /** Still signed in: the account wasn't revoked, and the shared password wasn't switched off. */
   const stillIn = (c: Client) => (c.accountId ? !!ctx.accounts.get(c.accountId) && (ctx.accounts.get(c.accountId)?.sessionEpoch??0)===(c.sessionEpoch??0) : ctx.accounts.sharedPassword);

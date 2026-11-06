@@ -54,6 +54,13 @@ export class Voice {
   private talking = false;
   muted = false;
   localLevel = 0;
+  /** How loud others' share sound plays for you (Settings → Screen share sound). */
+  private shareVolume = 1;
+
+  setShareVolume(volume: number, muted: boolean) {
+    this.shareVolume = muted ? 0 : Math.max(0, Math.min(1, volume));
+    for (const c of this.conns.values()) c.shareAudio.volume = this.shareVolume;
+  }
 
   constructor(private net: Net) {
     // Often enough for mouths to keep up with syllables.
@@ -281,6 +288,7 @@ export class Voice {
     audio.autoplay = true;
     const shareAudio = new Audio();
     shareAudio.autoplay = true;
+    shareAudio.volume = this.shareVolume;
     const c: Conn = { pc, polite: store.you < id, makingOffer: false, ignoreOffer: false, audio, shareAudio, level: 0 };
     this.conns.set(id, c);
 

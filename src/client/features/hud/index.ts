@@ -164,6 +164,7 @@ export function installHud(ctx: Ctx, core: CoreState, parts: HudParts) {
         player.setView(settings.view);
         sound.setVolume(settings.volume, settings.muted);
         sound.setMusicVolume(settings.music, settings.musicMuted);
+        voice.setShareVolume(settings.share, settings.shareMuted);
       },
       editProfile,
       sound,

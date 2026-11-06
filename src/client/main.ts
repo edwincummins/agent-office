@@ -1,7 +1,7 @@
 import './style.css';
 import { Net } from './net';
 import { DesktopNotifier } from './notify';
-import { store, loadProfile, loadSettings } from './state';
+import { store, loadProfile, loadSettings, saveProfile } from './state';
 import { PlayerController, groundAt } from './player';
 import { Hands } from './world/hands';
 import { Confetti } from './world/confetti';
@@ -114,6 +114,7 @@ parts.net = new Net(() => store.profile, () => parts.arrival.whereNow());
 parts.voice = new Voice(parts.net);
 parts.me = makeMe(ctx);
 parts.settings = loadSettings();
+parts.voice.setShareVolume(parts.settings.share, parts.settings.shareMuted);
 parts.player = new PlayerController(ctx.camera, canvas, ctx.office.colliders);
 parts.telescope = installTelescope(ctx, { clearTarget: () => parts.pointer.clearTarget(), backToGame: () => parts.focus.backToGame() });
 installKeyGuards(ctx, parts);
@@ -209,7 +210,11 @@ async function whoami() {
 }
 
 void whoami().then(() => {
-  const saved = loadProfile();
+  const local = loadProfile();
+  // Your account's character wins over this browser's: it's the one you last picked, on any device.
+  const fromAccount = store.me.account && store.me.profile ? { name: store.me.account.name, color: store.me.profile.color, look: store.me.profile.look } : null;
+  const saved = fromAccount ?? local;
+  if (fromAccount) saveProfile(fromAccount);
   if (saved && store.me.account) saved.name = store.me.account.name;
   if (store.me.account) store.profile.name = store.me.account.name;
   store.emit('me');
