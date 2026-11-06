@@ -33,8 +33,9 @@ export class EffectsBudget {
   reduced = false;
   private elapsed = 0;
   private frames = 0;
-  frame(seconds: number) {
-    if (!Number.isFinite(seconds) || seconds <= 0 || seconds > .25) return;
+  frame(seconds: number, visible = true) {
+    if (!visible) { this.elapsed = 0; this.frames = 0; return; }
+    if (!Number.isFinite(seconds) || seconds <= 0) return;
     this.elapsed += seconds; this.frames++;
     if (this.elapsed < 2) return;
     if (this.elapsed / this.frames > .018) {

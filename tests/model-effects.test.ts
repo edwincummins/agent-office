@@ -19,6 +19,12 @@ test('sustained slow frames shed bloom before resolution; healthy frames do neit
   assert.equal(slow.reduced, true);
   const normal = new EffectsBudget();
   for (let i = 0; i < 600; i++) normal.frame(1 / 60);
-  normal.frame(NaN); normal.frame(100);
+  normal.frame(NaN); normal.frame(100, false);
   assert.equal(normal.bloom, true); assert.equal(normal.reduced, false);
+});
+test('very slow visible frames still shed effects, hidden windows do not', () => {
+  const b = new EffectsBudget();
+  b.frame(10, false); assert.equal(b.bloom, true);
+  for (let i = 0; i < 4; i++) b.frame(.5);
+  assert.equal(b.bloom, false);
 });

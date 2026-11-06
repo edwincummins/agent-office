@@ -23,7 +23,7 @@ export function installModelEffects(ctx: Ctx) {
       if (found) activate(found);
     }
     if (root) {
-      budget.frame(delta);
+      budget.frame(delta, !document.hidden);
       if (budget.reduced && ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
     }
   });

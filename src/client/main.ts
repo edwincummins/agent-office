@@ -100,7 +100,6 @@ parts.boards = installBoards(ctx, { aimedNote: () => parts.pointer.aimedNote(), 
 parts.gallery = installGallery(ctx);
 installWhiteboard(ctx);
 installModelMap(ctx);
-installModelEffects(ctx);
 // Onto whatever you're walking on: the office's floor and furniture, or the roof's.
 parts.confetti = new Confetti((x, z, y) => groundAt(ctx.player.colliders, x, z, y, false));
 ctx.scene.add(parts.confetti.mesh);
@@ -186,6 +185,8 @@ parts.hud = installHud(ctx, core, parts);
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);
+// Innermost filter: tone-map into any outer view filter's target.
+installModelEffects(ctx);
 const frame = frameLoop(ctx, loading);
 
 // ---- Boot ------------------------------------------------------------------------------------------
