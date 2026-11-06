@@ -1,0 +1,66 @@
+// Isolated UI/controller proof; no office server, worker processes or shared configuration.
+import { createServer } from 'vite';
+import { chromium } from 'playwright-core';
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+const out=process.env.TRAVEL_PROOF_DIR;
+if(!out)throw Error('Set TRAVEL_PROOF_DIR to an evidence directory');
+await mkdir(out,{recursive:true});
+const html=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Travel UI proof</title></head><body><canvas tabindex="0" id="game"></canvas><div id="dock"></div><div id="modal-root"></div><div id="toasts"></div><script type="module">
+import '/src/client/styles/base.css';
+import {installTravelMenu} from '/src/client/features/travel-menu/index.ts';
+import {store} from '/src/client/state/index.ts';
+import {Keys} from '/src/client/core/registry.ts';
+import {modalOpen,onModalChange} from '/src/client/ui/dom.ts';
+
+const plan={id:'sample-map',name:'Example Campus',bounds:{minX:-10,maxX:10,minZ:-10,maxZ:10},travel:{home:{x:2,y:0,z:3,rotY:0},visitorHome:{x:1,y:0,z:1,rotY:0},places:[{id:'library',name:'Library',group:'Ground floor',at:{x:-2,y:0,z:2,rotY:0}}]}};
+store.floor='project-a';store.floors=[{id:'project-a',name:'Team',workers:4,waiting:1,busy:3},{id:'project-b',name:'Research',workers:2,waiting:0,busy:1}];store.me={owner:true};
+const keys=new Keys(); keys.add('guard',e=>modalOpen()||['INPUT','TEXTAREA'].includes(e.target?.tagName));
+window.addEventListener('keydown',e=>keys.handle(e));
+const player={pos:{x:0,y:0,z:9,set(x,y,z){Object.assign(this,{x,y,z});}},colliders:[{minX:-10,maxX:10,minZ:-10,maxZ:10,top:0}],rig:null,clearKeys(){},enabled:true};
+window.actions=[];
+onModalChange(open=>{player.enabled=!open;});
+const ctx={plan:()=>plan,player,keys,trip:()=>false,upTop:()=>false,inOffice:()=>plan.id==='office',activities:{stopAll(){}},hud:{add(a){const b=document.createElement('button');b.textContent=a.icon;b.title='Travel (J)';b.onclick=a.run;document.getElementById('dock').append(b);window.openTravel=a.run;}}};
+const parts={walking:{stopWalkingTo(){}},place:{placeAt(at){player.pos.set(at.x,at.y,at.z);window.actions.push(at);},saveSpot(){},downstairs:()=>player.pos.y<0},travel:{switchFloor(id){window.actions.push({switch:id});},ride(id){window.actions.push({ride:id});}}};
+installTravelMenu(ctx,parts);window.proof={player,store,plan};window.ready=true;
+</script></body></html>`;
+const server=await createServer({configFile:false,root:process.cwd(),server:{host:'127.0.0.1',port:0},plugins:[{name:'travel-proof',configureServer(s){s.middlewares.use((req,res,next)=>{if(req.url!=='/__travel-proof')return next();res.setHeader('Content-Type','text/html');res.end(html);});}}]});
+let browser;
+try{
+ await server.listen();
+ browser=await chromium.launch({headless:true,...(process.env.TRAVEL_CHROME?{executablePath:process.env.TRAVEL_CHROME}:{})});
+ const page=await browser.newPage({viewport:{width:1280,height:800}});
+ const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
+ await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__travel-proof`);
+ await page.waitForFunction(()=>window.ready);
+ await page.keyboard.press('j');await page.getByRole('dialog').waitFor();
+ await page.screenshot({animations:'disabled',path:out+'/travel-desktop.png'});
+ assert.equal(await page.locator('[data-place=castle]').isDisabled(),true);
+ await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);
+ assert.equal(await page.evaluate(()=>window.proof.player.enabled),true);
+ await page.keyboard.press('Home');assert.deepEqual(await page.evaluate(()=>window.actions.at(-1)),{x:2,y:0,z:3,rotY:0});
+ await page.evaluate(()=>window.proof.player.pos.set(0,0,9));
+ await page.keyboard.press('j');await page.locator('[data-place=library]').click();
+ assert.equal(await page.getByRole('dialog').count(),0);
+ assert.equal(await page.evaluate(()=>window.actions.at(-1).x),-2);
+ await page.setViewportSize({width:390,height:844});await page.keyboard.press('j');
+ await page.screenshot({animations:'disabled',path:out+'/travel-mobile.png'});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=390),true);
+ await page.getByRole('button',{name:'Close',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0);
+ await page.evaluate(()=>{window.proof.store.me.owner=false;window.actions=[];});
+ await page.keyboard.press('Home');assert.deepEqual(await page.evaluate(()=>window.actions.at(-1)),{x:1,y:0,z:1,rotY:0});
+ await page.evaluate(()=>{delete window.proof.plan.travel.visitorHome;window.actions=[];});
+ await page.keyboard.press('Home');assert.equal(await page.evaluate(()=>window.actions.length),0);
+ await page.keyboard.press('j');assert.equal(await page.locator('[data-place=home]').isDisabled(),true);
+ await page.keyboard.press('Escape');
+ await page.evaluate(()=>{window.proof.store.me.owner=true;});
+ await page.evaluate(()=>{window.proof.plan.id='office';window.proof.player.pos.y=-10;});
+ await page.keyboard.press('j');await page.locator('[data-place=project-a]').click();
+ assert.deepEqual(await page.evaluate(()=>window.actions.at(-1)),{ride:'project-a'});
+ await page.evaluate(()=>{window.proof.plan.id='sample-map';window.actions=[];window.proof.player.rig={};});
+ await page.keyboard.press('Home');assert.equal(await page.evaluate(()=>window.actions.length),0);
+ await page.evaluate(()=>{window.proof.player.rig=null;const input=document.createElement('input');document.body.append(input);input.focus();});
+ await page.keyboard.press('Home');assert.equal(await page.evaluate(()=>window.actions.length),0);
+ assert.deepEqual(errors,[]);
+ console.log('Travel browser proof passed: desktop/mobile, shortcuts, close, owner gate, shared-map refusal. Pointer lock and scene rendering require integration QA.');
+}finally{await browser?.close();await server.close();}

@@ -1,5 +1,6 @@
 import {installLevels} from './features/levels';
 import { installCrew } from './features/crew';
+import { installTravelMenu } from './features/travel-menu';
 import './style.css';
 import { Net } from './net';
 import { DesktopNotifier } from './notify';
@@ -191,6 +192,7 @@ installDictation(ctx);
 parts.hud = installHud(ctx, core, parts);
 installFleet(ctx);
 installCrew(ctx);
+installTravelMenu(ctx, parts);
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

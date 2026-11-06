@@ -6,6 +6,7 @@ import { $, h, openModal, type Modal } from './dom';
 
 /** One thing the ☰ menu does. Any of them can be pinned to the top bar. */
 export interface HudAction {
+  dock?: 'before-workers';
   /** Pins are saved by it, so it never changes. */
   id: string;
   icon: string | (() => string);
@@ -51,6 +52,7 @@ export function panelHide(id: HudPanel): HTMLElement {
 }
 
 export interface Hud {
+  add(action: HudAction): void;
   /** Redraws the top bar for a change the store doesn't announce (voice, hanging a picture). */
   refresh(): void;
   toggleMenu(): void;
@@ -125,7 +127,8 @@ export function mountHud(actions: HudAction[], settings: Settings, save: () => v
   }
 
   function render() {
-    const items: HTMLElement[] = actions.filter((a) => offered(a) && (pinned(a) || a.status?.())).map(dockButton);
+    const visible = actions.filter((a) => offered(a) && (pinned(a) || a.status?.()));
+    const items: HTMLElement[] = visible.filter((a) => !a.dock).map(dockButton);
     const people = store.peers.size;
     if (people > 1 || settings.hud.people) items.push(panelChip('people', '👥', 'People', people, `${people} in the office`));
     const workers = [...store.workers.values()];
@@ -134,7 +137,7 @@ export function mountHud(actions: HudAction[], settings: Settings, save: () => v
     const waiting = workers.filter(waitingOnSomeone).length;
     const workersTitle = hired || waiting ? `${hired} worker${hired === 1 ? '' : 's'} on this floor${waiting ? `, ${waiting} waiting on someone` : ''}` : 'No workers on this floor yet';
     // Who's waiting has its own button on the bar (the 'waiting' action), so this just counts them.
-    items.push(panelChip('workers', '🤖', 'Workers', hired, workersTitle));
+    items.push(...visible.filter((a) => a.dock === 'before-workers').map(dockButton), panelChip('workers', '🤖', 'Workers', hired, workersTitle));
     // Redrawn only when it looks different, so a busy worker's updates don't swap a button out from under a click.
     const next = h('div', {}, ...items);
     if (next.innerHTML !== [...dock.children].filter((c) => c !== menuBtn).map((c) => c.outerHTML).join('')) dock.replaceChildren(...items, menuBtn);
@@ -281,5 +284,5 @@ export function mountHud(actions: HudAction[], settings: Settings, save: () => v
   for (const t of ['workers', 'peers', 'issues', 'pulls', 'services', 'queue', 'meeting', 'upgrade', 'me', 'floors', 'signins'] as Topic[]) store.on(t, render);
   applyPanels();
   render();
-  return { refresh: render, toggleMenu };
+  return { refresh: render, toggleMenu, add: (action) => { actions.push(action); render(); } };
 }
