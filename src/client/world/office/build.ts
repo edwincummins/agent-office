@@ -1,3 +1,4 @@
+import {stockFixture} from '../fixtures/stock';
 import * as THREE from 'three';
 import type { WallRect } from '../../../shared/decor';
 import type { FloorPalette } from '../../../shared/floors';
@@ -53,11 +54,11 @@ function floorPlan() {
     kiosks,
     boards,
     // The lounge: the TV, the couch and its table and poufs, and the jukebox and the arcade in the corner.
-    tv,
+    stockFixture('tv',tv),
     machineMonitor,
-    lounge,
-    jukebox,
-    cabinet,
+    stockFixture('lounge',lounge),
+    stockFixture('jukebox',jukebox),
+    stockFixture('arcade',cabinet),
     bookshelf,
     kitchen,
     plants,
@@ -68,7 +69,7 @@ function floorPlan() {
     meetingRoom,
     elevator,
     garageLift,
-    gong,
+    stockFixture('gong',gong),
     hoop,
     whiteboard,
     clearOfStairs,

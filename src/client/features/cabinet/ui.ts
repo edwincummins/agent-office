@@ -96,6 +96,8 @@ export class Cabinet {
     });
   }
 
+  leaveMap(){this.stop();this.view.reset();}
+  setScreen(screen:THREE.Mesh){this.stop();this.view.setScreen(screen);const mat=screen.material as THREE.MeshBasicMaterial;mat.map=this.texture;mat.color.set('#ffffff');mat.needsUpdate=true;}
   /** Anywhere between your view and the screen: your first-person hands would cover it. */
   get zoomed(): boolean {
     return this.view.zoomed;

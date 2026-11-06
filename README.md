@@ -440,3 +440,5 @@ Password changes sign out that account's other sessions; the browser setting its
 Worker execution and tool sign-ins are [owner-only](docs/owner-workers.md). Other accounts—including other admins—can explore, chat and watch terminals. Existing offices must set a local owner account ID; first-run offices use their recorded owner. Terminal output is visible to all signed-in visitors.
 
 Visitor UI: named owner hints/footers, no palette hire action, and a one-time dismissible visitor tip; see docs/owner-workers.md.
+
+Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media-wall fixtures with level faces and matching thin frames. See [Converting a purchased office](docs/maps.md#converting-a-purchased-office) and the synthetic fixture demo; licensed room assets stay local.

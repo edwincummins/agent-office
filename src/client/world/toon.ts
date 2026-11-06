@@ -16,6 +16,8 @@ function gradientMap(): THREE.DataTexture {
 
 const cache = new Map<string, THREE.MeshToonMaterial>();
 
+export const sharedToon=(material:THREE.Material)=>[...cache.values()].includes(material as THREE.MeshToonMaterial);
+
 export function toon(color: THREE.ColorRepresentation, opts: { emissive?: THREE.ColorRepresentation; transparent?: boolean; opacity?: number } = {}): THREE.MeshToonMaterial {
   const key = `${new THREE.Color(color).getHexString()}|${opts.emissive ?? ''}|${opts.opacity ?? 1}`;
   const hit = cache.get(key);

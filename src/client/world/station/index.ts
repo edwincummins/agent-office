@@ -119,7 +119,7 @@ export function buildStation(plan: MapPlan): World {
   const hsl = { h: 0, s: 0, l: 0 };
   const gongAt = kit.gong?.top;
 
-  return {
+  const world: World = {
     plan,
     group,
     colliders: kit.colliders,
@@ -132,8 +132,8 @@ export function buildStation(plan: MapPlan): World {
     gong: kit.gong,
     nav,
     ways: {
-      home: (seat, from) => ({ way: [...(from ? nav.route(from, inside) : nav.wayFrom(seat, inside)), threshold, beyond], chute: false }),
-      in: (seat) => [beyond, threshold, ...nav.wayTo(inside, seat)],
+      home: (seat, from) => ({ way: [...(from ? world.nav.route(from, inside) : world.nav.wayFrom(seat, inside)), threshold, beyond], chute: false }),
+      in: (seat) => [beyond, threshold, ...world.nav.wayTo(inside, seat)],
     },
     rain: [{ area: b, top: () => H - 0.5 }],
     device: 'laptop',
@@ -219,4 +219,5 @@ export function buildStation(plan: MapPlan): World {
       });
     },
   };
+  return world;
 }

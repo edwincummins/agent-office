@@ -143,7 +143,7 @@ export function buildCastle(plan: MapPlan): World {
   };
   const gongAt = kit.gong?.top;
 
-  return {
+  const world: World = {
     plan,
     group,
     colliders: kit.colliders,
@@ -156,8 +156,8 @@ export function buildCastle(plan: MapPlan): World {
     gong: kit.gong,
     nav,
     ways: {
-      home: (seat, from) => ({ way: [...(from ? nav.route(from, inside) : nav.wayFrom(seat, inside)), threshold, beyond], chute: false }),
-      in: (seat) => [beyond, threshold, ...nav.wayTo(inside, seat)],
+      home: (seat, from) => ({ way: [...(from ? world.nav.route(from, inside) : world.nav.wayFrom(seat, inside)), threshold, beyond], chute: false }),
+      in: (seat) => [beyond, threshold, ...world.nav.wayTo(inside, seat)],
     },
     rain: [{ area: b, top: () => Math.min(H - 1, 9) }],
     device: 'tome',
@@ -275,4 +275,5 @@ export function buildCastle(plan: MapPlan): World {
       });
     },
   };
+  return world;
 }
