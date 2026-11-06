@@ -28,7 +28,7 @@ export function installModelEffects(ctx: Ctx) {
     }
     if (root) {
       const change = budget.frame(timing ? timing.rawDelta : delta, !document.hidden, timing ? timing.samples : 1);
-      if (change) console.info('[model-effects]', change, timing ?? { tickDelta: delta, rawDelta: null, renderCpuMs: null, gpuMs: null });
+      if (change) console.info('[model-effects]', change, timing ? { ...timing } : { tickDelta: delta, rawDelta: null, renderCpuMs: null, gpuMs: null });
       if (budget.reduced) {
         if (ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
       } else if (ctx.renderer.getPixelRatio() !== originalPixelRatio) ctx.renderer.setPixelRatio(originalPixelRatio);
