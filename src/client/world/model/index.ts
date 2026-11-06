@@ -11,6 +11,7 @@ import {retryModelLoad} from './retry';
 import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
 import { seatFloor } from '../../../shared/levels/attach';
+import { mergeOpaqueModelMeshes } from './merge';
 
 export interface ModelSurfaces {
   screen: THREE.Mesh | null;
@@ -89,6 +90,7 @@ export function buildModel(plan: MapPlan): World {
         if(n.includes('poster')||n.includes('glow')) {m.emissive.set('#ffffff');m.emissiveMap=m.map;m.emissiveIntensity=1.6;}
       }
     });
+    mergeOpaqueModelMeshes(gltf.scene);
     group.add(gltf.scene);
   }).catch(error=>{if(disposed)return;status.error=String(error);console.error('Model map failed',error);});
   const world: World={
