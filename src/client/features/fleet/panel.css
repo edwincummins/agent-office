@@ -29,5 +29,7 @@
 .cadre-eye-toggle{margin-left:auto}
 .cadre-eye{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid #22252a;background:#0d0e10;font:14px 'Segoe UI',sans-serif}
 .cadre-eye .cadre-eye-label{color:#c9a24a;font-weight:600;letter-spacing:.04em}
-.cadre-eye button.off{color:#8b8676;text-decoration:line-through}
-.cadre-eye button.on{border-color:#3d6b4f}
+.cadre-eye button{display:inline-flex;gap:8px;align-items:center}
+.cadre-eye .cadre-eye-state{font:700 11px 'Segoe UI',sans-serif;letter-spacing:.08em;padding:2px 6px;border-radius:4px}
+.cadre-eye button.on{border-color:#2f7d4f;background:#12261a}.cadre-eye button.on .cadre-eye-state{background:#2f7d4f;color:#eafff1}
+.cadre-eye button.off{border-color:#5a2a2a;background:#1d1212;color:#a59e8c}.cadre-eye button.off .cadre-eye-state{background:#7a2e2e;color:#ffe9e9}

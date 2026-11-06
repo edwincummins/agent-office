@@ -14,7 +14,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
   const drawEye=()=>{
     const s=opts.guests();if(!s){eyeBar.replaceChildren(h('span',{},'Guest settings loading…'));return;}
     const flip=(next:FleetGuestSettings)=>{opts.setGuests(next);};
-    const chip=(label:string,on:boolean,next:()=>FleetGuestSettings)=>h('button',{class:on?'on':'off','aria-pressed':String(on),onclick:()=>flip(next())},`${on?'👁':'🚫'} ${label}`);
+    const chip=(label:string,on:boolean,next:()=>FleetGuestSettings)=>h('button',{class:on?'on':'off','aria-pressed':String(on),title:on?`Guests see ${label}: click to hide`:`Hidden from guests: click to show`,onclick:()=>flip(next())},h('span.cadre-eye-name',{},label),h('span.cadre-eye-state',{},on?'SHOWN':'HIDDEN'));
     const teams=[...new Set([...(snapshot()?.teams??[]),...Object.keys(s.teams)])].sort();
     eyeBar.replaceChildren(h('span.cadre-eye-label',{},'Guests see:'),
       chip('Terminals',s.terminals,()=>({...s,terminals:!s.terminals})),
