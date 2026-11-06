@@ -1,3 +1,4 @@
+import { batchStaticParts } from '../../world/static-parts';
 import * as THREE from 'three';
 import { CABINET, FLOOR } from '../../../shared/layout';
 import { mesh, roundedBox, toon } from '../../world/toon';
@@ -142,6 +143,7 @@ export function buildCabinet(): CabinetModel {
   const collider: Collider = { minX: CABINET.x - 0.45, maxX: FLOOR.maxX, minZ: CABINET.z - W / 2 - 0.02, maxZ: CABINET.z + W / 2 + 0.02, top: CABINET.height };
   const interactable: Interactable = { kind: 'cabinet', x: CABINET.x - 1.2, z: CABINET.z, radius: 1.3 };
   group.userData.interact = interactable;
+  batchStaticParts(group);
   return { group, collider, interactable, screen };
 }
 

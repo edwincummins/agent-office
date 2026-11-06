@@ -1,3 +1,4 @@
+import { workerHeadset } from './worker-headset';
 import * as THREE from 'three';
 import type { Theme, WorkerAction, WorkerStatus, WorkerTask } from '../../../shared/protocol';
 import { isAsleep, type WorkerPr } from '../../../shared/status';
@@ -120,16 +121,9 @@ export class Worker {
       this.eyes.push(eye, pupil);
       this.pupils.push(pupil);
     }
-    // Headset: band + mic
-    const band = mesh(new THREE.TorusGeometry(0.29, 0.025, 6, 20, Math.PI), toon('#2b2d42'), 0, 0.72, 0, false);
-    band.rotation.y = Math.PI / 2;
-    this.body.add(band);
-    this.headset.push(band);
-    for (const sx of [-1, 1]) {
-      const cup = mesh(new THREE.SphereGeometry(0.07, 10, 8), toon('#2b2d42'), sx * 0.29, 0.72, 0, false);
-      this.body.add(cup);
-      this.headset.push(cup);
-    }
+    const headset = workerHeadset();
+    this.body.add(headset);
+    this.headset.push(headset);
     // Antenna with status bulb
     this.body.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6), toon('#2b2d42'), 0, 1.07, 0, false));
     this.bulb = toonUnique(STATUS_BULB.starting);

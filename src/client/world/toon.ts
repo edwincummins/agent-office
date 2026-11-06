@@ -15,6 +15,12 @@ function gradientMap(): THREE.DataTexture {
 }
 
 const cache = new Map<string, THREE.MeshToonMaterial>();
+const cachedMaterials = new WeakSet<THREE.Material>();
+
+/** Cached palette colours are immutable; animated colours use toonUnique. */
+export function isCachedToon(material: THREE.Material): material is THREE.MeshToonMaterial {
+  return cachedMaterials.has(material);
+}
 
 export function toon(color: THREE.ColorRepresentation, opts: { emissive?: THREE.ColorRepresentation; transparent?: boolean; opacity?: number } = {}): THREE.MeshToonMaterial {
   const key = `${new THREE.Color(color).getHexString()}|${opts.emissive ?? ''}|${opts.opacity ?? 1}`;
@@ -27,6 +33,7 @@ export function toon(color: THREE.ColorRepresentation, opts: { emissive?: THREE.
     m.opacity = opts.opacity ?? 1;
   }
   cache.set(key, m);
+  cachedMaterials.add(m);
   return m;
 }
 
