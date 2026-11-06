@@ -32,6 +32,17 @@ test('meshes with different parents or render settings stay separate', () => {
   assert.equal(a.geometry, original); assert.equal(left.children.length, 2);
 });
 
+test('one parent batches each rigid material group while preserving distinct materials', () => {
+  const parent = new THREE.Group(), dark = new THREE.MeshBasicMaterial({ color: 0x111111 }), light = new THREE.MeshBasicMaterial({ color: 0xeeeeee });
+  for (const material of [dark, dark, light, light]) parent.add(new THREE.Mesh(new THREE.BoxGeometry(), material));
+  const release = batchRigidSiblings(parent);
+  assert.equal(parent.children.filter(child => child.name === 'rigid-sibling-batch').length, 2);
+  assert.equal(parent.children.filter(child => child.visible).length, 2);
+  release();
+  assert.equal(parent.children.length, 4);
+  assert.ok(parent.children.every(child => child.visible));
+});
+
 test('animated meshes are excluded from static batching', () => {
   const parent = new THREE.Group(), material = new THREE.MeshBasicMaterial();
   const a = new THREE.Mesh(new THREE.BoxGeometry(), material), b = new THREE.Mesh(new THREE.BoxGeometry(), material);

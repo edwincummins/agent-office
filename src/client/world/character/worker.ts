@@ -1,5 +1,7 @@
 import { workerEyes } from './worker-eyes';
 import { workerHeadset } from './worker-headset';
+import { batchBeardParts } from './worker-detail-batches';
+import { batchRigidSiblings } from '../rigid-batch';
 import * as THREE from 'three';
 import type { Theme, WorkerAction, WorkerStatus, WorkerTask } from '../../../shared/protocol';
 import { isAsleep, type WorkerPr } from '../../../shared/status';
@@ -15,7 +17,6 @@ import { DANCE, groove, type Dancing, type Stage } from './worker-dance';
 import { DEAD, STARVED, bones, crossedEyes, slump } from './worker-jail';
 import { packUp, waddle, type Leaving } from './worker-leave';
 import { dressUp, growBeard, wearGarb } from './worker-dress';
-
 /** The little Claude worker that sits at a desk. Forward is +z. */
 export class Worker {
   readonly root = new THREE.Group();
@@ -36,7 +37,7 @@ export class Worker {
   /** Its worktree was deleted outside the office (WorkerInfo.lost): its bubble says so until it's fixed. */
   private lost = false;
   private nameTag: THREE.Sprite | null = null;
-  private eyes: THREE.Mesh[] = [];
+  private eyes: THREE.Object3D[] = [];
   private blinkAt = Math.random() * 4;
   status: WorkerStatus = 'starting';
   bouncing = false;
@@ -100,7 +101,8 @@ export class Worker {
   private mutterT = 0;
   private label = '';
   private releaseBatches = () => {};
-
+  private releaseGarbBatch = () => {};
+  private releaseBeardBatches = () => {};
   constructor(
     name: string,
     private color: string,
@@ -108,12 +110,13 @@ export class Worker {
     const skin = (this.skin = toonUnique(color));
     const white = toon('#ffffff');
     const ink = toon('#1d1d1d');
-
     this.root.add(this.body);
     // Bean-shaped body
     const bean = mesh(new THREE.CapsuleGeometry(0.28, 0.3, 8, 16), skin, 0, 0.55, 0);
     this.body.add(bean);
-    ({ eyes: this.eyes, pupils: this.pupils } = workerEyes(this.body, white, ink));
+    const eyes = workerEyes(this.body, white, ink);
+    this.eyes = eyes.eyes;
+    this.pupils = eyes.pupils;
     // Headset: band + mic
     const headset = workerHeadset();
     this.headset.push(headset.group);
@@ -124,7 +127,6 @@ export class Worker {
     this.bulb.emissive = new THREE.Color(STATUS_BULB.starting).multiplyScalar(0.6);
     this.bulbMesh = mesh(new THREE.SphereGeometry(0.075, 12, 10), this.bulb, 0, 1.2, 0, false);
     this.body.add(this.bulbMesh);
-
     const arm = (x: number) => {
       const pivot = new THREE.Group();
       pivot.position.set(x, 0.55, 0.05);
@@ -139,7 +141,6 @@ export class Worker {
       this.body.add(foot);
       this.feet.push(foot);
     }
-
     // What it acts out with: papers in its hands, and a globe beside its laptop.
     this.papers = papers();
     this.papers.group.position.set(0, 0.86, 0.4);
@@ -148,12 +149,10 @@ export class Worker {
     this.globe = globe();
     for (const prop of [this.papers.group, this.globe.group]) prop.visible = false;
     this.root.add(this.globe.group);
-
     this.rig = { root: this.root, body: this.body, skin: this.skin, armL: this.armL, armR: this.armR, feet: this.feet, pupils: this.pupils, bulb: this.bulb, bulbMesh: this.bulbMesh, props: [this.papers.group, this.globe.group] };
     this.setName(name);
-    this.releaseBatches = headset.release;
+    this.releaseBatches = () => { eyes.release(); headset.release(); };
   }
-
   /** Where the globe floats, in its own space: beside its laptop, where the card over its head doesn't hide it. */
   setPropSpot(at: THREE.Vector3) {
     this.spot.copy(at);
@@ -187,6 +186,8 @@ export class Worker {
   setOutfit(outfit: 'peasant' | null) {
     if (!!this.garb === (outfit === 'peasant')) return;
     if (this.garb) {
+      this.releaseGarbBatch();
+      this.releaseGarbBatch = () => {};
       undress([this.garb.body, this.garb.cap]);
       this.garb.cloth.dispose();
       this.garb = null;
@@ -195,6 +196,7 @@ export class Worker {
       let seed = 0;
       for (const ch of this.color) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
       this.garb = peasantGarb(seed);
+      this.releaseGarbBatch = batchRigidSiblings(this.garb.cap);
       this.body.add(this.garb.body, this.garb.cap);
       this.garb.cap.visible = this.costume !== 'christmas';
     }
@@ -213,6 +215,7 @@ export class Worker {
     this.age = age;
     if (age > 0.02 && !this.whiskers) {
       this.whiskers = beard();
+      this.releaseBeardBatches = batchBeardParts(this.whiskers);
       this.body.add(this.whiskers.group);
       this.dirt = grime();
       for (const d of this.dirt) this.body.add(d.part);
@@ -584,10 +587,12 @@ export class Worker {
     if (this.skeleton) undress([this.skeleton]);
     undress(this.outfit);
     if (this.garb) {
+      this.releaseGarbBatch();
       undress([this.garb.body, this.garb.cap]);
       this.garb.cloth.dispose();
     }
     if (this.whiskers) {
+      this.releaseBeardBatches();
       undress([this.whiskers.group, ...this.dirt.map((d) => d.part)]);
       this.whiskers.hair.dispose();
     }

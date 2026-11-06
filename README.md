@@ -421,4 +421,4 @@ Every change to the app that lands on `main` is published as a GitHub release by
 
 [MIT](LICENSE)
 
-Repeated headset parts are combined once under their shared group to reduce draw calls; the whole headset still follows worker motion and hides with costumes.
+Rigid worker details are combined once within their own animated parent groups (headset, eye whites, cap and beard accents). The parent keeps its normal motion and visibility; no per-frame vertex rewrites are needed.

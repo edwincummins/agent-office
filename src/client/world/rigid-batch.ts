@@ -2,12 +2,18 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /** Merge static leaf meshes under one parent. The parent's transform moves the batch for free. */
-export function batchRigidSiblings(parent: THREE.Object3D, material: THREE.Material): () => void {
-  const parts = parent.children.filter((o): o is THREE.Mesh<THREE.BufferGeometry, THREE.Material> =>
-    o instanceof THREE.Mesh && !o.children.length && o.material === material &&
+export function batchRigidSiblings(parent: THREE.Object3D, material?: THREE.Material): () => void {
+  const candidates = parent.children.filter((o): o is THREE.Mesh<THREE.BufferGeometry, THREE.Material> =>
+    o instanceof THREE.Mesh && o.visible && !o.children.length && !Array.isArray(o.material) &&
     !(o instanceof THREE.SkinnedMesh) && !(o instanceof THREE.InstancedMesh) &&
-    !Object.keys(o.geometry.morphAttributes).length,
+    !Object.keys(o.geometry.morphAttributes).length && (!material || o.material === material),
   );
+  if (!material) {
+    const materials = [...new Set(candidates.map(part => part.material as THREE.Material))];
+    const releases = materials.map(current => batchRigidSiblings(parent, current));
+    return () => { for (const release of releases) release(); };
+  }
+  const parts = candidates;
   if (parts.length < 2) return () => {};
   parent.updateMatrixWorld(true);
   const groups = new Map<string, typeof parts>();
