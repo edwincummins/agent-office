@@ -1,10 +1,11 @@
 import type { Bounds } from '../nav.js';
 import type { BoardPlace, Place } from './types.js';
+import type { StationKind } from '../layout.js';
 import { isObj, num, MapError } from './check.js';
 
 export interface ModelChair extends Required<Place> {y:number}
 export interface ModelMapData {
-  source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace};
+  source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace;stations?:StationKind[]};
   asset: string;
   seats: Required<Place>[];
   walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number; bottom?: number }[];
@@ -78,7 +79,9 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
       for(const p of result)if(walls.some(w=>w.top>p.y && (w.bottom??0)<p.y+1.2 && p.x>w.minX&&p.x<w.maxX&&p.z>w.minZ&&p.z<w.maxZ))throw new MapError(`${label} anchor is inside a wall`);
       return result;
     };
-    source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard')};
+    const stations=value.source.stations===undefined?[]:value.source.stations;
+    if(!Array.isArray(stations)||stations.some(s=>s!=='issues'&&s!=='pulls'&&s!=='queue')||new Set(stations).size!==stations.length)throw new MapError('model.source.stations must be a distinct list of issues, pulls and queue');
+    source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard'),stations};
     for(const [i,chair] of source.chairs.entries()){
       const s=seats[i];
       if(Math.hypot(s.x+Math.sin(s.rotY)*.85-chair.x,s.z+Math.cos(s.rotY)*.85-chair.z)>.02)throw new MapError('source chair must match its seat approach at 0.85 m');

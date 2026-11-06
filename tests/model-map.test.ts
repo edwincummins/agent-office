@@ -73,13 +73,15 @@ test('source furniture preserves 32 worker ids and five explicit council chairs 
  const value=model();
  const chairs=value.seats.map(s=>({x:s.x,z:s.z+.85,rotY:Math.PI,y:.4}));
  const council=Array.from({length:5},(_,i)=>({x:-8+i*2,z:-12,rotY:0,y:.4}));
- const source={chairs,council,meetingBoard:value.whiteboard};
+ const source={chairs,council,meetingBoard:value.whiteboard,stations:['issues' as const,'queue' as const]};
  const config={...CASTLE,id:'source-room',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:{...value,source}};
  const plan=planMap(config);
  assert.equal(plan.meeting.length,5);assert.equal(plan.desks.length+plan.overflow.length,32);
+ assert.deepEqual(plan.config!.model!.source!.stations,['issues','queue']);
  for(const [i,d] of plan.meeting.entries())assert.ok(Math.hypot(d.x+Math.sin(d.rotY)*.85-council[i].x,d.z+Math.cos(d.rotY)*.85-council[i].z)<1e-10);
  assert.throws(()=>checkModel({...value,source:{...source,council:[]}},bounds,10),/exactly 5/);
  assert.throws(()=>checkModel({...value,source:{...source,chairs:chairs.map(p=>({...p,x:p.x+1}))}},bounds,10),/approach/);
+ assert.throws(()=>checkModel({...value,source:{...source,stations:['issues','issues']}},bounds,10),/distinct list/);
 });
 
 import {modelColliders} from '../src/client/world/model/colliders.js';

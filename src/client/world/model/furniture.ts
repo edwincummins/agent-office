@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import type {ModelChair} from '../../../shared/maps/model';
+import type {StationKind} from '../../../shared/layout';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { DeskDef } from '../../../shared/layout';
 import type { DeskView, Interactable } from '../types';
 import { mergeByMaterial } from '../toon';
 
-export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0) {
+export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0, sourceStations: readonly StationKind[] = []) {
   const still = new THREE.Group();
   const oak = new THREE.MeshStandardMaterial({ color: '#aa8260', roughness: .6 });
   const metal = new THREE.MeshStandardMaterial({ color: '#30353b', roughness: .5, metalness: .3 });
@@ -42,6 +43,8 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
       cushion.scale.set(1,.6,1.05); cushion.position.set(0,.2192,.85); shape.add(cushion);
       const contact = new THREE.Mesh(new THREE.CylinderGeometry(.363,.363,.005,16),fabric);
       contact.scale.z=1.05;contact.position.set(0,.027,.85);shape.add(contact);
+    } else if (def.station && sourceStations.includes(def.station)) {
+      // The model supplies this kiosk; keep only its interaction and seat anchors.
     } else if (!def.room) {
       box(shape,[1.6,.07,.8],[0,.75,0],oak);
       box(shape,[.42,.018,.15],[0,.797,.17],metal);
