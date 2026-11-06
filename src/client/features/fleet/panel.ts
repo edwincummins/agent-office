@@ -68,7 +68,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
       const tile=h('section.cadre-team',{style:`border-color:${fleetColors[seat.state]}`},
         h('h3',{},`${seat.rig} · ${seat.name}`,h('small',{style:`color:${fleetColors[seat.state]}`},seat.state.replace('-',' '))));
       if(seat.reason)tile.append(h('p.cadre-reason',{style:`color:${fleetColors[seat.state]}`},`${seat.reason}${seat.since!==undefined?` · seen ${seat.state} since ${new Date(seat.since).toLocaleString()}`:''}`));
-      const tail=h('pre.cadre-tail',{'data-seat':seat.session,style:seat.state==='stopped'?'opacity:.4':''},!showTerms?'Terminal hidden':seat.tail?.length?seat.tail.join('\n'):'no output yet');
+      const tail=h(showTerms?'pre.cadre-tail':'pre.cadre-tail.cadre-hidden',{'data-seat':showTerms?seat.session:'',style:seat.state==='stopped'?'opacity:.4':''},!showTerms?'🙈 Terminal hidden (privacy eye)':seat.tail?.length?seat.tail.join('\n'):'no output yet');
       tile.append(tail);grid.append(tile);const position=scroll.get(seat.session);tail.scrollTop=position&&!position.bottom?position.top:tail.scrollHeight;tail.scrollLeft=position?.left??0;
     }
   };

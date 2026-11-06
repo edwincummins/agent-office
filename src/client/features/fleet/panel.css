@@ -35,3 +35,4 @@
 .cadre-eye button.off{border-color:#5a2a2a;background:#1d1212;color:#a59e8c}.cadre-eye button.off .cadre-eye-state{background:#7a2e2e;color:#ffe9e9}
 /* Colour terminals in the watch view: real terminal lines, scaled to the tile's width, never wrapped. */
 .cadre-grid .cadre-tail.cadre-screen{white-space:pre;overflow:hidden;overflow-wrap:normal;background:#0b0c0d;font-family:'Cascadia Mono',Consolas,monospace}
+.cadre-grid .cadre-tail.cadre-hidden{display:flex;align-items:center;justify-content:center;color:#8b8676;font:600 15px 'Segoe UI',sans-serif;border:1px dashed #2c3036;border-radius:8px}
