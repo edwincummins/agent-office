@@ -39,7 +39,7 @@ export function clampLevelCamera(target: Vector3, camera: Vector3, solids: reado
 }
 
 /** Retract before reaching a stair, independent of approach direction or camera yaw. */
-export function levelBoomDistance(position: Vector3, distance: number, solids: readonly Collider[]) {
+export function levelBoomDistance(position: Vector3, distance: number, solids: readonly Collider[], pitch = 0) {
   let near = Infinity;
   for (const s of solids) {
     if (!s.stairSurface || position.y < (s.bottom ?? 0) - 2 || position.y > s.top + 2) continue;
@@ -47,5 +47,19 @@ export function levelBoomDistance(position: Vector3, distance: number, solids: r
   }
   const band = Math.max(3, (distance - .6) / 2);
   const blend = Math.max(0, Math.min(1, (near - 1.5) / band));
-  return Math.min(distance, .6 + Math.max(0, distance-.6)*blend);
+  let boom = Math.min(distance, .6 + Math.max(0, distance-.6)*blend);
+  // Anticipate a low slab before the trailing camera reaches its footprint.
+  // Reducing the target boom first keeps post-easing collision clipping as a safety net.
+  const rise = Math.sin(pitch), eye = position.y + 1.3;
+  if (rise > 0) for (const s of solids) {
+    const bottom = s.bottom ?? 0;
+    if (!s.levelSurface || s.stairSurface || bottom <= eye + .3 || bottom >= position.y + 3.8) continue;
+    const safe = Math.max(.6, (bottom - .3 - eye) / rise);
+    if (safe >= boom) continue;
+    const gap = Math.hypot(Math.max(s.minX-position.x,0,position.x-s.maxX),Math.max(s.minZ-position.z,0,position.z-s.maxZ));
+    const reach = distance * Math.abs(Math.cos(pitch)) + 1.5;
+    const approach = Math.max(0, Math.min(1, (gap - reach) / Math.max(3, (distance-safe)/2)));
+    boom = Math.min(boom, safe + (distance-safe)*approach);
+  }
+  return boom;
 }

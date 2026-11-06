@@ -352,3 +352,5 @@ Validation: `node --import tsx --import=#tests/css --test tests/map-levels.test.
 Level maps reject out-of-hall or out-of-height avatar positions before relaying them. This bounds untrusted coordinates; it is not authoritative movement simulation or anti-teleport enforcement. Passenger lifts remain available to visitors. When composed with an owner-only worker gate, allow only the walking messages `levels.sync` and `levels.lift` through that gate.
 
 The third-person boom retracts before either end or side of a staircase, including backwards approaches, and expands after leaving it. Slab intersection checks remain active throughout; first-person and maps without levels retain their camera behavior.
+
+Third-person cameras anticipate low slab edges by shortening the boom before it reaches the ceiling footprint. Collision clipping still runs before and after camera interpolation; this avoids easing through a slab. First-person cameras are unchanged.
