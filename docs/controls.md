@@ -47,3 +47,5 @@ The prompt edits the way it does in your own terminal (iTerm2's *Natural Text Ed
 | ⌘ + ⌫ | Delete to the start of the line (Mac) |
 | ⌘ + ⌦ | Delete to the end of the line (Mac) |
 | ⌘ + ← / → | Jump to the start / end of the line (Mac) |
+
+In third-person view, walls and other collision boxes pull the camera closer so they do not cover your character. The camera eases back to the selected zoom distance when the path clears. First-person view is unchanged.

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FLOOR, SLAB, STREET_Y, WING, inWing, wingMinZ } from '../../shared/layout';
 import type { ViewMode } from '../state';
 import type { Collider } from '../world/types';
+import { shortenCameraBoom } from './camera-boom';
 import { ceilingAt, groundAt } from './collide';
 
 // The camera: your eyes in first person, or following you round in third without going through the
@@ -104,8 +105,13 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     else if (side === 2) cam.z = R.minZ - e;
     else cam.z = R.maxZ + e;
   }
+  shortenCameraBoom(target, cam, p.colliders);
   if (snap) camera.position.copy(cam);
-  else camera.position.lerp(cam, 0.25);
+  else {
+    camera.position.lerp(cam, 0.25);
+    // Pull inward immediately, including when a new map puts a wall across the old camera pose.
+    shortenCameraBoom(target, camera.position, p.colliders);
+  }
   camera.lookAt(target);
 }
 
