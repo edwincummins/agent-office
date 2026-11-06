@@ -3,7 +3,7 @@
 // its stream-json protocol with the numbers its /usage screen shows. Asking starts no conversation
 // and costs nothing, and Claude Code deals with the sign-in (keychain, token refresh) itself.
 
-import { spawn } from './cli-process.js';
+import { spawn } from 'node:child_process';
 import os from 'node:os';
 import type { PlanLimits, PlanWindow } from '../shared/protocol.js';
 
@@ -130,7 +130,6 @@ function ask(claude: string, env: Record<string, string>): Promise<any> {
   return new Promise((resolve) => {
     let settled = false;
     let buf = '';
-    // cli-process's spawn starts npm's claude.CMD safely on Windows (PR #5).
     const child = spawn(claude, args, { cwd: os.tmpdir(), windowsHide: true, env, stdio: ['pipe', 'pipe', 'ignore'] });
     const finish = (v: any) => {
       if (settled) return;

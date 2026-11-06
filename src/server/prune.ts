@@ -77,7 +77,7 @@ export async function prune(argv: string[]): Promise<number> {
     return 2;
   }
   try {
-    execFileSync('git', ['rev-parse', '--git-dir'], { cwd: dir, stdio: 'ignore' });
+    execFileSync('git', ['rev-parse', '--git-dir'], { cwd: dir, stdio: 'ignore', windowsHide: true });
   } catch {
     console.error(`agent-office prune: not a git repository: ${dir}`);
     return 1;

@@ -88,7 +88,7 @@ const REFRESH_MS = 90_000;
 export function projectInfo(dir: string, name: string, agentCmd: string, agentArgs: string[]): ProjectInfo {
   const git = (args: string[]) => {
     try {
-      return execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      return execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim();
     } catch {
       return undefined;
     }
