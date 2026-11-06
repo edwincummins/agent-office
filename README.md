@@ -455,6 +455,10 @@ Opt-in model effects can also bound environment intensity, background and fog wi
 Model effects also support an optional environment tint without loading new HDR assets.
 Owner-authorized Cadre seats can appear as batched people in map-authored crew places. See [Crew places](docs/cadre-crew.md) for privacy, map data and limits.
 
+### Arrange mode
+
+On a map of your own, the office's owner can press **I** (or 📐 Arrange) and click a plant, a sign or the TV for a gizmo to move, turn and resize it. Save keeps it, and those placements win over the map file's, so rebuilding the map never moves them. See [Decor and Arrange mode](docs/maps.md#decor-and-arrange-mode).
+
 ### Named travel
 
 Press **J** or the compass beside Workers for named destinations. **Home** returns you to the active map's configured standing arrival. Named places come from its optional travel configuration and are listed alongside project floors. Model-map ground arrivals use the base floor even without a floor collider. Shared map changes remain in Settings. See [Travel controls](docs/controls.md#named-travel).

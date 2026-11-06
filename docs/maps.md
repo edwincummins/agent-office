@@ -403,6 +403,24 @@ The optional `officeEffects.scene` object accepts `environmentIntensity` (finite
 The optional scene environmentTint is a hex colour multiplying the existing CubeUV PMREM once into a disposable linear half-float copy. It adds no steady-frame pass, never mutates the source, and restores it on exit. Other environment types remain unchanged. No HDR file or URL is loaded.
 The optional `fixtures.crew` slot describes standing or seated Cadre crew places. See [Crew places](cadre-crew.md#map-places) for the schema, arrival clearances and missing-slot behavior.
 
+## Decor and Arrange mode
+
+A model map can list `decor`: movable things (plants, signs, lamps, vases), each its own self-contained GLB in `maps/assets` (the same rules as `model.asset`: textures and buffers embedded). Decor is never merged into the room, so each item can be picked on its own.
+
+```jsonc
+"decor": [
+  { "id": "fern-lounge-1", "asset": "fern.glb", "position": { "x": -6.2, "y": 0, "z": 4.5 }, "rotY": 1.57, "scale": 1.0, "label": "Fern by the lounge" }
+]
+```
+
+- `id`: lowercase letters, digits and dashes, unique in the map. It's what the owner's placement is saved under, so keep it the same when you rebuild the map.
+- `position.y` is the bottom of the item (0 is the ground floor; a mezzanine item uses the mezzanine's height). `rotY` is in radians. `scale` is uniform, 0.05 to 20.
+- At most 300 items. Each GLB downloads once however many items use it.
+
+**Arrange mode** (the office's owner only): press **I** or the 📐 Arrange button on a map of your own, and click a decor item or the TV, arcade cabinet, jukebox or gong. A gizmo comes up: arrows to move it, a ring to turn it, a handle to resize it (decor only). **1 / 2 / 3** switch between them, **Ctrl+Z** undoes, **Reset** puts one thing back where the map has it. Nothing is sent while you drag: **Save** sends every change at once, and everyone's map is put up again once. **Done** or **Esc** with changes not saved asks Save, Discard or Keep arranging.
+
+The owner's placements are kept apart from the map, in `.agent-office/arrange/<map id>.json`, and laid over the map file whenever it's read: rebuilding the map's JSON never moves anything the owner placed. A placement for an id the map no longer has is kept (it comes back with the item) and ignored meanwhile. A spot that would make the map fail its checks (outside the hall, say) is refused with the reason.
+
 ## Named travel configuration
 
 A custom map may add an optional `travel` object. All coordinates and names belong in that map file; the client has no map-specific destinations. Omitting `travel` preserves the map's existing behavior and config; Home is not handled, while J still lists project floors and other maps.
