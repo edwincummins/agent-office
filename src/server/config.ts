@@ -203,7 +203,7 @@ export function officeHome(): string {
 /** Keep the office's own data (or another `entry` it writes into the project) out of git without touching the project's .gitignore. */
 export function excludeFromGit(dir: string, entry = '.agent-office/') {
   try {
-    const gitDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const gitDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true }).trim();
     const exclude = path.resolve(dir, gitDir, 'info', 'exclude');
     const cur = existsSync(exclude) ? readFileSync(exclude, 'utf8') : '';
     if (!cur.split('\n').some((l) => l.trim() === entry || l.trim() === entry.replace(/\/$/, ''))) {

@@ -130,7 +130,7 @@ function ask(claude: string, env: Record<string, string>): Promise<any> {
   return new Promise((resolve) => {
     let settled = false;
     let buf = '';
-    const child = spawn(claude, args, { cwd: os.tmpdir(), env, stdio: ['pipe', 'pipe', 'ignore'] });
+    const child = spawn(claude, args, { cwd: os.tmpdir(), windowsHide: true, env, stdio: ['pipe', 'pipe', 'ignore'] });
     const finish = (v: any) => {
       if (settled) return;
       settled = true;

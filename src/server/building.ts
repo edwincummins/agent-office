@@ -513,7 +513,7 @@ function unwritable(dir: string): string | undefined {
 /** The GitHub repository a checkout's origin points at. */
 export function originRepo(dir: string): string | undefined {
   try {
-    const url = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10_000 }).trim();
+    const url = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10_000, windowsHide: true }).trim();
     return /github\.com[/:]/i.test(url) ? normalizeRepo(url) : undefined;
   } catch {
     return undefined;
@@ -535,7 +535,7 @@ function checkoutAt(dest: string, repo: string, empty: boolean): 'none' | 'ok' |
 
 function hasCommit(dir: string): boolean {
   try {
-    execFileSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}'], { cwd: dir, stdio: 'ignore', timeout: 10_000 });
+    execFileSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}'], { cwd: dir, stdio: 'ignore', timeout: 10_000, windowsHide: true });
     return true;
   } catch {
     return false;
