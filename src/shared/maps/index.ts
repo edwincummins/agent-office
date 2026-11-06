@@ -404,7 +404,7 @@ export function planMap(input: unknown): MapPlan {
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
     description: typeof c.description === 'string' ? c.description.slice(0, 400) : '',
     style,
-    config: { ...c, ...(model ? { model } : {}), hideDeskSigns },
+    config: { ...c, ...(model ? { model } : {}), ...(c.hideDeskSigns !== undefined ? { hideDeskSigns } : {}) },
     bounds,
     height,
     spawn: { ...spawn, y: 0 },

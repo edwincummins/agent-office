@@ -44,6 +44,23 @@ test('custom map desk-sign exclusions are validated and exposed in the resolved 
   assert.match(bad[1].error ?? '', /distinct desk ids/);
 });
 
+test('resolved configs preserve maps without desk-sign exclusions and retain explicit exclusions', () => {
+  for (const config of [CASTLE, STATION]) {
+    const resolved = planMap(config).config!;
+    assert.deepEqual(resolved, config, `${config.id} keeps its authored config shape`);
+    assert.equal(JSON.stringify(resolved), JSON.stringify(config), `${config.id} keeps the same serialized config`);
+  }
+
+  for (const id of ['castle', 'station']) {
+    const file = path.join(import.meta.dirname, '..', 'docs', 'maps', `${id}.json`);
+    const config = JSON.parse(readFileSync(file, 'utf8')) as MapConfig;
+    assert.equal(JSON.stringify(planMap(config).config), JSON.stringify(config), `docs/maps/${id}.json round-trips unchanged`);
+  }
+
+  const withHiddenSigns = { ...CASTLE, id: 'castle-with-hidden-signs', hideDeskSigns: ['desk-3'] };
+  assert.deepEqual(planMap(withHiddenSigns).config?.hideDeskSigns, ['desk-3']);
+});
+
 test('in the castle every worker can walk from its seat to the door and to the front of the line', () => {
   const plan = planOf('castle');
   const nav = new NavGrid(plan.bounds, plan.obstacles!);
