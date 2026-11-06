@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { MapState } from '../shared/protocol.js';
+import { applyArrangement } from '../shared/arrange.js';
+import { Arrangements } from './arrange.js';
 import { OFFICE_MAP, checkCustomMaps, isMapChoice, planOf, type CustomMap, type MapPlan } from '../shared/maps/index.js';
 
 /** The most custom maps read, and the biggest file that's read as one. */
@@ -25,10 +27,15 @@ export class Maps {
   private custom: CustomMap[] = [];
   /** What the folder looked like when it was last read: each file's name, size and mtime. */
   private stamp = '';
+  /** The owner's Arrange-mode placements, laid over each map file as it's read (see shared/arrange.ts). */
+  readonly arranged: Arrangements;
+  /** Each map's file as written, before the owner's placements: what a new placement is checked against. */
+  private raws = new Map<string, unknown>();
 
   constructor(dataDir: string) {
     this.file = path.join(dataDir, 'map.json');
     this.dir = path.join(dataDir, 'maps');
+    this.arranged = new Arrangements(dataDir);
     this.restore();
     this.reload();
   }
@@ -41,7 +48,8 @@ export class Maps {
   state(): MapState {
     const pick = this.pick();
     // Who picked it, while it's what they picked (not the office, while their map won't load).
-    return { pick, custom: this.custom, ...(this.saved?.pick === pick ? { by: this.saved.by, at: this.saved.at } : {}) };
+    const arranged = this.arranged.get(pick);
+    return { pick, custom: this.custom, ...(arranged ? { arranged } : {}), ...(this.saved?.pick === pick ? { by: this.saved.by, at: this.saved.at } : {}) };
   }
 
   /** The map everyone's on: the one picked, while it's there to be had. */
@@ -61,6 +69,18 @@ export class Maps {
     this.saved = { pick, by, at: Date.now() };
     this.persist();
     return true;
+  }
+
+  /** A map of your own's file as written (before the owner's placements), or undefined. */
+  raw(id: string): unknown {
+    return this.raws.get(id);
+  }
+
+  /** Reads the maps again after the owner's placements changed: true when anything did. */
+  rearranged(): boolean {
+    this.arranged.forget();
+    this.stamp = '';
+    return this.reload();
   }
 
   /** Reads the custom maps again; true if anything in the folder changed. */
@@ -84,13 +104,19 @@ export class Maps {
         return { f, size: -1, mtime: 0 };
       }
     });
-    const stamp = JSON.stringify([stats, extra]);
+    const stamp = JSON.stringify([stats, extra, this.arranged.stamp()]);
     if (stamp === this.stamp) return false;
     this.stamp = stamp;
+    this.raws.clear();
     const files = stats.map(({ f, size }) => {
       if (size > MAX_BYTES) return { file: f, json: undefined, error: `it's over ${MAX_BYTES / 1024} KB` };
       try {
-        return { file: f, json: JSON.parse(readFileSync(path.join(this.dir, f), 'utf8')) as unknown };
+        const raw = JSON.parse(readFileSync(path.join(this.dir, f), 'utf8')) as unknown;
+        const id = raw && typeof raw === 'object' ? (raw as { id?: unknown }).id : undefined;
+        if (typeof id !== 'string') return { file: f, json: raw };
+        this.raws.set(id, raw);
+        // The owner's placements win over the file's: a team rebuilding the map never moves them.
+        return { file: f, json: applyArrangement(raw, this.arranged.get(id)) };
       } catch (e) {
         return { file: f, json: undefined, error: `it isn't valid JSON (${(e as Error).message})` };
       }

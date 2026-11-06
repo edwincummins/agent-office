@@ -9,6 +9,7 @@ import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
 import { CASTLE } from './castle.js';
 import { checkModel } from './model.js';
+import { checkDecor } from './decor.js';
 import { MapError, isObj, num, str } from './check.js';
 import { overlaps, planDungeon, planSendHome } from './dungeon.js';
 import { PROP_KINDS, boxFootprint, propFootprint, propTop } from './props.js';
@@ -48,6 +49,7 @@ export const COUNCIL = { radius: 1.3, height: 0.78, place: 0.85, chairs: 1.7, ea
 export const THRONE_SIZE = { width: 1.9, depth: 1.9 } as const;
 
 export { MapError } from './check.js';
+export { checkDecor, DECOR_ID, DECOR_SCALE, MAX_DECOR_ITEMS, type DecorItem } from './decor.js';
 
 /** The most tables, seats a side and props a map can have: plenty for a hall, and not so many a browser chokes building it. */
 export const MAP_LIMITS = { tables: 40, seats: 12, props: 400 } as const;
@@ -404,6 +406,7 @@ export function planMap(input: unknown): MapPlan {
   const byId = new Map([...desks, ...overflow, ...stations, ...meeting].map((d) => [d.id, d]));
   for (const d of byId.values()) inside(d.x, d.z, d.label);
   const fixtures=resolveSlots(c.fixtures,bounds,height,spawn);
+  const decor = c.decor === undefined ? undefined : checkDecor(c.decor, bounds, height, style);
   if(fixtures.slots.gong&&props.some(p=>p.kind==='gong'))throw new MapError('Use a gong fixture or legacy gong prop, not both');
   if(fixtures.slots.lounge)seating.push(...loungeSeats(fixtures.slots.lounge));
   if(fixtures.slots.services){const p=fixtures.slots.services;boards.services={...boards.services,...p.position,rotY:p.rotY,width:p.size.width,height:p.size.height};}
@@ -414,7 +417,7 @@ export function planMap(input: unknown): MapPlan {
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
     description: typeof c.description === 'string' ? c.description.slice(0, 400) : '',
     style,
-    config: { ...c, ...(model ? { model } : {}), ...(c.hideDeskSigns === undefined ? {} : { hideDeskSigns }) },
+    config: { ...c, ...(model ? { model } : {}), ...(decor ? { decor } : {}), ...(c.hideDeskSigns === undefined ? {} : { hideDeskSigns }) },
     bounds,
     height,
     spawn: { ...spawn, y: 0 },

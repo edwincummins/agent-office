@@ -170,6 +170,8 @@ export type PaletteKey = 'stone' | 'floor' | 'carpet' | 'wood' | 'trim' | 'hull'
 export interface MapConfig {
   model?: import('./model.js').ModelMapData;
   fixtures?: FixtureConfig;
+  /** Movable things (plants, signs, lamps), each its own GLB: see shared/maps/decor.ts. Model maps only. */
+  decor?: import('./decor.js').DecorItem[];
   /** Lowercase letters, digits and dashes: what the building's pick calls it. */
   id: string;
   name: string;

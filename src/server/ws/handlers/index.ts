@@ -5,6 +5,7 @@ import {levelsHandlers} from './levels.js';
 import {ownerHandlers} from '../../owner-workers/access.js';
 import type { ClientMsg } from '../../../shared/protocol.js';
 import { accountsHandlers } from './accounts.js';
+import { arrangeHandlers } from './arrange.js';
 import { ballHandlers, ballHooks, ballView } from './ball.js';
 import { cabinetHandlers, cabinetHooks, cabinetView } from './cabinet.js';
 import { carHandlers, carHooks, carsView } from './car.js';
@@ -32,6 +33,7 @@ import type { FeatureHooks, HandlerMap, ViewPieces } from './types.js';
 export const handlers: HandlerMap<ClientMsg> = ownerHandlers({
   ...levelsHandlers,
   ...accountsHandlers,
+  ...arrangeHandlers,
   ...ballHandlers,
   ...cabinetHandlers,
   ...carHandlers,

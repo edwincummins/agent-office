@@ -154,6 +154,8 @@ export interface ThemeState {
 export interface MapState {
   pick: string;
   custom: CustomMap[];
+  /** The owner's Arrange-mode placements on the map everyone's on (already applied to its config): what Reset can undo. */
+  arranged?: import('../arrange.js').Arrangement;
   /** Who picked it, and when. Unset for the default (the office). */
   by?: string;
   at?: number;
