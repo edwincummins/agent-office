@@ -24,7 +24,7 @@ export function friendlyGhError(raw: string): string {
 /** Runs gh as the office, or with `env` as someone signed in to their own GitHub (see signins.ts). */
 export function gh(args: string[], cwd: string, timeout = 30_000, env?: Record<string, string>): Promise<string> {
   return ghText(args, args => new Promise((resolve, reject) => {
-    execFile('gh', args, { cwd, maxBuffer: 32 * 1024 * 1024, timeout, env }, (err, stdout, stderr) => {
+    execFile('gh', args, { cwd, maxBuffer: 32 * 1024 * 1024, timeout, env, windowsHide: true }, (err, stdout, stderr) => {
       if (err) {
         const msg = (stderr || err.message || '').trim();
         const signedOut = env && /auth login|not logged in|authentication/i.test(msg);

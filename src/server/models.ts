@@ -38,7 +38,7 @@ const runModelCommand: ModelCommandRunner = async (file, args, options) => {
   const fd = openSync(out, 'w', 0o600);
   try {
     await new Promise<void>((resolve, reject) => {
-      const child = spawn(file, args, { cwd: options.cwd, timeout: options.timeout, stdio: ['ignore', fd, 'ignore'] });
+      const child = spawn(file, args, { cwd: options.cwd, windowsHide: true, timeout: options.timeout, stdio: ['ignore', fd, 'ignore'] });
       child.on('error', reject);
       child.on('close', (code, signal) => (code === 0 ? resolve() : reject(new Error(`ended with ${signal ?? code}`))));
     });

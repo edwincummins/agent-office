@@ -131,7 +131,7 @@ function ask(claude: string, env: Record<string, string>): Promise<any> {
     let settled = false;
     let buf = '';
     // cli-process's spawn starts npm's claude.CMD safely on Windows (PR #5).
-    const child = spawn(claude, args, { cwd: os.tmpdir(), env, stdio: ['pipe', 'pipe', 'ignore'] });
+    const child = spawn(claude, args, { cwd: os.tmpdir(), windowsHide: true, env, stdio: ['pipe', 'pipe', 'ignore'] });
     const finish = (v: any) => {
       if (settled) return;
       settled = true;

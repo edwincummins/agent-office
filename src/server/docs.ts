@@ -29,7 +29,7 @@ type Failure = { status: number; error: string };
 function gitDocs(dir: string): Promise<string[] | undefined> {
   const args = ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ':(icase)*.md', ':(icase)*.markdown'];
   return new Promise((resolve) => {
-    execFile('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 20_000, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }, (err, stdout) => {
+    execFile('git', args, { cwd: dir, windowsHide: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 20_000, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }, (err, stdout) => {
       if (err) return resolve(undefined);
       resolve([...new Set(stdout.split('\0').filter(Boolean))]);
     });
