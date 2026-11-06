@@ -76,7 +76,8 @@ test('gateway grants are owner-bound, keep upstream token private, audit actions
   assert.ok(!JSON.stringify(auditRows).includes('not-for-audit'));
   for(const action of ['audit','ideas'])assert.equal(auditRows.filter(r=>r.action===action&&r.target==='synthetic team'&&r.event==='read.open').length,1);
   const actions=readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8');assert.ok(actions.includes('team:synthetic')&&actions.includes('access:synthetic'));
-  assert.equal((await fetch(base+'/api/not-allowed',{method:'POST',headers,body:'{}'})).status,404);
+  // The owner reaches the engine's /api/* and its tab code; anything outside those is still refused.
+  for(const p of ['/not-allowed','/views/../web.js','/etc/passwd','/api/x y'])assert.equal((await fetch(base+p,{method:'POST',headers,body:'{}'})).status,404,p);
   await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=beta',{headers});
   await fetch(base+'/api/capture?seat=alpha',{headers});await fetch(base+'/api/capture?seat=beta',{headers});
   const revoked=gateway.issue({accountId:'owner',upstream:`http://127.0.0.1:${port}/`,token:'upstream-private',officeOrigin:'http://127.0.0.1:4632'});

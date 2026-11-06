@@ -31,7 +31,7 @@ async function start(ctx:Ctx):Promise<Gateway>{
       const url=new URL(req.url??'/','http://localhost');
       // A public bootstrap contains no app or grant. It waits for the authenticated office wrapper.
       if(req.method==='GET'&&url.pathname==='/'){
-        res.setHeader('Content-Security-Policy',"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'");
+        res.setHeader('Content-Security-Policy',"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; frame-src http: https:; base-uri 'none'; form-action 'none'");
         res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}).end(`<!doctype html><title>Cadre connection</title><script>
 const receive=async e=>{if(e.source!==parent||e.data?.type!=='cadre.web.authenticate')return;const r=await fetch('/app',{headers:{Authorization:'Bearer '+e.data.token}});if(!r.ok)return;const html=await r.text();removeEventListener('message',receive);clearInterval(timer);document.open();document.write(html);document.close();};
 addEventListener('message',receive);const timer=setInterval(()=>parent.postMessage({type:'cadre.web.ready'},'*'),1000);
@@ -48,8 +48,12 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
       if(!grant||!account)return send(res,403,{error:'Not available'});
       if(req.headers.origin&&req.headers.origin!==`http://localhost:${gateway.port}`)return send(res,403,{error:'Not available'});
       const route=url.pathname;
-      const read=req.method==='GET'&&['/app','/version','/api/fleet','/api/capture','/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas','/api/changes','/api/overview'].includes(route);
-      const action=req.method==='POST'&&['/api/say','/api/decide','/api/inbox/read','/api/team','/api/seat','/api/access','/api/tune'].includes(route);
+      // Cadre Web's tabs each bring their own files and routes (cadre-engine src/web-views, src/web-routes), so the gateway
+      // passes the engine's /api/* and its tab code through for the owner (cadreOwner above), instead of a fixed list that
+      // left every new tab blank inside the office (Fetty, 11-05).
+      const engineApi=/^\/api\/[a-z0-9][a-z0-9/_.-]*$/i.test(route)&&!route.includes('..');
+      const read=req.method==='GET'&&(['/app','/version','/views'].includes(route)||/^\/views\/[a-z][a-z0-9-]*\.js$/.test(route)||engineApi);
+      const action=req.method==='POST'&&engineApi;
       if(!read&&!action&&!(req.method==='POST'&&route==='/auth'))return send(res,404,{error:'Not available'});
       let body:string|undefined,detail:Record<string,string>={};
       const readAction=read&&['/api/seats','/api/queue','/api/inbox','/api/audit','/api/ideas','/api/changes','/api/overview'].includes(route);
@@ -65,25 +69,37 @@ addEventListener('message',receive);const timer=setInterval(()=>parent.postMessa
       if(action){
         body=await readBody(req,16384);
         if(gateway.grants.get(bearer)!==grant||grant.expires<=Date.now()||!cadreOwner(ctx,grant.accountId))return send(res,403,{error:'Not available'});
-        const parsed=JSON.parse(body);
+        const parsed=body?JSON.parse(body):{};
         detail={action:route==='/api/say'?'message':route==='/api/decide'?String(parsed.kind??'').slice(0,32):route.slice(5)+':'+String(parsed.action??parsed.on??'').slice(0,16),target:String(parsed.seat??parsed.id??parsed.team??'').slice(0,160)};
         if(route==='/api/tune')detail={action:'tune',target:String(parsed.seat??'').slice(0,160),model:typeof parsed.model==='string'?parsed.model.slice(0,80):'',effort:typeof parsed.effort==='string'?parsed.effort.slice(0,32):'',restart:parsed.restart===true?'true':parsed.restart===false?'false':'unset'};
         auditCadre(ctx.cfg.dataDir,account,'action.request',detail);
       }
       const target=new URL(route==='/app'?'/':route,grant.upstream);target.search=url.search;
-      let upstream:Response,raw:string;
+      // A seat's live coloured screen is a byte stream that runs until the tile closes: pipe it, never buffer or time it out.
+      if(route==='/api/stream'){
+        const stop=new AbortController();req.on('close',()=>stop.abort());res.on('close',()=>stop.abort());
+        const up=await fetch(target,{headers:{Authorization:`Bearer ${grant.token}`},redirect:'error',signal:stop.signal});
+        const head:Record<string,string>={'Content-Type':up.headers.get('content-type')??'application/octet-stream'};
+        for(const k of ['x-cols','x-rows']){const v=up.headers.get(k);if(v)head[k]=v;}
+        res.writeHead(up.status,head);
+        if(!up.body){res.end();return;}
+        const reader=up.body.getReader();
+        try{for(;;){const {done,value}=await reader.read();if(done)break;res.write(value);}}catch{/* the tile closed */}
+        res.end();return;
+      }
+      let upstream:Response,raw:Buffer;
       try{
         upstream=await fetch(target,{method:req.method,headers:{Authorization:`Bearer ${grant.token}`,...(body?{'Content-Type':'application/json'}:{})},body,redirect:'error',signal:AbortSignal.timeout(10000)});
-        raw=await upstream.text();
+        raw=Buffer.from(await upstream.arrayBuffer()); // bytes, not text: portraits and other images broke as text
       }catch(error){
         if(firstRead){grant.reads!.delete(readKey);auditCadre(ctx.cfg.dataDir,account,'read.result',{action:route.slice(5),target:readTarget,status:502});}
         throw error;
       }
-      const content=route==='/app'?withVersionBridge(raw,grant.officeOrigin):raw;
+      const content=route==='/app'?withVersionBridge(raw.toString('utf8'),grant.officeOrigin):raw;
       if(firstRead)auditCadre(ctx.cfg.dataDir,account,'read.result',{action:route.slice(5),target:readTarget,status:upstream.status});
       if(action)auditCadre(ctx.cfg.dataDir,account,'action.result',{...detail,status:upstream.status});
-      if(route==='/app')res.setHeader('Content-Security-Policy',`default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors ${grant.officeOrigin}; base-uri 'none'; form-action 'none'`);
-      res.writeHead(upstream.status,{'Content-Type':route==='/app'?'text/html; charset=utf-8':'application/json'}).end(content);
+      if(route==='/app')res.setHeader('Content-Security-Policy',`default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; frame-src http: https:; frame-ancestors ${grant.officeOrigin}; base-uri 'none'; form-action 'none'`);
+      res.writeHead(upstream.status,{'Content-Type':route==='/app'?'text/html; charset=utf-8':(upstream.headers.get('content-type')??'application/json')}).end(content);
     }catch{if(!res.headersSent)send(res,502,{error:'Cadre request unavailable'});else res.end();}
   });
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
