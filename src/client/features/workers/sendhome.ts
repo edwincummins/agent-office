@@ -125,6 +125,7 @@ export class Sendoffs {
         // Up and out of the way, beside the seat, to wait for whatever's next.
         const w = this.world();
         const way = w.nav.wayFrom(s.desk.def, [w.plan.door.x, w.plan.door.z]);
+        if (!way.length) continue;
         s.walk.way = [way[0]];
         this.getUp(s);
       }

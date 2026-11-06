@@ -13,7 +13,7 @@ import type { Bounds, Obstacles, Pt, Rect } from '../nav.js';
  */
 
 /** The styles there's a builder for (the client's world/styles.ts): a map's `style` is one of them. */
-export const MAP_STYLES = ['castle', 'station'] as const;
+export const MAP_STYLES = ['castle', 'station', 'model'] as const;
 export type MapStyle = (typeof MAP_STYLES)[number];
 
 /** The boards on the walls. */
@@ -167,6 +167,7 @@ export type PaletteKey = 'stone' | 'floor' | 'carpet' | 'wood' | 'trim' | 'hull'
 
 /** What a map is made of: see docs/maps.md for what each part does and how to write one. */
 export interface MapConfig {
+  model?: import('./model.js').ModelMapData;
   /** Lowercase letters, digits and dashes: what the building's pick calls it. */
   id: string;
   name: string;
