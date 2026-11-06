@@ -21,3 +21,10 @@ export function nearbyArrival(at:Spot,free:(at:Spot)=>boolean):Spot|undefined {
     if(free(candidate))return candidate;
   }
 }
+
+/** Model maps have a base floor at zero even when it has no explicit collider. */
+export function arrivalSupported(bounds:MapPlan['bounds'],at:Spot,colliderGround:number):boolean {
+  if(at.x<bounds.minX+.32||at.x>bounds.maxX-.32||at.z<bounds.minZ+.32||at.z>bounds.maxZ-.32)return false;
+  const ground=colliderGround===-Infinity?0:colliderGround;
+  return Math.abs(ground-at.y)<.05;
+}

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { atPlace, namedPlaces, nearbyArrival } from '../src/client/features/travel-menu/destinations.js';
+import { arrivalSupported, atPlace, namedPlaces, nearbyArrival } from '../src/client/features/travel-menu/destinations.js';
+import { groundAt, blockerAt } from '../src/client/player/collide.js';
+import { Vector3 } from 'three';
 import { checkTravel } from '../src/shared/travel/config.js';
 import { planMap } from '../src/shared/maps/index.js';
 import { CASTLE } from '../src/shared/maps/castle.js';
@@ -47,4 +49,20 @@ test('nearby recovery is bounded and keeps the requested floor and facing',()=>{
  const found=nearbyArrival(at,p=>p.x>2.5)!;
  assert.ok(Math.hypot(found.x-at.x,found.z-at.z)<=1.5);assert.equal(found.y,2);assert.equal(found.rotY,1);
  assert.equal(atPlace({...at,x:2.1},at),true);assert.equal(atPlace({...at,y:0},at),false);
+});
+
+test('model base-floor arrivals work without a collider but stay bounded and level-safe',()=>{
+ const ground=groundAt([],visitor.x,visitor.z,visitor.y+.1);
+ assert.equal(ground,-Infinity);
+ assert.equal(arrivalSupported(plan.bounds,visitor,ground),true);
+ assert.equal(arrivalSupported(plan.bounds,place.at,ground),true);
+ for(const at of [{...visitor,x:10},{...visitor,z:-10},{...visitor,y:2}])assert.equal(arrivalSupported(plan.bounds,at,ground),false);
+ const deck={minX:-4,maxX:4,minZ:-4,maxZ:4,top:2,bottom:1.8};
+ assert.equal(arrivalSupported(plan.bounds,{...visitor,y:2},groundAt([deck],visitor.x,visitor.z,2.1)),true);
+ const offDeck={...visitor,x:6,z:6,y:2};
+ assert.equal(arrivalSupported(plan.bounds,offDeck,groundAt([deck],offDeck.x,offDeck.z,2.1)),false);
+ const wall={minX:0,maxX:2,minZ:0,maxZ:2,top:3};
+ const body={pos:new Vector3(visitor.x,0,visitor.z),colliders:[wall],grounded:true,stepOffset:0};
+ assert.equal(arrivalSupported(plan.bounds,visitor,groundAt([wall],visitor.x,visitor.z,.1)),true);
+ assert.equal(blockerAt(body,visitor.x,visitor.z,0),wall,'base support must not bypass the separate blocker gate');
 });

@@ -456,4 +456,4 @@ Model effects also support an optional environment tint without loading new HDR 
 
 ### Named travel
 
-Press **J** or the compass beside Workers for named destinations. **Home** returns you to the active map's configured standing arrival. Named places come from its optional travel configuration and are listed alongside project floors. Shared map changes remain in Settings. See [Travel controls](docs/controls.md#named-travel).
+Press **J** or the compass beside Workers for named destinations. **Home** returns you to the active map's configured standing arrival. Named places come from its optional travel configuration and are listed alongside project floors. Model-map ground arrivals use the base floor even without a floor collider. Shared map changes remain in Settings. See [Travel controls](docs/controls.md#named-travel).

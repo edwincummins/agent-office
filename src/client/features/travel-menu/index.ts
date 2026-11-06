@@ -7,7 +7,7 @@ import { store } from '../../state';
 import { closeAllModals, toast, type Modal } from '../../ui/dom';
 import { closeFloorMenu } from '../../ui/floormenu';
 import { GARAGE } from '../../ui/elevator';
-import { atPlace, namedPlaces, nearbyArrival, type NamedPlace } from './destinations';
+import { arrivalSupported, atPlace, namedPlaces, nearbyArrival, type NamedPlace } from './destinations';
 import { openTravel, type TravelRow, type TravelSection } from './ui';
 
 export function installTravelMenu(ctx:Ctx,parts:Pick<Parts,'travel'|'place'|'walking'>) {
@@ -19,8 +19,7 @@ export function installTravelMenu(ctx:Ctx,parts:Pick<Parts,'travel'|'place'|'wal
     if(!fresh||(fresh.owner&&store.me.owner!==true))return;
     if(ctx.player.rig){toast('Finish your ride before travelling.','warn');return;}
     const b=ctx.plan().bounds;
-    const at=nearbyArrival(fresh.at,p=>p.x>=b.minX+.32&&p.x<=b.maxX-.32&&p.z>=b.minZ+.32&&p.z<=b.maxZ-.32
-      &&Math.abs(groundAt(ctx.player.colliders,p.x,p.z,p.y+.1)-p.y)<.05
+    const at=nearbyArrival(fresh.at,p=>arrivalSupported(b,p,groundAt(ctx.player.colliders,p.x,p.z,p.y+.1))
       &&!blockerAt(ctx.player,p.x,p.z,p.y)
       &&![...store.peers.values()].some(peer=>peer.id!==store.you&&!peer.lite&&store.onMyFloor(peer)&&Math.abs(peer.y-p.y)<1.7&&Math.hypot(peer.x-p.x,peer.z-p.z)<.7));
     if(!at){toast('That arrival is blocked. Walk there or try again.','warn');return;}
