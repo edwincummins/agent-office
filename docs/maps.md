@@ -282,6 +282,20 @@ A map without a dungeon can still have a script: a guard who walks each worker t
 
 ## Local model maps
 
+### Optional model effects
+
+A GLB node can opt its model into ACES Filmic rendering with an `officeEffects` extra:
+
+```json
+{"officeEffects":{"exposure":1,"bloom":{"strength":0.9,"radius":0.3,"threshold":3.5}}}
+```
+
+Put this on the root node containing all the affected model materials. Exposure accepts 0.1–2, bloom strength 0–2, radius 0–1 and threshold 0–10. Missing or malformed profiles do nothing. No external resources are fetched. The existing view-filter registry captures the scene and hands once into a half-float target; bloom runs at half resolution before the output tone/color conversion. All fullscreen passes count toward frame draw calls.
+
+Materials can separately carry `officeSurface` extras: `studioIntensity` (0–4) assigns a neutral RoomEnvironment PMREM to that material alone; `additive: true` selects transparent additive blending without depth writes; `emissiveIntensity` (0–8) overrides the model material's emission strength. These settings are applied only under an opted-in root. Keep unrelated room materials on the room environment. Author emission above the bloom threshold only where a glow is wanted.
+
+After two seconds averaging more than 18 ms per frame, bloom is disabled. Another slow window reduces DPR to 1. Long pauses are excluded. Leaving the model or entering the roof disposes owned render targets and restores tone mapping, exposure, DPR and material settings. Re-entering starts a fresh quality trial. Stock maps never allocate these targets. Budget and compare the complete frame on the target hardware; bloom is optional, not a guarantee of a particular frame rate.
+
 For glass materials, names containing `glass` and either `interior` or `partition` (case-insensitive) use neutral tint at 0.13 opacity so stacked interior panes stay clear. Other material names containing `glass` use a faint blue tint at 0.3 opacity for facade glazing. Keep these materials distinct when merging meshes.
 
 The `model` style places the office's working furniture inside a local architectural GLB. Keep licensed models and their map configurations outside the source repository. Put the model at `<project>/.agent-office/maps/assets/room.glb` and the map JSON directly in `<project>/.agent-office/maps/`. Start the office with that project, then select the map in Settings → Building → Map. The authenticated server serves that file locally; it does not upload it.
