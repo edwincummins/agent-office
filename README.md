@@ -47,6 +47,7 @@ Only the locally allow-listed owner can use a **Services | Cadre** view on the S
 
 - **Other maps.** Turn the whole building into a castle: sit on a throne of iron blades while your workers line up before you when they're done, send new ones off through the Hand of the King, and watch their beards grow long and grey as they toil. Send one home and the Kingsguard runs up from the dungeon, marches it down the stairs and throws it in a cell, where it starves, dies and rots down to a skeleton. Or into a space station in orbit, the Earth turning outside its windows: you run it from the captain's chair on the bridge, and a worker sent home is marched to the airlock and blown out into space, to drift off past the observation windows with everyone who went before it. Or make a map of your own, with its own way of seeing workers off in JSON ([docs/maps.md](docs/maps.md)).
 - **Local model maps.** Bring a self-contained GLB into a project-local map with 20 desks, 12 soft seats, project boards, a council table, whiteboard and presentation screen. Signed-in visitors can download the room through a bounded streaming route with automatic retries for busy downloads; anonymous access is refused. Models stay in the project’s `.agent-office/maps/assets/` folder; see [local model maps](docs/maps.md#local-model-maps), including material names for clear interior partitions.
+- **Optional model glow.** Model authors can opt into bounded HDR bloom, separate studio reflections and optional room light colours/intensities through GLB extras. Slow frames disable bloom before reducing resolution; stock maps retain their renderer settings. See [model effects](docs/maps.md#optional-model-effects).
 
 There's a lot more (a rooftop bar, an office dog, an arcade, supercars in the garage to drive round a scenic loop past a farm, pines, mountains and a beach): see [docs/features.md](docs/features.md).
 
@@ -444,3 +445,11 @@ Visitor UI: named owner hints/footers, no palette hire action, and a one-time di
 Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media-wall fixtures with level faces and matching thin frames. See [Converting a purchased office](docs/maps.md#converting-a-purchased-office) and the synthetic fixture demo; licensed room assets stay local.
 Avatar hairstyles keep their existing appearance while batching rigid hair parts into one mesh, reducing rendering cost in third person and crowded rooms. See [features](docs/features.md).
 Rigid worker details are combined once within their own animated parent groups (headset, eye whites, cap and beard accents). The parent keeps its normal motion and visibility; no per-frame vertex rewrites are needed.
+
+Custom maps can also describe mezzanine slabs, stair links, glass rails and passenger lifts. Worker routes use stairs between levels; people can walk or ride the lift. See [multi-level maps](docs/maps.md#multiple-levels-and-lifts) and the synthetic fixture in `tests/fixtures/two-level-map.ts`.
+
+Two-level maps bound shared avatar coordinates to the hall and use a shorter third-person camera near stairs and before low slab edges. Lifts are visitor walking interactions; owner-only worker permissions do not restrict passenger travel. These bounds do not replace server-authoritative movement for a hosted office.
+
+Opt-in model effects can also bound environment intensity, background and fog without changing other maps; see [model effects](docs/maps.md).
+
+Model effects also support an optional environment tint without loading new HDR assets.

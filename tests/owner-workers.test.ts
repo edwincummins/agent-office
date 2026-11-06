@@ -35,6 +35,11 @@ test('first-run owner record survives account serialization and explicit config 
 test('every registered control handler refuses other admins, members, shared and revoked sessions before effects',()=>{
  const f=fixture();let refused=0;f.ctx.warn=()=>{refused++;};try{
  const keys=Object.keys(handlers).filter(k=>!visitorMessage(k));assert.ok(keys.length>=50);
+ assert.equal(visitorMessage('levels.sync'),true);
+ assert.equal(visitorMessage('levels.lift'),true);
+ assert.equal(visitorMessage('fleet.subscribe'),true);
+ assert.equal(visitorMessage('fleet.screens'),true);
+ assert.equal(visitorMessage('share.take'),false);
  for(const id of identities.slice(1))for(const key of keys){const before=refused;(handlers as any)[key](f.ctx,{accountId:id,admin:true},{t:key,accountId:'owner1',owner:true,workerId:['forged'],all:true});assert.equal(refused,before+1,key+' '+id);}
  f.config('');for(const key of keys){const before=refused;(handlers as any)[key](f.ctx,{accountId:'owner1',admin:true},{t:key});assert.equal(refused,before+1,key);}
  }finally{f.close();}

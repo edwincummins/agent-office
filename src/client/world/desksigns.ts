@@ -84,7 +84,7 @@ interface Hung {
 export interface DeskSigns {
   group: THREE.Group;
   /** Hangs a sign for each of `labels`, over the desks `built` says are there (the back office's may not be yet). */
-  set(labels: Record<string, DeskLabel>, built: (desk: DeskDef) => boolean): void;
+  set(labels: Record<string, DeskLabel>, built: (desk: DeskDef) => boolean, hidden?: readonly string[]): void;
   /** The sign over a desk, if it has one. */
   get(deskId: string): THREE.Object3D | undefined;
 }
@@ -96,6 +96,7 @@ export function buildDeskSigns(): DeskSigns {
 
   const make = (desk: DeskDef, label: DeskLabel, back: boolean): Hung => {
     const root = new THREE.Group();
+    root.userData.deskSignId = desk.id;
     root.position.set(desk.x, 0, desk.z);
     root.rotation.y = desk.rotY;
     // Just off the far edge of the desk, so a back-to-back pair's signs don't touch.
@@ -111,17 +112,21 @@ export function buildDeskSigns(): DeskSigns {
       parts.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10), cordMat, x, WALL_HEIGHT - 0.015, z, false));
       parts.add(mesh(new THREE.SphereGeometry(0.028, 8, 6), cordMat, x, top + 0.01, z, false));
     }
-    root.add(mergeByMaterial(parts));
+    const hardware = mergeByMaterial(parts);
+    hardware.traverse((part) => { part.userData.deskSignId = desk.id; });
+    root.add(hardware);
     const canvas = document.createElement('canvas');
     paintFace(canvas, label);
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     const face = new THREE.Mesh(new THREE.PlaneGeometry(SIGN.width - 0.06, SIGN.height - 0.06), new THREE.MeshBasicMaterial({ map: tex }));
+    face.userData.deskSignId = desk.id;
     face.position.set(0, SIGN.y, z + SIGN.depth / 2 + 0.003);
     root.add(face);
     if (back) {
       const rear = new THREE.Mesh(face.geometry.clone(), face.material);
+      rear.userData.deskSignId = desk.id;
       rear.position.set(0, SIGN.y, z - SIGN.depth / 2 - 0.003);
       rear.rotation.y = Math.PI;
       root.add(rear);
@@ -159,20 +164,26 @@ export function buildDeskSigns(): DeskSigns {
   return {
     group,
     get: (deskId) => hung.get(deskId)?.root,
-    set(labels, built) {
+    set(labels, built, hidden = []) {
+      const omitted = new Set(hidden);
       for (const [id, h] of hung) {
         const l = labels[id];
-        if (l && keyOf(l, twoSided(id, labels, built)) === h.key) continue;
+        if (!omitted.has(id) && l && keyOf(l, twoSided(id, labels, built)) === h.key) continue;
         drop(h);
         hung.delete(id);
       }
       for (const [id, label] of Object.entries(labels)) {
+        if (omitted.has(id)) continue;
         const desk = DESK_BY_ID.get(id);
         if (!desk) continue;
         let h = hung.get(id);
         if (!h) hung.set(id, (h = make(desk, label, twoSided(id, labels, built))));
         h.root.visible = built(desk);
       }
+      // Hide every tagged part as well as its root; merged cords must not survive as orphaned meshes.
+      group.traverse((part) => {
+        if (typeof part.userData.deskSignId === 'string' && omitted.has(part.userData.deskSignId)) part.visible = false;
+      });
     },
   };
 }

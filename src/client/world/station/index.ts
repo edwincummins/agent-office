@@ -1,3 +1,5 @@
+import { onLevel } from '../levels/elevate';
+import { seatFloor } from '../../../shared/levels/attach';
 import * as THREE from 'three';
 import type { FloorPalette } from '../../../shared/floors';
 import type { MapPlan } from '../../../shared/maps';
@@ -62,14 +64,14 @@ export function buildStation(plan: MapPlan): World {
   for (const p of c.props ?? []) PROPS[p.kind as StationPropKind](kit, p);
   buildBenches(kit);
   const overflow = new Map<string, Interactable>();
-  for (const def of plan.desks) kit.desks.set(def.id, placeSetting(kit, def, false).view);
+  for (const def of plan.desks) kit.desks.set(def.id, onLevel(kit, seatFloor(plan, def.id), () => placeSetting(kit, def, false)).view);
   for (const def of plan.overflow) {
-    const { view, it } = placeSetting(kit, def, true);
+    const { view, it } = onLevel(kit, seatFloor(plan, def.id), () => placeSetting(kit, def, true));
     kit.desks.set(def.id, view);
     overflow.set(def.id, it);
   }
-  for (const def of plan.stations) kit.desks.set(def.id, agentConsole(kit, def));
-  const briefing = buildBriefing(kit);
+  for (const def of plan.stations) kit.desks.set(def.id, onLevel(kit, seatFloor(plan, def.id), () => agentConsole(kit, def)));
+  const briefing = onLevel(kit, seatFloor(plan, plan.meeting[0]?.id ?? ""), () => buildBriefing(kit));
   const boardMeshes = buildBoards(kit);
   const herald = buildHerald(kit);
   const airlock = buildAirlock(kit);

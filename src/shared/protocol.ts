@@ -1,3 +1,5 @@
+import type {LevelsClientMsg,LevelsServerMsg} from './protocol/levels.js';
+export * from './protocol/levels.js';
 // Wire protocol between browser and server. Every WebSocket frame is one JSON object.
 //
 // Each part of the office keeps its state types and its messages in ./protocol/<domain>.ts; this
@@ -34,6 +36,7 @@ export * from './protocol/usage.js';
 export * from './protocol/workers.js';
 
 export type ClientMsg =
+  | LevelsClientMsg
   | FleetClientMsg
   | PresenceClientMsg
   | RooftopClientMsg
@@ -58,6 +61,7 @@ export type ClientMsg =
   | DogClientMsg;
 
 export type ServerMsg =
+  | LevelsServerMsg
   | FleetServerMsg
   | PresenceServerMsg
   | RooftopServerMsg

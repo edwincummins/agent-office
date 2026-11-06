@@ -92,7 +92,7 @@ export function installPlace(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'worl
   function placeAtSpawn() {
     const p = plan();
     const at = p.spawn;
-    placeAt({ x: at.x, y: parts.worlds.groundHere(at.x, at.z, 1.5), z: at.z, rotY: at.rotY });
+    placeAt({ x: at.x, y: parts.worlds.groundHere(at.x, at.z, Math.max(1.5, at.y)), z: at.z, rotY: at.rotY });
     // Not on the way to another floor: the throne's this one's.
     if (!core.trip) sitOnThrone();
   }

@@ -207,6 +207,8 @@ export interface MapConfig {
    * panel, metal and glow.
    */
   palette?: Partial<Record<PaletteKey, string>>;
+  /** Desk labels to omit where their hanging cords would cross a map's camera path. */
+  hideDeskSigns?: string[];
   /** A dungeon under the hall, with cells to lock workers up in (a castle's). */
   dungeon?: DungeonConfig | null;
   /** An airlock in a wall, to blow workers out of (a station's). */

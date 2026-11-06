@@ -123,6 +123,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
         departures.vacate(w.deskId);
         sendoffs.vacate(w.deskId);
         const model = new Worker(w.name, w.color);
+        if (desk.def.station) model.setLabelLift(plan().config?.model?.stationLabelOffsets?.[desk.def.station] ?? 0);
         model.setCostume(store.theme.active);
         model.setOutfit(plan().agents.outfit === 'peasant' ? 'peasant' : null);
         model.setAge(ageOf(w));
@@ -336,7 +337,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
       p.set(level ? side : p.x, 0, level ? wingMinZ(level) + 0.6 : FLOOR.minZ + 1.6);
     }
     office.setWing(level);
-    office.signs.set(fp.labels, (d) => deskBuilt(d, level));
+    office.signs.set(fp.labels, (d) => deskBuilt(d, level), plan().config?.hideDeskSigns);
     player.wing = sound.wing = level;
     sky.setWing(level);
     parts.travel.syncStack();

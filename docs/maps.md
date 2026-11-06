@@ -133,6 +133,7 @@ A map that won't load (bad JSON, something outside the hall, too few seats, a pr
 | `props` | `[{ kind, x, z, … }]`: everything else, from the list below. |
 | `agents` | `{ outfit: "peasant" \| "none", ageMinutes }`: how the workers dress, and how many minutes of work until they look spent (`0`, the default: never). |
 | `palette` | CSS colors: a castle's `{ stone, floor, carpet, wood, trim }`, a station's `{ hull, deck, panel, metal, glow }`. The castle's banners and shields, and the station's lines of light, take each floor's own color. |
+| `hideDeskSigns` | Optional list of desk ids (`desk-1` through `desk-20`) whose overhead name signs are hidden on this map. Use it when a map's camera or ceiling geometry would intersect the sign cords; it does not remove the desks or their labels from the floor plan. |
 | `dungeon` | A dungeon under the hall, on a castle: see [The dungeon](#the-dungeon). Optional (`null` takes the castle's away). |
 | `airlock` | An airlock in a wall, on a station: see [The airlock](#the-airlock). Optional (`null` takes the station's away, and its `sendHome` has to go with it). |
 | `sendHome` | What happens to a worker sent home: see [Sending workers home](#sending-workers-home). Without it (or `null`), it packs up and walks out of the door. |
@@ -282,6 +283,20 @@ A map without a dungeon can still have a script: a guard who walks each worker t
 
 ## Local model maps
 
+### Optional model effects
+
+A GLB node can opt its model into ACES Filmic rendering with an `officeEffects` extra:
+
+```json
+{"officeEffects":{"exposure":1,"bloom":{"strength":0.9,"radius":0.3,"threshold":3.5}}}
+```
+
+Put this on the root node containing all the affected model materials. Exposure accepts 0.1–2, bloom strength 0–2, radius 0–1 and threshold 0–10. Missing or malformed profiles do nothing. No external resources are fetched. The existing view-filter registry captures the scene and hands once into a half-float target; bloom runs at half resolution before the output tone/color conversion. All fullscreen passes count toward frame draw calls.
+
+Materials can separately carry `officeSurface` extras: `studioIntensity` (0–4) assigns a neutral RoomEnvironment PMREM to that material alone; `additive: true` selects transparent additive blending without depth writes; `emissiveIntensity` (0–8) overrides the model material's emission strength. These settings are applied only under an opted-in root. Keep unrelated room materials on the room environment. Author emission above the bloom threshold only where a glow is wanted.
+
+Activation compiles and renders an off-screen warm-up frame. After a four-second warm-up, bloom is disabled only after at least twelve seconds of measured frame windows averaging 28 ms or slower; DPR is reduced to 1 only after another twelve seconds at or above that threshold. This waits for sustained slow frames at roughly 36 FPS or lower, so normal 18–24 ms loaded frames do not shed quality. Hidden-tab frames and individual stalls over 250 ms are excluded, and any window below the threshold breaks the slow-time streak. Twelve seconds below 17.5 ms retry bloom with another warm-up; resolution stays reduced for the visit. Quality changes are reported in the console. Leaving the model or entering the roof disposes owned render targets and restores tone mapping, exposure, DPR and material settings. Re-entering starts a fresh quality trial. Stock maps never allocate these targets. The opted-in node's `userData.officeEffectsRuntime` reports the active bloom and resolution fallback for headless checks. Budget and compare the complete frame on the target hardware; bloom is optional, not a guarantee of a particular frame rate.
+
 For glass materials, names containing `glass` and either `interior` or `partition` (case-insensitive) use neutral tint at 0.13 opacity so stacked interior panes stay clear. Other material names containing `glass` use a faint blue tint at 0.3 opacity for facade glazing. Keep these materials distinct when merging meshes.
 
 The `model` style places the office's working furniture inside a local architectural GLB. Keep licensed models and their map configurations outside the source repository. Put the model at `<project>/.agent-office/maps/assets/room.glb` and the map JSON directly in `<project>/.agent-office/maps/`. Start the office with that project, then select the map in Settings → Building → Map. The authenticated server serves that file locally; it does not upload it.
@@ -296,9 +311,10 @@ Use the common `id`, `name`, `hall`, `spawn`, `door`, `stations`, `council` and 
 | `platforms` | Optional rectangles with the same fields for raised floors that can be stood on. Add intermediate steps for taller platforms. |
 | `screen`, `whiteboard` | Each `{x, y, z, rotY, width, height}` places a live surface. The screen displays the floor's screen share; the whiteboard uses the existing collaborative drawing tool. |
 | `labels` | Optional room signs `{x, z, rotY, text}`. |
+| `stationLabelOffsets` | Optional offsets in metres for a board agent's name and speech card, keyed by `issues`, `queue`, or `pulls`; values are limited to 0–2 m. |
 | `lounges` | Optional list of up to two `{x, z, rotY: 0, rugLength?: number}` centres on the main floor. Each adds a 2.6 m wide rug (length 3.2–4 m, default 4) and a low 0.6 × 1.2 m table, with table collision. Rugs must clear walls and raised platforms. Place soft seats around them; their visible centres are 0.85 m behind their configured positions. |
 
-Coordinates are in metres, Y up, with the main floor at Y=0. A seat at rotation 0 faces toward -Z; its chair is at Z+0.85. Leave room around the chair and its approach, and at least 0.6 m between desk edges for walking. Screens face +Z at rotation 0. The common `door` is the workers' entry/exit waypoint. GLB nodes named `Door__...` open upward automatically when someone approaches; keep each leaf separate from its fixed frame. Walls and platforms are explicit collision data, not inferred from rendered triangles.
+Coordinates are in metres, Y up, with the main floor at Y=0. A seat at rotation 0 faces toward -Z; legacy maps place its chair at Z+0.85. Leave room around the chair and its approach, and at least 0.6 m between desk edges for walking. Screens face +Z at rotation 0. The common `door` is the workers' entry/exit waypoint. GLB nodes named `Door__...` open upward automatically when someone approaches; keep each leaf separate from its fixed frame. Walls and platforms are explicit collision data, not inferred from rendered triangles.
 
 Every signed-in visitor, including a shared-password session, can download the model to render the room; anonymous requests are refused. Downloads stream in 64 KB chunks, support a single HTTP byte range and private ETag revalidation, and allow two concurrent downloads per account (shared-password sessions share that limit). Excess requests receive 429 with Retry-After. The client retries a busy download up to four times with 1/2/4/8-second backoff, waiting longer when Retry-After requires it (up to a 30-second cooldown). Switching maps cancels a pending retry. Persistent throttling or longer cooldowns show the model-load error; unauthorized or invalid files are not retried. The JSON metadata chunk is limited to 4 MB.
 
@@ -308,7 +324,7 @@ The model renderer uses environment lighting, transparent glass, AgX tone mappin
 
 ### Furniture already in a local model
 
-A model that includes its own desks and chairs can provide `model.source`: `chairs` (32 explicit `{x,y,z,rotY}` anchors in worker-id order), `council` (exactly five anchors in meeting-seat order), and `meetingBoard` (a board pose). These anchors face the direction the seated person faces; `y` is the seat-anchor height. Existing worker IDs and terminal/laptop behavior stay unchanged. Each worker anchor must match `model.seats[i] + 0.85m` along that seat's rotation; the source chair faces back toward its desk. Source mode omits generated worker/meeting furniture and the circular council collision, uses the explicit council chairs, and keeps small interaction proxies. Include the source tables and walls in collision data and test routes to every seat. The board-agent kiosks remain generated unless their own feature provides another representation.
+A model that includes its own desks and chairs can provide `model.source`: `chairs` (32 explicit `{x,y,z,rotY}` chair-centre anchors in worker-id order), `council` (exactly five anchors in meeting-seat order), and `meetingBoard` (a board pose). These anchors face the direction the seated person faces; `y` is the floor height plus the proxy's seat-top offset. Existing worker IDs and terminal/laptop behavior stay unchanged. Legacy anchors use the 0.85 m approach; maps with authored chair proxies can add `chairType` and `sit: {forward, y}` to each source chair. Proxy geometry uses a local frame where the sitter faces +Z and the back is at -Z, then rotates by `rotY`. The runtime sitter anchor is the chair centre plus `sit.forward` along that rotation, at floor height plus `sit.y`; `model.seats[i]` must match its x/z. A `chairType` on `model.seats[i]` is retained as chair metadata. `stationChairs` may supply the same proxy anchor for fixed board agents by station kind. This supports different proxy types and raised floors without deriving a sitter position from desk height. For curved sofas, place each seat entry on the seat-centre arc and use zero forward offset; pouf entries mark their exact centres. Source mode omits generated worker/meeting furniture and the circular council collision, uses the explicit council chairs, and keeps small interaction proxies. Include the source tables and walls in collision data and test routes to every seat. Optional `stations` may list `issues`, `queue`, and/or `pulls` when the model already supplies those kiosks; duplicate generated kiosks are then omitted while their seat anchors and interactions remain.
 
 `model.screen: null` omits the legacy presentation plane when a separate fixture supplies the TV. In source-furniture mode, platforms higher than 0.3 m also block navigation, so source tables can be represented without treating them as full-height walls.
 
@@ -332,3 +348,56 @@ The stock office uses separate Services and TV placements because their original
 The third-person camera shortens its boom against the map’s existing collision boxes, including non-landable walls, with 0.18m clearance. Keep authored collision bounds aligned with visible walls; room meshes are not raycast each frame. Objects containing the camera target (for example a seat) are ignored so seated views can leave their own furniture. Existing hall-bound and ceiling clamps still apply.
 
 Invisible movement-only barriers can set `cameraOcclusion: false`; this is independent of `fence`, which controls whether a player can land on the collider.
+
+## Multiple levels and lifts
+
+An optional `levels` object adds walking surfaces above the existing ground. Omit it to retain the previous map geometry, navigation and rendering. This is room data, separate from the office's project floors.
+
+```json
+{
+  "levels": {
+    "floors": [
+      {"id":"ground","minX":-8,"maxX":8,"minZ":-8,"maxZ":8,"y":0,"thickness":0.2},
+      {"id":"upper","minX":-8,"maxX":8,"minZ":0,"maxZ":8,"y":3,"thickness":0.25}
+    ],
+    "stairs": [{"id":"stairs","from":{"x":0,"z":-6,"level":"ground"},"to":{"x":0,"z":0,"level":"upper"},"width":2,"steps":12}],
+    "rails": [{"level":"upper","minX":1.1,"maxX":8,"minZ":0,"maxZ":0.1,"height":1.1}],
+    "lifts": [{"id":"lift","x":6,"z":-1.5,"width":2,"depth":2,"stops":[{"x":6,"z":0.5,"level":"ground"},{"x":6,"z":0.5,"level":"upper"}]}],
+    "seats": {},
+    "spawn": "ground"
+  }
+}
+```
+
+This fragment illustrates the schema; the complete public, synthetic hall is `tests/fixtures/two-level-map.ts`. It includes the office's required worker seats and boards. Its data contains no purchased assets or real office layout.
+
+- `floors`: up to 16 bounded rectangular slabs; exactly one ground slab at `y: 0`. Upper slabs need 2.2 m clear headroom below and above. Adjacent slabs at the same height connect across a shared edge at least 0.8 m wide; point contacts do not connect. Split an L-shaped mezzanine into adjoining rectangles. Overlapping slabs at the same height are rejected.
+- `stairs`: up to 32 axis-aligned ascending flights, each joining named floor landings. Risers must be at most 0.30 m, treads at least 0.32 m, and width 1–8 m. For a turning staircase, author an intermediate landing slab and two flights. The slab cannot obstruct the flight's headroom. Routes reject walls or furniture crossing a flight.
+- `rails`: explicit rectangular glass barriers, 1.1–3 m high, relative to the named floor. Author rails on exposed edges, leaving gaps at stairs and lift doors. Unguarded edges permit falling under the existing player physics; rails are not generated automatically. Stair sides need authored guards where a fall would be undesirable.
+- `lifts`: up to four cars, with at least two distinct level stops. Doors face **+z or -z**, inferred from the first landing; every landing must be on the same side. Stops align with the car's x coordinate and sit 0.35–1.5 m beyond its front. Slabs must leave the shaft open. Cars require 2.7 m overhead clearance. Ground is beneath the shaft, so the lowest stop must be at ground for a flush entrance. Use E at a landing to call, or E in the car to ride to the next stop. Doors close for 600 ms before travel; clients interpolate the same eased motion. Other people see riders' height through normal presence updates. Disconnecting during a ride places the local player at the nearest landing and releases the ride controller.
+- `seats`: maps worker desk, overflow, station or council IDs to a floor ID. Omitted IDs stay on ground. All seats sharing a table, and all council chairs, must share a level. Castle, station and model builders raise generated furniture, collision and interactions together **before** batching geometry. Boards retain their authored absolute `y`; raise a station's board in map data when needed.
+- `spawn`: optional floor ID. The spawn x/z must lie inside that floor.
+
+Levels are resolved as `plan().levels`, including collision solids. Workers use height-aware stair routes rather than waiting for passenger lifts. Unreachable arrivals remain safely seated and departures finish without attempting a nonexistent path. The third-person camera clips its boom against local slabs, including after interpolation; first-person positioning is unchanged. This composes with the internal-wall camera change independently.
+
+New world builders must register inside `BUILDERS`, and apply the `onLevel`/`elevation` assembly seam before merging furniture. Model geometry authored at its final elevation is not raised a second time. Source chair `y` remains absolute; generated laptops, proxies and interactions use the assigned seat floor. Model walls/platforms accept an optional absolute `bottom` (default 0), with `bottom < top`, for upper partitions. Fixture navigation rebuilds use the actual collider heights. Source council chairs remain obstacles at their own level; only the destination chair is exempted during a collision-checked sit hop. The public `tests/fixtures/two-level-model.ts` exercises this model path. No per-frame room-mesh raycast is used.
+
+Validation: `node --import tsx --import=#tests/css --test tests/map-levels.test.ts tests/level-lifts.test.ts` covers stair stepping, rails, slab undersides, camera clearance, connected slabs, blocked flights, lift requests and floor-local synchronization.
+
+Level maps reject out-of-hall or out-of-height avatar positions before relaying them. This bounds untrusted coordinates; it is not authoritative movement simulation or anti-teleport enforcement. Passenger lifts remain available to visitors. When composed with an owner-only worker gate, allow only the walking messages `levels.sync` and `levels.lift` through that gate.
+
+The third-person boom retracts before either end or side of a staircase, including backwards approaches, and expands after leaving it. Slab intersection checks remain active throughout; first-person and maps without levels retain their camera behavior.
+
+Third-person cameras anticipate low slab edges by shortening the boom before it reaches the ceiling footprint. Collision clipping still runs before and after camera interpolation; this avoids easing through a slab. First-person cameras are unchanged.
+
+The optional `officeEffects.lights` profile replaces the model's existing daylight contribution, without adding lights or shadow passes:
+
+```json
+{"hemi":{"sky":"#ffd9a8","ground":"#2a2d33","intensity":0.45},"directional":{"color":"#ffb46b","intensity":0.5}}
+```
+
+Colours must be six-digit hex. Finite intensities are clamped to 0–2; zero disables that contribution. Invalid shapes, non-finite numbers and unknown fields reject the profile. The directional setting reuses the existing sun light as the room's directional light, so no daylight sun remains in addition to it. Omit `lights` to keep the map's existing mood unchanged. Colours and intensities, and the original mood callback, are restored when leaving the model. Environment reflections remain unchanged.
+
+The optional `officeEffects.scene` object accepts `environmentIntensity` (finite, clamped 0–2), `background` (`#RRGGBB`), and `fog: {color, near, far}` (hex colour; 0 <= near < far <= 1000 metres). Put fog beyond the room to keep interiors clear. Omitted fields retain existing behavior; leaving restores the previous scene references and environment intensity. This uses the current environment texture and never loads a remote environment. Sign materials with their own environment remain independent.
+
+The optional scene environmentTint is a hex colour multiplying the existing CubeUV PMREM once into a disposable linear half-float copy. It adds no steady-frame pass, never mutates the source, and restores it on exit. Other environment types remain unchanged. No HDR file or URL is loaded.

@@ -1,6 +1,8 @@
 import {loungeSeats} from '../fixtures/seating.js';
 import {resolveSlots} from '../fixtures/index.js';
 import {STOCK_SLOTS} from '../fixtures/stock.js';
+import {checkLevels} from '../levels/plan.js';
+import {attachLevels} from '../levels/attach.js';
 import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
@@ -162,11 +164,12 @@ export function planMap(input: unknown): MapPlan {
   const opt = (v: unknown, what: string, min: number, max: number) => (v === undefined ? undefined : num(v, what, min, max));
   const rects: Rect[] = [];
   const circles: Circle[] = [];
-  const model = style === 'model' ? checkModel(c.model, bounds, height) : undefined;
+  const checkedLevels=style==='model'?checkLevels(c.levels,bounds,height,[...MAP_DESKS,...BEANBAGS,...STATIONS,...MEETING_SEATS].map(d=>d.id)):undefined;
+  const model = style === 'model' ? checkModel(c.model, bounds, height,[...MAP_DESKS,...BEANBAGS].map(d=>checkedLevels?.floors.find(f=>f.id===checkedLevels.seats[d.id])?.y??0)) : undefined;
   if (model) {
     if(c.tables?.length || c.throne || c.herald || c.dungeon || c.lineup || c.sendHome || c.airlock) throw new MapError('model maps use explicit seats and walls; remove tables, throne, herald, dungeon, lineup, sendHome and airlock');
-    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
-    rects.push(...model.walls.map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
+    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3 && (w.bottom??0)<1.7).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
+    rects.push(...model.walls.filter(w=>(w.bottom??0)<1.7).map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
     if(!model.source)rects.push(...model.seats.slice(0,20).map(s=>boxFootprint(s.x,s.z,1.6,.8,s.rotY)));
     rects.push(...(model.lounges??[]).map(s=>boxFootprint(s.x,s.z,.6,1.2,0)));
   }
@@ -231,7 +234,8 @@ export function planMap(input: unknown): MapPlan {
   if (!isObj(c.stations)) throw new MapError('it needs stations: where the Issues, PR and Queue agents stand');
   const stations: DeskDef[] = STATION_KINDS.map((kind) => {
     const p = place(c.stations[kind], `stations.${kind}`);
-    const def = { id: `station-${kind}`, station: kind, x: p.x, z: p.z, rotY: p.rotY, label: STATION_AGENT[kind].name };
+    const chair=model?.source?.stationChairs?.[kind];
+    const def = chair?.sit ? { id: `station-${kind}`, station: kind, x: chair.x+Math.sin(chair.rotY)*chair.sit.forward, z: chair.z+Math.cos(chair.rotY)*chair.sit.forward, rotY: chair.rotY, label: STATION_AGENT[kind].name } : { id: `station-${kind}`, station: kind, x: p.x, z: p.z, rotY: p.rotY, label: STATION_AGENT[kind].name };
     // The agent stands behind its lectern: that's in the hall too.
     inside(p.x + Math.sin(p.rotY) * 0.9, p.z + Math.cos(p.rotY) * 0.9, `where the ${STATION_AGENT[kind].name} stands`, 0);
     // The lectern, and the agent standing behind it.
@@ -244,7 +248,12 @@ export function planMap(input: unknown): MapPlan {
   const council = place(c.council, 'council');
   const meeting: DeskDef[] = MEETING_SEATS.map((m, i) => {
     const anchor=model?.source?.council[i];
-    if(anchor){const a=anchor.rotY+Math.PI;circles.push([anchor.x,anchor.z,.28]);return {id:m.id,room:true,x:anchor.x-Math.sin(a)*.85,z:anchor.z-Math.cos(a)*.85,rotY:a,label:m.label};}
+    if(anchor){
+      const authored=anchor.sit!==undefined,forward=anchor.sit?.forward??.85;
+      const facing=authored?anchor.rotY:anchor.rotY+Math.PI;
+      circles.push([anchor.x,anchor.z,.28]);
+      return {id:m.id,room:true,x:anchor.x+Math.sin(anchor.rotY)*forward,z:anchor.z+Math.cos(anchor.rotY)*forward,rotY:facing,label:m.label};
+    }
     const a = council.rotY + (i * Math.PI * 2) / MEETING_SEATS.length;
     const def = { id: m.id, room: true, x: council.x + Math.sin(a) * COUNCIL.place, z: council.z + Math.cos(a) * COUNCIL.place, rotY: a, label: m.label };
     circles.push([council.x + Math.sin(a) * COUNCIL.chairs, council.z + Math.cos(a) * COUNCIL.chairs, 0.28]);
@@ -366,6 +375,12 @@ export function planMap(input: unknown): MapPlan {
     if (!isObj(c.palette)) throw new MapError('palette should be colors by name, like { stone, floor, carpet, wood, trim } for a castle');
     for (const [k, v] of Object.entries(c.palette)) if (typeof v !== 'string' || v.length > 40) throw new MapError(`palette.${k} should be a CSS color`);
   }
+  if (c.hideDeskSigns !== undefined && (!Array.isArray(c.hideDeskSigns) || c.hideDeskSigns.length > 20)) throw new MapError('hideDeskSigns must be a list of at most 20 desk ids');
+  const hideDeskSigns = ((c.hideDeskSigns ?? []) as unknown[]).map((id, i) => {
+    if (typeof id !== 'string' || !/^desk-(?:[1-9]|1\d|20)$/.test(id)) throw new MapError(`hideDeskSigns[${i}] must be desk-1 through desk-20`);
+    return id;
+  });
+  if (new Set(hideDeskSigns).size !== hideDeskSigns.length) throw new MapError('hideDeskSigns must contain distinct desk ids');
   const door = place(c.door, 'door');
   // A station's walls: the way in, the airlock and the windows cut through them.
   const airlock = c.airlock == null ? undefined : planAirlock(c.airlock, bounds);
@@ -391,14 +406,14 @@ export function planMap(input: unknown): MapPlan {
   if(fixtures.slots.gong&&props.some(p=>p.kind==='gong'))throw new MapError('Use a gong fixture or legacy gong prop, not both');
   if(fixtures.slots.lounge)seating.push(...loungeSeats(fixtures.slots.lounge));
   if(fixtures.slots.services){const p=fixtures.slots.services;boards.services={...boards.services,...p.position,rotY:p.rotY,width:p.size.width,height:p.size.height};}
-  return {
+  return attachLevels({
     ...fixtures,
     id,
     name,
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
     description: typeof c.description === 'string' ? c.description.slice(0, 400) : '',
     style,
-    config: model ? { ...c, model } : c,
+    config: { ...c, ...(model ? { model } : {}), ...(c.hideDeskSigns === undefined ? {} : { hideDeskSigns }) },
     bounds,
     height,
     spawn: { ...spawn, y: 0 },
@@ -423,7 +438,7 @@ export function planMap(input: unknown): MapPlan {
     ...(airlock ? { airlock } : {}),
     ...(openings ? { openings } : {}),
     ...(sendHome ? { sendHome } : {}),
-  };
+  });
 }
 
 // ---- Which maps there are -------------------------------------------------------------------------
@@ -502,6 +517,13 @@ export function planOf(id: string | undefined, custom: readonly CustomMap[] = []
   } catch {
     return OFFICE_PLAN;
   }
+}
+
+/** Filters only map-configured desk signs; it does not change the saved floor-plan labels. */
+export function visibleDeskSignLabels<T>(labels: Record<string, T>, hidden: readonly string[] = []): Record<string, T> {
+  if (!hidden.length) return labels;
+  const omitted = new Set(hidden);
+  return Object.fromEntries(Object.entries(labels).filter(([id]) => !omitted.has(id)));
 }
 
 /** Whether `id` names a map that can be picked. */

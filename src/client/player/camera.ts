@@ -4,6 +4,7 @@ import type { ViewMode } from '../state';
 import type { Collider } from '../world/types';
 import { shortenCameraBoom } from './camera-boom';
 import { ceilingAt, groundAt } from './collide';
+import { clampLevelCamera, levelBoomDistance } from './level-camera';
 
 // The camera: your eyes in first person, or following you round in third without going through the
 // walls, and the view trembling after too much coffee or rolling after too much to drink.
@@ -54,7 +55,7 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     Math.sin(p.camYaw) * Math.cos(p.camPitch),
     Math.sin(p.camPitch),
     Math.cos(p.camYaw) * Math.cos(p.camPitch),
-  ).multiplyScalar(p.camDist);
+  ).multiplyScalar(levelBoomDistance(p.pos, p.camDist, p.colliders, p.camPitch));
   const cam = target.clone().add(off);
   // Keep the camera on your side of the outside walls, so they never block the view: inside the
   // room while you're in the office, out of the building while you're outside or on the balcony.
@@ -79,7 +80,7 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     cam.x = THREE.MathUtils.clamp(cam.x, R.minX + m, R.maxX - m);
     cam.z = THREE.MathUtils.clamp(cam.z, R.minZ + m, R.maxZ - m);
   }
-  const floorY = rigged ? 0 : Math.max(groundAt(p.colliders, p.pos.x, p.pos.z, p.pos.y), p.street);
+  const floorY = rigged && !p.colliders.some(c => c.levelSurface) ? 0 : Math.max(groundAt(p.colliders, p.pos.x, p.pos.z, p.pos.y), p.street);
   const roof = ceilingAt(p.colliders, cam.x, cam.z, floorY) - 0.3;
   cam.y = THREE.MathUtils.clamp(cam.y, floorY + 0.6, Math.max(floorY + 0.6, Math.min(floorY + 3.5, roof)));
   // Down on the street, stay under the garage ceiling so its edge never cuts across the view; in the
@@ -106,11 +107,13 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     else cam.z = R.maxZ + e;
   }
   shortenCameraBoom(target, cam, p.colliders);
+  clampLevelCamera(target, cam, p.colliders);
   if (snap) camera.position.copy(cam);
   else {
     camera.position.lerp(cam, 0.25);
     // Pull inward immediately, including when a new map puts a wall across the old camera pose.
     shortenCameraBoom(target, camera.position, p.colliders);
+    clampLevelCamera(target, camera.position, p.colliders);
   }
   camera.lookAt(target);
 }
