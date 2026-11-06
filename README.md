@@ -32,6 +32,8 @@ curl -fsSL https://raw.githubusercontent.com/AgentSystemLabs/agent-office/main/i
 
 ## What it is
 
+Only the locally allow-listed owner can use a **Services | Cadre** view on the Services board, with live seat-screen tiles in engine order and a labeled read-only panel until Cadre Web is connected. An open panel reconnects automatically after Cadre Web restarts and follows its version updates through the owner-authenticated office wrapper. See [Cadre configuration and controls](docs/cadre.md).
+
 - **A floor per project.** Ride the elevator, pick one of your GitHub repos, and the office clones it (showing how far along it is) and opens a floor for it. Every worker, board and queue on that floor works in that checkout.
 - **Workers at desks.** Walk up to an empty desk, press **E**, and pick Claude Code, Codex, OpenCode, Grok, Muse, DeepSeek Harness, Pi or Cursor, each with its model and reasoning effort. The agent's live terminal shows on its laptop, and anyone can open it and type.
 - **Talk instead of typing.** Hold **Ctrl+Space** (or the **🎤**) in a worker's terminal or a prompt box and say what you want: it's typed in for you to send. Your browser does the listening, so there's nothing to install.
@@ -422,3 +424,4 @@ Every change to the app that lands on `main` is published as a GitHub release by
 [MIT](LICENSE)
 
 Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media-wall fixtures with level faces and matching thin frames. See [Converting a purchased office](docs/maps.md#converting-a-purchased-office) and the synthetic fixture demo; licensed room assets stay local.
+The owner-only Cadre panel supports team audit and ideas reads and seat tuning; see [Cadre gateway and audit details](docs/cadre.md).

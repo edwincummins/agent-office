@@ -1,0 +1,86 @@
+# Cadre on the Services board
+
+Only the locally allow-listed owner can select **Services | Cadre** in the Services board's upper-right corner. Aim at a segment and click or press **E**, or press **B** while aiming at the board. **E** on the board opens the selected view. Services retains its existing scanner, content and dialog. All other accounts (including administrators) and shared-password visitors see plain Services and receive no fleet data.
+
+The choice is browser-local and independent for each floor and environment. `agent-office.boardModes` stores an object whose keys are JSON-encoded `[floorId, environmentId]` pairs and whose values are `services` or `cadre`. Missing or malformed entries default to Services. Blocked storage still permits switching for the current visit.
+
+## Fleet source
+
+Add the following optional object to the server's `.agent-office/config.json`, preserving its other fields:
+
+```json
+{
+  "cadre": {
+    "fleetCommand": ["node", "<cadre-engine>/bin/cadre.js", "fleet"],
+    "ownerAllowlist": [{"id": "<owner-account-id>"}]
+  }
+}
+```
+
+The allow-list is local only: exact account IDs only; name-only entries are refused. An optional name constraint must also match. The named account must also be an administrator. Missing, empty or unreadable allow-lists deny everyone and disable polling. Never commit real identities. Prefer IDs so a renamed or recreated account cannot inherit access.
+
+Alternatively, `AGENT_OFFICE_FLEET_COMMAND` is a JSON executable/arguments array. It overrides the file setting. Restart the office after changing server configuration. Unset means off: no command and no fleet messages. The source is the configured fleet command; no second shared-state reader runs.
+
+The server polls every 5 seconds, with a 4-second timeout, a 1 MiB output cap and no overlapping runs. It invokes an executable directly, without a shell. Configure an executable such as Node rather than a shell launcher. Output must contain `teams`, `seats`, `needs` arrays and a `tasks` object. Only a bounded display projection is sent; raw inbox, access, task and evidence fields stay off the wire. Activity and need-summary text is private to the owner but may itself contain information supplied by the fleet source.
+
+Invalid output and failures preserve the last good snapshot with an explicit stale marker. Recovery clears that marker. Unchanged normalized snapshots are neither transmitted nor redrawn. The stuck clock starts when this office observes unchanged activity with work; restarting the office resets that observation clock.
+
+| Priority | Seat state |
+| --- | --- |
+| 1 | Stopped: source status is not `running`. |
+| 2 | Needs you: a need names the seat, or a rig-wide need names its rig. |
+| 3 | Stuck: activity has remained unchanged for at least 20 minutes while work exists. |
+| 4 | Working: positive work count, a task, or working activity. Otherwise idle. |
+
+The board uses one fleet canvas on the existing board mesh and two flat switch segments. It introduces no new wall. Live screen tiles preserve the engine seat order: 2×2 through four seats, 3×2 through six, and 3×3 through nine. Additional seats have an overflow count and remain available in the panel. Each tile shows its name, state border and latest terminal lines, bottom-aligned at a fixed 20px font; long lines clip rather than wrap. The read-only fallback panel uses two columns with scrollable full tails. Closing the panel by its top-right ✕ or Esc uses the office's normal mouse-look restoration.
+
+## Cadre Web integration
+
+The public office contains no Cadre application code. Until a compatible Cadre Web service is available, the panel is labeled **Read-only preview** and offers no sign-off actions.
+
+Optional server settings are `cadre.webUrl` and `cadre.webToken`, overridden by `AGENT_OFFICE_CADRE_WEB_URL` and `AGENT_OFFICE_CADRE_WEB_TOKEN`. Keep the token in local server configuration, never a URL. The URL must use HTTP(S) and a literal loopback host (`localhost`, `127.0.0.1` or `[::1]`), with no credentials, query or fragment. A token is required.
+
+Open the office at `http://127.0.0.1:<office-port>`. The office starts a dedicated loopback gateway on `http://localhost:<ephemeral-port>` for the embedded app. Cookies are hostname-scoped, not port-scoped; this separate hostname isolates office cookies. Other office hostnames and HTTPS use the labeled fallback. This setup is for a browser on the same machine.
+
+The owner-only `/api/cadre/embed` wrapper embeds the real app through that gateway; no Cadre app code is copied into this repository. The upstream token stays on the server. The child receives an opaque 30-minute gateway grant tied to the office account. Every authenticated gateway request rechecks the account and local allow-list, so removal immediately denies further requests; the fleet subscription is revoked within one second. Closing the iframe sends a grant-revocation beacon. Grants also expire after 30 minutes; if a browser crashes before sending its beacon, opening a new panel evicts the oldest grant at the 128-grant cap. Only the documented fleet, capture, message, decision and authentication endpoints are forwarded, with no upstream redirects.
+
+The wrapper's CSP confines its child to the gateway origin. Frames omit referrers and permit only scripts, same-origin behavior and forms. Authentication messages target the exact child origin/window. The panel closes on office disconnect or loss of access.
+
+`.agent-office/cadre-audit.jsonl` records panel opens and embeds, plus each message/decision request/result and screen-view open/close (not every refresh) with timestamp, office account ID/name, target and HTTP result. Tokens, message text and screen contents are excluded. An unwritable audit log blocks the action before forwarding. A request without a result indicates interrupted or failed transport; it must not be treated as proof of completion. Protect and rotate this local log as needed.
+
+The proposed bridge contract, to be implemented and verified by the separately hosted app:
+
+1. Child sends `{type: 'cadre.web.ready'}` to its parent.
+2. Wrapper replies `{type: 'cadre.web.authenticate', token}` to the configured origin.
+3. Child validates the token before rendering private data or accepting actions, then sends `cadre.web.connected` and `cadre.web.heartbeat` at least every 2 seconds while its backend is reachable and authentication remains valid. A timer alone must not claim backend health.
+4. Child forwards Escape as `cadre.web.close`, including when an internal control has focus. Cross-origin keyboard events cannot bubble to the office.
+
+Without connection/heartbeat for 6 seconds the panel returns to its labeled **Reconnecting…** fallback and revokes its old grant. While open, it probes the owner-only health endpoint after 1, 2, 5, then every 10 seconds. Recovery loads a fresh iframe and grant, repeats authentication, and hides the fallback only after a connection/heartbeat. Closing the panel aborts probes and stops retries. Recovery starts only after a configured iframe connection has been attempted; missing configuration or an unsupported office hostname keeps its specific fallback reason and does not poll health. A fully working Cadre integration, action round trips and token expiry/revocation remain dependent on the Cadre Web implementation; a demonstration stub does not prove them. The upstream token is never issued to the browser.
+
+## Synthetic checks
+
+From a source checkout, `node --import tsx tests/fixtures/fleet-command.ts` prints a synthetic five-seat feed. Add `--32` for four teams of eight seats. Point `fleetCommand` at that command for deterministic board and access checks. No live fleet data is included in these fixtures.
+
+`node --import tsx --import=#tests/css --test tests/fleet.test.ts tests/fleet-owner.test.ts` covers state precedence, the stuck threshold using a controlled clock, stopped-seat restart, empty/32-seat input, stale recovery, unchanged suppression, no overlap, timeout, owner allow-list authorization, clipping, local mode memory and loopback configuration. The stuck fixture is tested by advancing that clock, not by changing the production threshold.
+
+For an explicitly synthetic embed probe, set `CADRE_STUB_TOKEN` to a disposable local value and run `node tests/fixtures/cadre-web-stub.mjs` (port 4634 by default, or `CADRE_STUB_PORT`). Configure `cadre.webUrl` with the alternate loopback hostname and the same value in `cadre.webToken`. The probe authenticates before enabling its test counter, forwards Escape and verifies backend reachability for heartbeats. It is not Cadre and proves no real sign-off action.
+
+On Windows, command timeout, shutdown cancellation and excessive output terminate the process tree with `taskkill /T /F` while the command parent is still alive. The poll remains occupied until cleanup completes (up to a further two seconds). Cleanup failure is reported separately; the parent is then killed as a fallback. A configured executable should not deliberately detach descendants from its process tree.
+
+When the engine supplies `seat.state`, its `key` is authoritative (`you` maps to needs-you); `why` supplies the stuck reason or waiting teammate. Stopped processes remain stopped. Only older feeds without `state` use the 20-minute inference above. Unknown or malformed explicit states show as unknown on that seat only (an open need still wins and shows amber); other seats remain live. A later recognized state recovers normally. Waiting is blue, distinct from amber needs-you. The board and expanded fallback row show reasons; “since” is when this office first observed that state/reason, not an engine-certified start time. The board shows no age; the panel labels the timestamp “seen stuck since” (or “seen waiting since”). The synthetic command includes explicit stuck and waiting examples; the legacy fixture still exercises inference.
+
+The gateway explicitly permits the live app's seats, queue, inbox, team, seat and access routes; all require the owner-bound bearer grant. Mutating routes are audited without request contents. Cadre's anonymous `fetch('/version')` is relayed by small transport glue through the trusted office wrapper to `/api/cadre/version`. That endpoint requires the current allow-listed owner session, then forwards upstream without a bearer. This permits version-triggered reloads without exposing a public gateway bypass or sharing the office cookie with localhost. The raw gateway `/version` route remains grant-protected. Multiple live seat screens are tracked separately, avoiding audit entries on each alternating poll. A screen session closes after 15 seconds without refresh, detected on a subsequent screen request, or when the panel grant is revoked.
+
+## Live screen tails
+
+`seats[].tail` is an array of screen lines, already stripped of input boxes and footers by the engine. The office additionally strips ANSI/C0/C1 controls, bidi overrides/isolates, zero-width spaces, word joiners, byte-order marks and other invisible formatting controls, and Unicode line/paragraph separators. U+200D (ZWJ) and U+200C (ZWNJ) are preserved for joined emoji and Persian/Indic text. Each seat is capped at its last 24 lines, 160 Unicode code points per line (at most 3,840 code points). Screen content is private: only the allow-listed owner receives it over the existing fleet subscription. Other admins and shared-password sessions receive none. A stopped seat retains its last observed tail until removed; an empty running seat shows “no output yet.” Restarting the office clears that stopped-seat cache.
+
+The board uses one 2048×1024 canvas texture with mipmaps and maximum supported anisotropy. A visible-tail/state/header change triggers one paint/upload per fleet poll; timestamps, hidden activities and off-board tails do not repaint it. No per-frame fleet rendering work is added. Diagnostic timings are on the scene group's `cadre-board-switch.userData`: `redraws`, `paintMs`, `uploadMs`. Upload time measures the CPU call to `renderer.initTexture`, including mipmap submission; it is not a GPU timer query.
+
+Synthetic screen fixtures: `node --import tsx tests/fixtures/fleet-command.ts --screens` (four ordered seats); add `--9` or `--32` for overflow cases. On Windows, an absolute `--import` module path must be a `file:///` URL. Fixtures contain no real screens or credentials.
+
+Read audits for `/api/seats?team=`, `/api/queue?team=` `/api/inbox`, `/api/audit?team=` and `/api/ideas?team=` record `read.open`/`read.result` once per route/team per panel grant, rather than on each poll. `/api/inbox/read`, `/api/team`, `/api/seat` and `/api/access` preserve their JSON payload and record action request/result with the acting office account. Version checks are metadata polling and are not logged on every refresh.
+
+The disposable `tests/fixtures/cadre-version-preview.ts` exercises the real office wrapper and gateway against an in-process synthetic Web service. It proves anonymous version checks trigger reload plus authentication; it never loads real Cadre or owner data.
+
+The owner gateway forwards `POST /api/tune` unchanged. Its local action audit records the seat, bounded model and effort names, and restart flag. Arbitrary request fields are excluded.
