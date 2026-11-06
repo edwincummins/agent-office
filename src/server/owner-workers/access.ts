@@ -17,7 +17,7 @@ export function ownerId(ctx:OwnerContext):string|undefined{
  }catch{return;}
 }
 export const isOwner=(ctx:OwnerContext,id:string|undefined)=>!!id&&ownerId(ctx)===id;
-const social=new Set(['move','act','emote','sit','carry','profile','voice','rtc','chat','doing','ping','golf','toss','gong','horn','floor.go','worker.attach','worker.detach','fleet.subscribe']);
+const social=new Set(['move','act','emote','sit','carry','profile','voice','rtc','chat','doing','ping','golf','toss','gong','horn','floor.go','worker.attach','worker.detach','fleet.subscribe','fleet.screens']);
 /** Only social/read-only handlers bypass the owner gate. New control handlers default to denied. */
 export const visitorMessage=(key:string)=>social.has(key)||/^(ball|car|cabinet|dog|jukebox|wb|decor)\./.test(key);
 export function ownerHandlers(handlers:HandlerMap<ClientMsg>):HandlerMap<ClientMsg>{

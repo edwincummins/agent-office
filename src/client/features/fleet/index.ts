@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { FleetGuestSettings, FleetSnapshot } from '../../../shared/protocol/fleet';
+import type { FleetGuestSettings, FleetScreen, FleetSnapshot } from '../../../shared/protocol/fleet';
 import type { Ctx } from '../../core/context';
 import { boardModes } from '../../core/board-modes';
 import { hintTitle,key } from '../../core/hint';
@@ -32,6 +32,8 @@ export function installFleet(ctx:Ctx) {
   let authorized=false,permissionRequest=0;
   // Guests watch a filtered, read-only copy the office sends them (server fleet/guests.ts); the owner sets what's in it.
   let guest=false,guestSettings:FleetGuestSettings|null=null;
+  const screens={map:new Map<string,FleetScreen>(),version:0};
+  const watch=(on:boolean)=>{if(!on){screens.map.clear();screens.version++;}ctx.net.send({t:'fleet.screens',on});};
   const owner=()=>authorized&&store.me.account?.role==='admin';
   const allowed=()=>owner()||(guest&&state!==null);
   const header=document.createElement('canvas');header.width=1024;header.height=250;
@@ -64,8 +66,8 @@ export function installFleet(ctx:Ctx) {
   const toggle=()=>{if(!allowed())return;selected=!selected;try{writeMode(localStorage,scope,selected);}catch{}apply();};
   const open=async()=>{
     const response=owner()?await fetch('/api/cadre/open',{method:'POST'}).catch(()=>null):null;
-    if(!owner()&&guest&&state){panel?.close();panel=openFleet(()=>state,()=>{toggle();},{guest:true,guests:()=>null,setGuests:()=>{}});return;}
-    if(response?.ok&&allowed()){panel?.close();panel=openFleet(()=>state,()=>{toggle();},{guest:false,guests:()=>guestSettings,setGuests:s=>ctx.net.send({t:'fleet.guests',settings:s})});}
+    if(!owner()&&guest&&state){panel?.close();panel=openFleet(()=>state,()=>{toggle();},{guest:true,guests:()=>null,setGuests:()=>{},screens:()=>screens,watch});return;}
+    if(response?.ok&&allowed()){panel?.close();panel=openFleet(()=>state,()=>{toggle();},{guest:false,guests:()=>guestSettings,setGuests:s=>ctx.net.send({t:'fleet.guests',settings:s}),screens:()=>screens,watch});}
     else {authorized=false;panel?.close();apply();}
   };
   const draw=(next:FleetSnapshot|null)=>{
@@ -102,6 +104,7 @@ export function installFleet(ctx:Ctx) {
   store.on('me',sync);
   ctx.messages.on('fleet',m=>{if(m.guest){guest=true;authorized=false;draw(m.state);apply();return;}if(m.state===null)sync();else if(allowed())draw(m.state);});
   ctx.messages.on('fleet.guests',m=>{guestSettings=m.settings;});
+  ctx.messages.on('fleet.screens',m=>{for(const [seat,sc] of Object.entries(m.screens))screens.map.set(seat,sc);screens.version++;});
   store.on('floor',()=>{if(mesh&&base)mount(base,ctx.world().boardMeshes.services);});
   const initial=ctx.office.boardMeshes.services;
   mount((initial.material as THREE.MeshBasicMaterial).map!,initial);

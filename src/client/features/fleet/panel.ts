@@ -1,12 +1,15 @@
 import './panel.css';
 import {reconnect} from './reconnect';
-import type { FleetGuestSettings, FleetSnapshot } from '../../../shared/protocol/fleet';
+import type { FleetGuestSettings, FleetScreen, FleetSnapshot } from '../../../shared/protocol/fleet';
+import { paintScreen } from './screen-paint';
 import { h,openModal } from '../../ui/dom';
 import { store } from '../../state';
 import { fleetColors } from './draw';
 
 /** The fallback is a data viewer. Interactive work remains in the separately hosted Cadre app. */
-export interface FleetPanelOptions { guest:boolean; guests:()=>FleetGuestSettings|null; setGuests:(s:FleetGuestSettings)=>void }
+export interface FleetPanelOptions { guest:boolean; guests:()=>FleetGuestSettings|null; setGuests:(s:FleetGuestSettings)=>void;
+  /** Colour screens by seat, and a counter that moves when any changes; watch(true) while the watch view shows. */
+  screens?:()=>{map:Map<string,FleetScreen>;version:number}; watch?:(on:boolean)=>void }
 export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts:FleetPanelOptions={guest:false,guests:()=>null,setGuests:()=>{}}) {
   const notice=h('p.cadre-notice',{},opts.guest?'Watching Cadre, read-only.':'Read-only preview. Live Cadre is not connected yet (Cadre Web).');
   // The owner's privacy eye (Fetty, 11-06): what guests see, changed live; the office filters on his PC.
@@ -28,8 +31,26 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
   const content=h('div.modal.cadre-panel',{role:'dialog','aria-label':'Cadre'},
     h('header',{},h('h2',{},'Cadre'),...(opts.guest?[]:[eye]),h('div.cadre-modes',{},h('button',{onclick:()=>{modal.close();services();}},'Services'),h('span.selected',{},'Cadre'))),...(opts.guest?[]:[eyeBar]),body);
   let closed=false,connectionAttempted=false,key='',frame:HTMLIFrameElement|undefined,lastAlive=0;
+  // Colour terminals in the watch view: asked for only while it is what's showing (not behind the live panel).
+  let painted=-1,watching=false,shownSince=0;
+  const paint=()=>{
+    const s=opts.screens?.();if(!s)return;
+    for(const pre of rows.querySelectorAll<HTMLElement>('.cadre-tail')){
+      const sc=s.map.get(pre.dataset.seat??'');if(!sc)continue;
+      const atBottom=pre.scrollTop+pre.clientHeight>=pre.scrollHeight-4;
+      paintScreen(pre,sc);if(atBottom)pre.scrollTop=pre.scrollHeight;
+    }
+    painted=s.version;
+  };
+  const watchView=()=>{
+    const visible=!body.hidden&&!closed;
+    if(visible&&!shownSince)shownSince=Date.now();if(!visible)shownSince=0;
+    // The owner on the PC sees the live panel within a second or two; only ask if the watch view stays up.
+    const want=visible&&(opts.guest||Date.now()-shownSince>3000);
+    if(want!==watching){watching=want;opts.watch?.(want);}
+  };
   const render=()=>{
-    const state=snapshot(),next=JSON.stringify(state);if(next===key)return;key=next;
+    const state=snapshot(),next=JSON.stringify(state);if(next===key)return;key=next;painted=-1;
     const scroll=new Map(Array.from(rows.querySelectorAll<HTMLElement>('.cadre-tail'),el=>[el.dataset.seat,{top:el.scrollTop,left:el.scrollLeft,bottom:el.scrollTop+el.clientHeight>=el.scrollHeight-4}]));
     rows.replaceChildren();
     if(!state){rows.append(h('p',{},'Cadre feed is off. Set cadre.fleetCommand'));return;}
@@ -69,10 +90,11 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
     if(!opts.guest&&store.me.account?.role!=='admin'){modal.close();return;}
     if(opts.guest&&!snapshot()){modal.close();return;}
     render();if(!eyeBar.hidden)drawEye();
+    watchView();const sv=opts.screens?.();if(sv&&sv.version!==painted)paint();
     if(connectionAttempted&&(!frame||Date.now()-lastAlive>6000)){frame?.remove();frame=undefined;body.hidden=false;notice.textContent='Read-only preview · Reconnecting…';recovery.waiting();}
     scheduleRetry();
   },1000);
-  const modal=openModal(content,{onClose:()=>{closed=true;recovery.close();clearTimeout(retryTimer);clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
+  const modal=openModal(content,{onClose:()=>{closed=true;if(watching){watching=false;opts.watch?.(false);}recovery.close();clearTimeout(retryTimer);clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
   render();
   if(opts.guest)return modal;
   void fetch('/api/cadre/web',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
