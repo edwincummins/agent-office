@@ -55,7 +55,6 @@ export function installModelEffects(ctx: Ctx) {
         if (!(m instanceof THREE.MeshStandardMaterial) || seen.has(m)) continue;
         seen.add(m);
         const surface = modelSurface(m.userData.officeSurface);
-        if (!surface && profile.emissiveCeiling === undefined) continue;
         const old = { envMap: m.envMap, envMapIntensity: m.envMapIntensity, blending: m.blending, transparent: m.transparent, depthWrite: m.depthWrite, emissiveIntensity: m.emissiveIntensity };
         materialRestores.push(() => { Object.assign(m, old); m.needsUpdate = true; });
         if (surface?.studioIntensity !== undefined) {
@@ -67,7 +66,7 @@ export function installModelEffects(ctx: Ctx) {
         }
         if (surface?.additive) { m.blending = THREE.AdditiveBlending; m.transparent = true; m.depthWrite = false; }
         if (surface?.emissiveIntensity !== undefined) m.emissiveIntensity = surface.emissiveIntensity;
-        if (profile.emissiveCeiling !== undefined) limitEmission(m, profile.emissiveCeiling);
+        limitEmission(m);
         m.needsUpdate = true;
       }
     });
