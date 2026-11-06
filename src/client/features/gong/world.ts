@@ -1,3 +1,4 @@
+import { batchStaticParts } from '../../world/static-parts';
 import * as THREE from 'three';
 import { GONG } from '../../../shared/layout';
 import { mesh, roundedBox, textPlane, toon, toonUnique } from '../../world/toon';
@@ -106,6 +107,7 @@ export function buildGong(at: { x: number; y?: number; z: number; rotY?: number 
   let waveT = Infinity;
   let waveSize = 1;
 
+  batchStaticParts(group);
   return {
     group,
     colliders,
