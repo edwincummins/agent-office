@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { isCachedToon } from './toon';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
+// Like toon(), these immutable palettes live across world rebuilds. Do not clone per fixture.
+const palettes = new Map<string, THREE.MeshToonMaterial>();
+
 /** Call during construction only, on fixtures whose mesh transforms are static.
  * Groups remain intact so hinges/pivots can animate; materials stay shared so lights can change.
  * Interactive meshes and transparent effects retain their identity and sorting.
@@ -24,7 +27,7 @@ export function batchStaticParts(root: THREE.Object3D) {
   const batches = new Map<string, THREE.Mesh<THREE.BufferGeometry, THREE.Material>[]>();
   for (const child of root.children) {
     if (!(child instanceof THREE.Mesh) || child instanceof THREE.SkinnedMesh || child instanceof THREE.InstancedMesh || Array.isArray(child.material)) continue;
-    if (!child.visible || child.material.transparent || Object.keys(child.userData).length || Object.keys(child.geometry.morphAttributes).length || child.geometry.hasAttribute('color')) continue;
+    if (child.children.length || !child.visible || child.material.transparent || Object.keys(child.userData).length || Object.keys(child.geometry.morphAttributes).length || child.geometry.hasAttribute('color')) continue;
     const key = `${paletteKey(child.material)}/${child.castShadow}/${child.receiveShadow}/${child.renderOrder}/${child.layers.mask}`;
     const list = batches.get(key) ?? []; list.push(child); batches.set(key, list);
   }
@@ -49,8 +52,13 @@ export function batchStaticParts(root: THREE.Object3D) {
     const first = parts[0];
     let material = first.material;
     if (useColors) {
-      const palette = (material as THREE.MeshToonMaterial).clone();
-      palette.color.set(0xffffff); palette.vertexColors = true;
+      const key = paletteKey(material);
+      let palette = palettes.get(key);
+      if (!palette) {
+        palette = (material as THREE.MeshToonMaterial).clone();
+        palette.color.set(0xffffff); palette.vertexColors = true;
+        palettes.set(key, palette);
+      }
       material = palette;
     }
     const batch = new THREE.Mesh(merged, material);

@@ -46,3 +46,37 @@ test('cached palette batching preserves linear vertex colours and separates anim
  assert.ok(root.children.some(n => n instanceof THREE.Mesh && n.material === animated));
  assert.ok(root.children.some(n => n instanceof THREE.Mesh && n.material === glow));
 });
+
+test('rebuilding a fixture reuses the immutable palette rather than leaking a material per world', () => {
+ const build = () => {
+  const root = new THREE.Group();
+  for (const color of ['#123456', '#654321']) root.add(new THREE.Mesh(new THREE.BoxGeometry(), toon(color)));
+  batchStaticParts(root);
+  return root.children[0] as THREE.Mesh;
+ };
+ assert.equal(build().material, build().material);
+});
+
+test('a mesh carrying child controls stays attached with those controls intact', () => {
+ const root = new THREE.Group(), material = toon('#123123');
+ const panel = new THREE.Mesh(new THREE.BoxGeometry(), material);
+ const button = new THREE.Mesh(new THREE.SphereGeometry(), material);
+ panel.add(button); root.add(panel, new THREE.Mesh(new THREE.BoxGeometry(), material));
+ batchStaticParts(root);
+ assert.equal(panel.parent, root);
+ assert.equal(button.parent, panel);
+ assert.equal(root.children.length, 2);
+});
+
+import { workerHeadset } from '../src/client/world/character/worker-headset.js';
+test('worker headset is one draw and remains one independently hideable outfit piece', () => {
+ const headset = workerHeadset();
+ assert.equal(headset.children.length, 1);
+ const bounds = new THREE.Box3().setFromObject(headset);
+ assert.ok(Math.abs(bounds.min.x + .36) < .005);
+ assert.ok(Math.abs(bounds.max.x - .36) < .005);
+ assert.ok(bounds.min.y < .66 && bounds.max.y > 1.03);
+ const body = new THREE.Group(); body.add(headset); headset.visible = false;
+ let visible = 0; body.traverseVisible(n => { if (n instanceof THREE.Mesh) visible++; });
+ assert.equal(visible, 0);
+});
