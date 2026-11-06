@@ -365,6 +365,12 @@ export function planMap(input: unknown): MapPlan {
     if (!isObj(c.palette)) throw new MapError('palette should be colors by name, like { stone, floor, carpet, wood, trim } for a castle');
     for (const [k, v] of Object.entries(c.palette)) if (typeof v !== 'string' || v.length > 40) throw new MapError(`palette.${k} should be a CSS color`);
   }
+  if (c.hideDeskSigns !== undefined && (!Array.isArray(c.hideDeskSigns) || c.hideDeskSigns.length > 20)) throw new MapError('hideDeskSigns must be a list of at most 20 desk ids');
+  const hideDeskSigns = ((c.hideDeskSigns ?? []) as unknown[]).map((id, i) => {
+    if (typeof id !== 'string' || !/^desk-(?:[1-9]|1\d|20)$/.test(id)) throw new MapError(`hideDeskSigns[${i}] must be desk-1 through desk-20`);
+    return id;
+  });
+  if (new Set(hideDeskSigns).size !== hideDeskSigns.length) throw new MapError('hideDeskSigns must contain distinct desk ids');
   const door = place(c.door, 'door');
   // A station's walls: the way in, the airlock and the windows cut through them.
   const airlock = c.airlock == null ? undefined : planAirlock(c.airlock, bounds);
@@ -392,7 +398,7 @@ export function planMap(input: unknown): MapPlan {
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',
     description: typeof c.description === 'string' ? c.description.slice(0, 400) : '',
     style,
-    config: model ? { ...c, model } : c,
+    config: { ...c, ...(model ? { model } : {}), hideDeskSigns },
     bounds,
     height,
     spawn: { ...spawn, y: 0 },
@@ -496,6 +502,13 @@ export function planOf(id: string | undefined, custom: readonly CustomMap[] = []
   } catch {
     return OFFICE_PLAN;
   }
+}
+
+/** Filters only map-configured desk signs; it does not change the saved floor-plan labels. */
+export function visibleDeskSignLabels<T>(labels: Record<string, T>, hidden: readonly string[] = []): Record<string, T> {
+  if (!hidden.length) return labels;
+  const omitted = new Set(hidden);
+  return Object.fromEntries(Object.entries(labels).filter(([id]) => !omitted.has(id)));
 }
 
 /** Whether `id` names a map that can be picked. */

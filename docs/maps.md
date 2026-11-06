@@ -133,6 +133,7 @@ A map that won't load (bad JSON, something outside the hall, too few seats, a pr
 | `props` | `[{ kind, x, z, … }]`: everything else, from the list below. |
 | `agents` | `{ outfit: "peasant" \| "none", ageMinutes }`: how the workers dress, and how many minutes of work until they look spent (`0`, the default: never). |
 | `palette` | CSS colors: a castle's `{ stone, floor, carpet, wood, trim }`, a station's `{ hull, deck, panel, metal, glow }`. The castle's banners and shields, and the station's lines of light, take each floor's own color. |
+| `hideDeskSigns` | Optional list of desk ids (`desk-1` through `desk-20`) whose overhead name signs are hidden on this map. Use it when a map's camera or ceiling geometry would intersect the sign cords; it does not remove the desks or their labels from the floor plan. |
 | `dungeon` | A dungeon under the hall, on a castle: see [The dungeon](#the-dungeon). Optional (`null` takes the castle's away). |
 | `airlock` | An airlock in a wall, on a station: see [The airlock](#the-airlock). Optional (`null` takes the station's away, and its `sendHome` has to go with it). |
 | `sendHome` | What happens to a worker sent home: see [Sending workers home](#sending-workers-home). Without it (or `null`), it packs up and walks out of the door. |
