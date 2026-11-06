@@ -420,3 +420,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+Rigid worker details are combined once within their own animated parent groups (headset, eye whites, cap and beard accents). The parent keeps its normal motion and visibility; no per-frame vertex rewrites are needed.
