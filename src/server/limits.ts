@@ -3,7 +3,8 @@
 // its stream-json protocol with the numbers its /usage screen shows. Asking starts no conversation
 // and costs nothing, and Claude Code deals with the sign-in (keychain, token refresh) itself.
 
-import { spawn } from 'node:child_process';
+// npm's claude.CMD needs the Windows-safe launcher (spawn EINVAL otherwise); a merge on 11-05 reverted this to node's spawn and the Claude limits card vanished.
+import { spawn } from './cli-process.js';
 import os from 'node:os';
 import type { PlanLimits, PlanWindow } from '../shared/protocol.js';
 
