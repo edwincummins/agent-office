@@ -443,3 +443,4 @@ Visitor UI: named owner hints/footers, no palette hire action, and a one-time di
 
 Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media-wall fixtures with level faces and matching thin frames. See [Converting a purchased office](docs/maps.md#converting-a-purchased-office) and the synthetic fixture demo; licensed room assets stay local.
 Avatar hairstyles keep their existing appearance while batching rigid hair parts into one mesh, reducing rendering cost in third person and crowded rooms. See [features](docs/features.md).
+Rigid worker details are combined once within their own animated parent groups (headset, eye whites, cap and beard accents). The parent keeps its normal motion and visibility; no per-frame vertex rewrites are needed.
