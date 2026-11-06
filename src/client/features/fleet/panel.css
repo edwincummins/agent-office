@@ -36,3 +36,39 @@
 /* Colour terminals in the watch view: real terminal lines, scaled to the tile's width, never wrapped. */
 .cadre-grid .cadre-tail.cadre-screen{white-space:pre;overflow:hidden;overflow-wrap:normal;background:#0b0c0d;font-family:'Cascadia Mono',Consolas,monospace}
 .cadre-grid .cadre-tail.cadre-hidden{display:flex;align-items:center;justify-content:center;color:#8b8676;font:600 15px 'Segoe UI',sans-serif;border:1px dashed #2c3036;border-radius:8px}
+/* Read-only Cadre lookalike (Fetty, 11-06): Cadre Web's own sage tokens and layout, nothing that acts. */
+.cadre-panel{--cw-bg:#263129;--cw-rail:#222c25;--cw-panel:#2c3830;--cw-line:#3d4b43;--cw-text:#e3ebe0;--cw-mute:#9db0a3;--cw-dim:#728578;--cw-gold:#d8b25a;--cw-term:#1e2621;--cw-field:#1f2822;background:var(--cw-bg);color:var(--cw-text);border-color:var(--cw-line)}
+.cadre-panel>header{background:var(--cw-rail);border-bottom:1px solid var(--cw-line);color:var(--cw-text)}
+.cadre-panel>header h2{display:flex;align-items:center;gap:10px;flex:0 0 auto;font:700 18px 'Segoe UI',sans-serif}
+.cw-logo{width:14px;height:14px;border-radius:3px;background:#f0643b;display:inline-block}
+.cw-tabs{display:flex;gap:2px;margin:0 auto;background:var(--cw-field);border:1px solid var(--cw-line);border-radius:5px;padding:2px}
+.cw-tabs span{padding:4px 14px;border-radius:4px;color:var(--cw-mute);font:14px 'Segoe UI',sans-serif}.cw-tabs span.on{background:var(--cw-panel);color:var(--cw-text)}
+.cadre-panel .cadre-eye-wrap{margin-left:0}
+.cadre-panel .cadre-body{padding:0;background:var(--cw-bg)}
+.cw{flex:1;min-height:0;display:grid;grid-template-columns:220px minmax(0,1fr)}
+.cw-empty{padding:24px;color:var(--cw-mute)}
+.cw-rail{background:var(--cw-rail);border-right:1px solid var(--cw-line);padding:14px 10px;overflow:auto;font:14px 'Segoe UI',sans-serif}
+.cw-rail-head{color:var(--cw-dim);font:600 11px 'Segoe UI',sans-serif;letter-spacing:.12em;margin:4px 6px 10px}
+.cw-machine{color:var(--cw-dim);font-size:12px;margin:0 6px 6px}
+.cw-team-row{display:flex;justify-content:space-between;width:100%;background:none!important;border:0!important;color:var(--cw-text)!important;padding:6px!important;border-radius:4px!important;text-align:left}
+.cw-team-row.on{background:var(--cw-panel)!important}.cw-count{color:var(--cw-mute)}
+.cw-seat{display:flex;align-items:center;gap:8px;padding:4px 6px 4px 22px;color:var(--cw-mute)}
+.cw-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.cw-main{display:flex;flex-direction:column;min-width:0;min-height:0;padding:12px;gap:10px}
+.cw-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cw-title{font:700 20px 'Segoe UI',sans-serif;margin-right:6px}
+.cw-chip{font:12px 'Segoe UI',sans-serif;padding:2px 8px;border:1px solid var(--cw-line);border-radius:3px;color:var(--cw-mute)}
+.cw-chip.gold{color:var(--cw-gold);border-color:#7a6431}.cw-chip.ro{color:#8fb39c}.cw-chip.warn{color:#e8a33c}
+.cw-call{background:#3a3220;border:1px solid #7a6431;color:#ecd59a;padding:8px 12px;border-radius:4px;font:14px 'Segoe UI',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-call b{color:var(--cw-gold)}
+.cw-grid{flex:1;min-height:0;display:grid;grid-auto-rows:minmax(220px,1fr);gap:10px}
+.cw-tile{background:var(--cw-panel);border:1px solid var(--cw-line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0}
+.cw-tile.working{border-color:#6fcf97;box-shadow:inset 0 2px 0 #6fcf97}
+.cw-th{display:flex;align-items:center;gap:8px;padding:6px 9px;border-bottom:1px solid var(--cw-line);min-width:0;font:14px 'Segoe UI',sans-serif}
+.cw-av{width:24px;height:24px;border-radius:50%;background:var(--cw-field);border:1px solid #4a5b50;display:flex;align-items:center;justify-content:center;font:700 12px 'Segoe UI',sans-serif;flex:none}
+.cw-nm{font-weight:700}.cw-act{color:var(--cw-mute);font-size:12.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw-st{display:flex;align-items:center;gap:6px;color:var(--cw-mute);font-size:12.5px;flex:none}
+.cw-tile .cadre-tail{flex:1;min-height:0;margin:0;padding:6px 8px;background:var(--cw-term);overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;color:#d8d3c4;font:12px/1.3 'Cascadia Mono',Consolas,monospace}
+.cw-tile .cadre-tail.cadre-screen{white-space:pre;overflow-wrap:normal;background:var(--cw-term)}
+.cw-tile .cadre-tail.cadre-hidden{display:flex;align-items:center;justify-content:center;color:var(--cw-dim);font:600 15px 'Segoe UI',sans-serif}
+@media(max-width:800px){.cw{grid-template-columns:1fr}.cw-rail{display:none}.cw-grid{grid-template-columns:1fr!important}}

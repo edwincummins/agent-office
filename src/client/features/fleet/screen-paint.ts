@@ -2,9 +2,9 @@
 // terminal's full width fits the tile, like the live Cadre tiles on the PC.
 import type { FleetRun, FleetScreen } from '../../../shared/protocol/fleet';
 
-const BASE = ['#1e2124', '#e06c75', '#98c379', '#e5c07b', '#61afef', '#c678dd', '#56b6c2', '#d8d3c4',
+const BASE = ['#1e2621', '#e06c75', '#98c379', '#e5c07b', '#61afef', '#c678dd', '#56b6c2', '#d8d3c4',
   '#5c6370', '#ef7b84', '#a8d58b', '#f0d08b', '#74bdf5', '#d58ae8', '#6fd0dc', '#ffffff'];
-const FG = '#d8d3c4', BG = '#0b0c0d';
+const FG = '#d8d3c4', BG = '#1e2621';
 
 function palette(i: number): string {
   if (i < 16) return BASE[i];
