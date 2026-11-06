@@ -21,11 +21,14 @@ const colour = (mode: 'fg' | 'bg', cell: Cell): number | string => {
   return -1;
 };
 
-/** The visible screen as coloured runs per line: [text, fg, bg, bold]. */
+/** History kept above the screen, so a tile taller than the terminal fills with the seat's recent lines (Fetty, 11-06). */
+const HISTORY = 80;
+/** The screen, plus up to HISTORY lines above it, as coloured runs per line: [text, fg, bg, bold]. */
 export function screenOf(term: Term): FleetRun[][] {
   const buf = term.buffer.active, out: FleetRun[][] = [];
-  for (let y = 0; y < term.rows; y++) {
-    const line = buf.getLine(buf.viewportY + y), runs: FleetRun[] = [];
+  const end = buf.viewportY + term.rows, start = Math.max(0, end - term.rows - HISTORY);
+  for (let y = start; y < end; y++) {
+    const line = buf.getLine(y), runs: FleetRun[] = [];
     if (!line) { out.push(runs); continue; }
     let cur: FleetRun | null = null;
     for (let x = 0; x < term.cols; x++) {
@@ -104,7 +107,7 @@ export class ScreenWatcher {
       w.cols = Math.min(400, Number(res.headers.get('x-cols')) || 120);
       w.rows = Math.min(120, Number(res.headers.get('x-rows')) || 40);
       w.term?.dispose();
-      w.term = new headless.Terminal({ cols: w.cols, rows: w.rows, scrollback: 0, allowProposedApi: true });
+      w.term = new headless.Terminal({ cols: w.cols, rows: w.rows, scrollback: HISTORY, allowProposedApi: true });
       const term = w.term;
       for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
         if (this.watches.get(w.seat) !== w) return;

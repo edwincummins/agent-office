@@ -25,13 +25,13 @@
 .cadre-grid{flex:1;min-height:0;grid-auto-rows:minmax(260px,1fr)}.cadre-grid .cadre-team{margin:0;display:flex;flex-direction:column;min-height:0}
 .cadre-grid .cadre-tail{flex:1;min-height:0;max-height:none}
 .cadre-grid .cadre-tail{white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:auto}
-/* The owner's privacy eye bar. */
-.cadre-eye-toggle{margin-left:auto}
-.cadre-eye{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid #22252a;background:#0d0e10;font:14px 'Segoe UI',sans-serif}
-.cadre-eye .cadre-eye-label{color:#c9a24a;font-weight:600;letter-spacing:.04em}
-.cadre-eye button{display:inline-flex;gap:8px;align-items:center}
+/* The owner's privacy eye: a dropdown under its header button (Fetty, 11-06). */
+.cadre-eye-wrap{position:relative;margin-left:auto}
+.cadre-eye{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:260px;display:flex;flex-direction:column;gap:4px;padding:8px;background:#111214;border:1px solid #2c3036;border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.5);font:14px 'Segoe UI',sans-serif}
+.cadre-eye .cadre-eye-head{color:#c9a24a;font:600 11px 'Segoe UI',sans-serif;letter-spacing:.1em;text-transform:uppercase;padding:6px 4px 2px}
+.cadre-eye button.cadre-eye-row{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left}
 .cadre-eye .cadre-eye-state{font:700 11px 'Segoe UI',sans-serif;letter-spacing:.08em;padding:2px 6px;border-radius:4px}
 .cadre-eye button.on{border-color:#2f7d4f;background:#12261a}.cadre-eye button.on .cadre-eye-state{background:#2f7d4f;color:#eafff1}
 .cadre-eye button.off{border-color:#5a2a2a;background:#1d1212;color:#a59e8c}.cadre-eye button.off .cadre-eye-state{background:#7a2e2e;color:#ffe9e9}
 /* Colour terminals in the watch view: real terminal lines, scaled to the tile's width, never wrapped. */
-.cadre-grid .cadre-tail.cadre-screen{white-space:pre;overflow-x:hidden;overflow-wrap:normal;background:#0b0c0d;font-family:'Cascadia Mono',Consolas,monospace}
+.cadre-grid .cadre-tail.cadre-screen{white-space:pre;overflow:hidden;overflow-wrap:normal;background:#0b0c0d;font-family:'Cascadia Mono',Consolas,monospace}

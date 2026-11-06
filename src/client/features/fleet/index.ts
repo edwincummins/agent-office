@@ -32,7 +32,7 @@ export function installFleet(ctx:Ctx) {
   let authorized=false,permissionRequest=0;
   // Guests watch a filtered, read-only copy the office sends them (server fleet/guests.ts); the owner sets what's in it.
   let guest=false,guestSettings:FleetGuestSettings|null=null;
-  const screens={map:new Map<string,FleetScreen>(),version:0};
+  const screens={map:new Map<string,FleetScreen>(),version:0,resets:0};
   const watch=(on:boolean)=>{if(!on){screens.map.clear();screens.version++;}ctx.net.send({t:'fleet.screens',on});};
   const owner=()=>authorized&&store.me.account?.role==='admin';
   const allowed=()=>owner()||(guest&&state!==null);
@@ -104,7 +104,7 @@ export function installFleet(ctx:Ctx) {
   store.on('me',sync);
   ctx.messages.on('fleet',m=>{if(m.guest){guest=true;authorized=false;draw(m.state);apply();return;}if(m.state===null)sync();else if(allowed())draw(m.state);});
   ctx.messages.on('fleet.guests',m=>{guestSettings=m.settings;});
-  ctx.messages.on('fleet.screens',m=>{for(const [seat,sc] of Object.entries(m.screens))screens.map.set(seat,sc);screens.version++;});
+  ctx.messages.on('fleet.screens',m=>{if(m.reset){screens.map.clear();screens.resets++;}for(const [seat,sc] of Object.entries(m.screens))screens.map.set(seat,sc);screens.version++;});
   store.on('floor',()=>{if(mesh&&base)mount(base,ctx.world().boardMeshes.services);});
   const initial=ctx.office.boardMeshes.services;
   mount((initial.material as THREE.MeshBasicMaterial).map!,initial);

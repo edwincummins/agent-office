@@ -32,7 +32,8 @@ export function installFleet(ctx:Ctx):()=>void {
   const viewers=new Set<Client>();
   const guestSeat=(seat:string)=>{if(!guests.terminals)return false;const s=poller.state?.seats.find(x=>x.session===seat);return !!s&&guests.teams[s.rig]===true;};
   const forClient=(c:Client,all:Record<string,FleetScreen>)=>{
-    if(subscribers.has(c))return all;
+    // The eye applies to the watch view everywhere, his own on the Mac included (his PC's live panel is separate).
+    if(subscribers.has(c))return guests.terminals?all:{};
     const out:Record<string,FleetScreen>={};
     for(const [seat,sc] of Object.entries(all))if(guestSeat(seat))out[seat]={cols:sc.cols,lines:maskScreen(sc.lines)};
     return out;
@@ -69,6 +70,8 @@ export function installFleet(ctx:Ctx):()=>void {
       try{saveGuests(ctx.cfg.dataDir,guests);}catch{console.warn('Cadre guest settings could not be saved');}
       for(const o of subscribers)ctx.sendTo(o,{t:'fleet.guests',settings:guests});
       sendGuests();refollow();
+      // Instantly, whatever each viewer has open: drop what they hold and send only what they may now see.
+      for(const v of viewers)ctx.sendTo(v,{t:'fleet.screens',screens:forClient(v,screenWatch.all()),reset:true});
     },
   });
   const roles=setInterval(check,1000);roles.unref();poller.start();
