@@ -42,7 +42,8 @@ export function installFleet(ctx:Ctx):()=>void {
   // Live tiles of the read-only Cadre showcase (showcase.ts) follow their seats here too.
   const streamers=new Map<string,Set<(s:FleetScreen)=>void>>();
   const screenWatch=new ScreenWatcher(()=>{try{return cadreWeb(ctx.cfg.dataDir);}catch{return null;}},all=>{
-    for(const [seat,sc] of Object.entries(all))for(const w of streamers.get(seat)??[])w(sc);
+    // One viewer's closed tile must never take the office down (11-06: the office stopped while he watched on his Mac).
+    for(const [seat,sc] of Object.entries(all))for(const w of streamers.get(seat)??[])try{w(sc);}catch{/* that viewer is gone */}
     for(const c of viewers){if(c.out){viewers.delete(c);continue;}const mine=forClient(c,all);if(Object.keys(mine).length)ctx.sendTo(c,{t:'fleet.screens',screens:mine});}
   });
   const refollow=()=>{

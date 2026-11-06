@@ -130,6 +130,7 @@ export function ansiFrame(screen: FleetScreen): string {
 function streamScreens(ctx: Ctx, res: http.ServerResponse, req: http.IncomingMessage, seat: string, mask: boolean) {
   let wrote = false;
   const write = (sc: FleetScreen) => {
+    if (res.destroyed || res.writableEnded) return;
     if (!wrote) { wrote = true; res.writeHead(200, { 'content-type': 'application/octet-stream', 'cache-control': 'no-store', 'x-cols': String(sc.cols), 'x-rows': String(sc.rows || 40), 'access-control-allow-origin': 'null', 'access-control-expose-headers': 'x-cols, x-rows' }); }
     res.write(ansiFrame(mask ? { ...sc, lines: maskScreenLines(sc.lines) } : sc));
   };
