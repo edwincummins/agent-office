@@ -6,7 +6,7 @@ export function requireOwner(){if(canWork())return true;toast('Only the office o
 
 export function visitorTools(){const close=h('button.btn.close',{'aria-label':'Close'},'✕');const el=h('div.modal',{role:'dialog','aria-label':'Your sign-ins'},h('header',{},h('h2',{},'Your sign-ins'),close),h('div.body',{},h('p',{},`You don't need sign-ins here: only ${ownerName()} runs workers.`),h('p.note',{},'You can explore, chat and watch the terminals. No tool credentials are needed.')));const modal=openModal(el);close.addEventListener('click',()=>modal.close());}
 export function allowAction(key:string){
- if(canWork()||new Set(['move','act','emote','sit','carry','profile','voice','rtc','chat','doing','ping','golf','toss','gong','horn','floor.go','worker.attach','worker.detach']).has(key)||/^(ball|car|cabinet|dog|jukebox|wb|decor)\./.test(key))return true;
+ if(canWork()||new Set(['move','act','emote','sit','carry','profile','voice','rtc','chat','doing','ping','golf','toss','gong','horn','floor.go','levels.sync','levels.lift','worker.attach','worker.detach']).has(key)||/^(ball|car|cabinet|dog|jukebox|wb|decor)\./.test(key))return true;
  return requireOwner();
 }
 export function syncVisitorControls(){
