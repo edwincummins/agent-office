@@ -1,3 +1,4 @@
+import { batchStaticParts } from '../../world/static-parts';
 import * as THREE from 'three';
 import { JUKEBOX } from '../../../shared/layout';
 import { mesh, roundedBox, textSprite, toon, toonUnique } from '../../world/toon';
@@ -128,6 +129,7 @@ export function buildJukebox(): JukeboxView {
     });
   };
 
+  batchStaticParts(group);
   return { group, collider, interactable, show, update };
 }
 
