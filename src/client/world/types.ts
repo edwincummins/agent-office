@@ -16,6 +16,8 @@ export interface Collider {
   bottom?: number;
   /** Only there to keep people out: its top isn't anything to land on, so confetti falls through it. */
   fence?: boolean;
+  /** False for invisible movement-only barriers; solid walls occlude by default. */
+  cameraOcclusion?: boolean;
 }
 
 /**

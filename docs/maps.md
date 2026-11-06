@@ -326,3 +326,9 @@ Keep purchased models, textures, coordinates and derived exports outside the rep
 6. Inspect the resolved `plan().slots` and `slotWarnings`, test every interaction, map switching and return, collisions and seating exits. Headless proofs should report whole-frame draw calls/triangles, worst-view FPS and GPU name, not a single render pass. Stop the disposable preview after checking it. Never test with another person's data or credentials.
 
 The stock office uses separate Services and TV placements because their original dimensions differ. Stock fixture data lives in `src/shared/fixtures/stock.ts`; the original numbers and builder offsets are preserved. The fixture registry adapts existing feature-owned builders, and consumers bind through active-world handles rather than a stock-only mesh. No switching UI or provider permissions are introduced by fixtures.
+
+### Third-person camera clearance
+
+The third-person camera shortens its boom against the map’s existing collision boxes, including non-landable walls, with 0.18m clearance. Keep authored collision bounds aligned with visible walls; room meshes are not raycast each frame. Objects containing the camera target (for example a seat) are ignored so seated views can leave their own furniture. Existing hall-bound and ceiling clamps still apply.
+
+Invisible movement-only barriers can set `cameraOcclusion: false`; this is independent of `fence`, which controls whether a player can land on the collider.
