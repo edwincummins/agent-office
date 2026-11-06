@@ -1,0 +1,6 @@
+.crew-card { width: min(440px, 92vw); background: #111214; color: #ece6d6; border: 1px solid #34363a; border-radius: 3px; }
+.crew-card p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
+.crew-card .close { border-radius: 3px; }
+.crew-card > header { background: #17191c; color: #ece6d6; padding: 14px 18px; border-bottom: 1px solid #34363a; }
+.crew-card > p { padding: 0 18px; }
+.crew-card > p:last-child { color: #aaa698; font-size: 12px; padding-bottom: 8px; }

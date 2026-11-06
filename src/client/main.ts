@@ -1,3 +1,4 @@
+import { installCrew } from './features/crew';
 import './style.css';
 import { Net } from './net';
 import { DesktopNotifier } from './notify';
@@ -181,6 +182,7 @@ parts.talk = installVoice(ctx, { tv: parts.tv });
 installDictation(ctx);
 parts.hud = installHud(ctx, core, parts);
 installFleet(ctx);
+installCrew(ctx);
 
 // ---- Main loop ---------------------------------------------------------------------------------------
 fitWindow(ctx);

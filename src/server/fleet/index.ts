@@ -18,7 +18,7 @@ export function installFleet(ctx:Ctx):()=>void {
   const poller=new FleetPoller(signal=>runFleet(command!,signal),state=>{
     check();for(const c of subscribers)ctx.sendTo(c,{t:'fleet',state});
   });
-  feeds.set(ctx,{subscribe:c=>{if(maySeeFleet(ctx,c)&&!subscribers.has(c)){subscribers.add(c);ctx.sendTo(c,{t:'fleet',state:poller.state});}},remove:c=>subscribers.delete(c)});
+  feeds.set(ctx,{subscribe:c=>{if(maySeeFleet(ctx,c)){subscribers.add(c);ctx.sendTo(c,{t:'fleet',state:poller.state});}},remove:c=>subscribers.delete(c)});
   const roles=setInterval(check,1000);roles.unref();poller.start();
   return ()=>{clearInterval(roles);poller.stop();subscribers.clear();feeds.delete(ctx);stopCadreGateway(ctx);};
 }

@@ -31,7 +31,7 @@ test('owner allow-list gates HTTP and fleet; other admins and unset config get n
   }
   const owner={accountId:'owner'} as Client,other={accountId:'other'} as Client;
   subscribeFleet(ctx,other);subscribeFleet(ctx,owner);
-  assert.equal(received.length,1);assert.equal(received[0].client,owner);
+  assert.equal(received.length,1);assert.equal(received[0].client,owner);subscribeFleet(ctx,owner);assert.equal(received.length,2);assert.equal(received[1].client,owner);
   assert.equal((await fetch(base+'/api/cadre/web',{headers:{'x-test-account':'owner'}})).status,200);
   assert.equal((await fetch(base+'/api/cadre/open',{method:'POST',headers:{'x-test-account':'owner',Origin:base}})).status,200);
   const audit=JSON.parse(readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8').trim());assert.equal(audit.accountId,'owner');assert.equal(audit.event,'panel.open');

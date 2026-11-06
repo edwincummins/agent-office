@@ -425,3 +425,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 
 Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media-wall fixtures with level faces and matching thin frames. See [Converting a purchased office](docs/maps.md#converting-a-purchased-office) and the synthetic fixture demo; licensed room assets stay local.
 The owner-only Cadre panel supports team audit and ideas reads and seat tuning; see [Cadre gateway and audit details](docs/cadre.md).
+
+Owner-authorized Cadre seats can appear as batched people in map-authored crew places. See [Crew places](docs/cadre-crew.md) for privacy, map data and limits.
