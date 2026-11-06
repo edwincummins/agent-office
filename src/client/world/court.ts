@@ -172,8 +172,9 @@ export class Court {
     const target: Pt | null = 'spot' in goal ? [this.plan.lineup[goal.spot].x, this.plan.lineup[goal.spot].z] : null;
     if (c.state === 'seated') {
       if (!target) return;
-      this.detach(c);
       c.way = this.nav.wayFrom(c.desk.def, target);
+      if (!c.way.length) return;
+      this.detach(c);
       c.from.copy(c.model.root.position);
       c.state = 'down';
       c.hop = 0;
@@ -195,7 +196,9 @@ export class Court {
       return;
     }
     const left = c.state === 'stand';
-    c.way = target ? this.nav.route(here, target) : this.nav.wayTo(here, c.desk.def);
+    const way = target ? this.nav.route(here, target) : this.nav.wayTo(here, c.desk.def);
+    if (!way.length) return;
+    c.way = way;
     c.next = 1;
     c.state = 'walk';
     // Out of its spot in line: it's no longer there to walk up to.

@@ -244,6 +244,7 @@ export class Departures {
       if (Math.abs(l.spin) < 0.05) l.spin = 0;
     }
     if (l.t < PACK) return true;
+    if (!l.way.length) return false;
     const [x0, z0] = l.way[0];
     if (l.next === 0) {
       const floor = this.ground(x0, z0, l.seat.y) - FEET;
@@ -468,6 +469,7 @@ export class Arrivals {
     const delay = Math.max(0, this.nextAt - now);
     this.nextAt = now + delay + IN_SPACING;
     const way = this.ways().in(desk.def);
+    if (!way.length) { this.sit({model, desk}); return; }
     const [x, z] = way[0];
     this.parent.add(model.root);
     model.root.position.set(x, this.ground(x, z, 0) - FEET, z);
@@ -553,7 +555,7 @@ export class Arrivals {
   }
 
   /** In its seat: from here on it's where every worker sits. */
-  private sit(w: Arriver) {
+  private sit(w: Pick<Arriver, 'model' | 'desk'>) {
     const { root } = w.model;
     w.model.walking = false;
     w.desk.seatAnchor.add(root);

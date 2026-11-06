@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import type {ModelChair} from '../../../shared/maps/model';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { DeskDef } from '../../../shared/layout';
 import type { DeskView, Interactable } from '../types';
 import { mergeByMaterial } from '../toon';
 
-export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = []) {
+export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>) {
   const still = new THREE.Group();
   const oak = new THREE.MeshStandardMaterial({ color: '#aa8260', roughness: .6 });
   const metal = new THREE.MeshStandardMaterial({ color: '#30353b', roughness: .5, metalness: .3 });
@@ -27,12 +28,14 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
     box(still,[.6,.065,1.2],[p.x,.3675,p.z],oak);
     box(still,[.22,.33,.75],[p.x,.165,p.z],metal);
   }
-  if(work.length){const xs=work.map(d=>d.x),zs=work.map(d=>d.z);box(still,[Math.max(...xs)-Math.min(...xs)+2,.012,Math.max(...zs)-Math.min(...zs)+2.6],[(Math.max(...xs)+Math.min(...xs))/2,.018,(Math.max(...zs)+Math.min(...zs))/2+.5],carpet);}
+  if(work.length&&!source){const xs=work.map(d=>d.x),zs=work.map(d=>d.z);box(still,[Math.max(...xs)-Math.min(...xs)+2,.012,Math.max(...zs)-Math.min(...zs)+2.6],[(Math.max(...xs)+Math.min(...xs))/2,.018,(Math.max(...zs)+Math.min(...zs))/2+.5],carpet);}
   for (const def of defs) {
     const soft = def.id.startsWith('beanbag');
     const g = new THREE.Group(); g.position.set(def.x,0,def.z); g.rotation.y=def.rotY;
     const shape = new THREE.Group(); shape.position.copy(g.position); shape.rotation.copy(g.rotation);
-    if (soft) {
+    if(source?.has(def.id)) {
+      // The local model already contains this seat and its furniture.
+    } else if (soft) {
       const charcoal = (Number(def.id.split('-')[1])-1)%6>=4;
       const cushion = new THREE.Mesh(new THREE.SphereGeometry(.407,16,10), charcoal ? fabric : orange);
       cushion.scale.set(1,.6,1.05); cushion.position.set(0,.2192,.85); shape.add(cushion);
@@ -58,6 +61,7 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
     still.add(shape);
     const laptopAnchor = new THREE.Object3D(); laptopAnchor.position.set(0,soft?.4:.8,0); g.add(laptopAnchor);
     const seatAnchor = new THREE.Object3D(); seatAnchor.position.set(0,soft?.18:.38,.85); seatAnchor.rotation.y=Math.PI; seatAnchor.scale.setScalar(.82); g.add(seatAnchor);
+    const anchored=source?.get(def.id);if(anchored){seatAnchor.position.y=anchored.y;seatAnchor.rotation.y=anchored.rotY-def.rotY;laptopAnchor.position.y=.8;}
     const stage = new THREE.Object3D(); stage.position.set(.55,0,.85); g.add(stage);
     const vacancy = new THREE.Group(); if(def.station) vacancy.add(seatAnchor.clone()); g.add(vacancy);
     const it: Interactable = {kind:def.station?'station':'desk',deskId:def.id,x:def.x+Math.sin(def.rotY)*1.1,z:def.z+Math.cos(def.rotY)*1.1,radius:1.25};

@@ -161,8 +161,9 @@ export function planMap(input: unknown): MapPlan {
   const model = style === 'model' ? checkModel(c.model, bounds, height) : undefined;
   if (model) {
     if(c.tables?.length || c.throne || c.herald || c.dungeon || c.lineup || c.sendHome || c.airlock) throw new MapError('model maps use explicit seats and walls; remove tables, throne, herald, dungeon, lineup, sendHome and airlock');
+    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
     rects.push(...model.walls.map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
-    rects.push(...model.seats.slice(0,20).map(s=>boxFootprint(s.x,s.z,1.6,.8,s.rotY)));
+    if(!model.source)rects.push(...model.seats.slice(0,20).map(s=>boxFootprint(s.x,s.z,1.6,.8,s.rotY)));
     rects.push(...(model.lounges??[]).map(s=>boxFootprint(s.x,s.z,.6,1.2,0)));
   }
 
@@ -238,16 +239,17 @@ export function planMap(input: unknown): MapPlan {
   // The meeting table: five chairs round it, the head of the table first.
   const council = place(c.council, 'council');
   const meeting: DeskDef[] = MEETING_SEATS.map((m, i) => {
+    const anchor=model?.source?.council[i];
+    if(anchor){const a=anchor.rotY+Math.PI;circles.push([anchor.x,anchor.z,.28]);return {id:m.id,room:true,x:anchor.x-Math.sin(a)*.85,z:anchor.z-Math.cos(a)*.85,rotY:a,label:m.label};}
     const a = council.rotY + (i * Math.PI * 2) / MEETING_SEATS.length;
     const def = { id: m.id, room: true, x: council.x + Math.sin(a) * COUNCIL.place, z: council.z + Math.cos(a) * COUNCIL.place, rotY: a, label: m.label };
     circles.push([council.x + Math.sin(a) * COUNCIL.chairs, council.z + Math.cos(a) * COUNCIL.chairs, 0.28]);
     return def;
   });
-  circles.push([council.x, council.z, COUNCIL.radius]);
+  if(!model?.source)circles.push([council.x, council.z, COUNCIL.radius]);
   const ex = council.x - Math.sin(council.rotY) * COUNCIL.easel;
   const ez = council.z - Math.cos(council.rotY) * COUNCIL.easel;
-  inside(ex, ez, 'the council’s easel');
-  rects.push(boxFootprint(ex, ez, 2.6, 0.5, council.rotY));
+  if(!model?.source){inside(ex, ez, 'the council’s easel');rects.push(boxFootprint(ex, ez, 2.6, 0.5, council.rotY));}
 
   // The boards on the walls.
   if (!isObj(c.boards)) throw new MapError('it needs boards: issues, queue, pulls and services');

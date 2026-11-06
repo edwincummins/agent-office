@@ -2,14 +2,16 @@ import type { Bounds } from '../nav.js';
 import type { BoardPlace, Place } from './types.js';
 import { isObj, num, MapError } from './check.js';
 
+export interface ModelChair extends Required<Place> {y:number}
 export interface ModelMapData {
+  source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace};
   asset: string;
   seats: Required<Place>[];
   walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number }[];
   platforms?: ModelMapData['walls'];
   labels?: (Required<Place> & {text:string})[];
   lounges?: (Required<Place> & {rugLength:number})[];
-  screen: BoardPlace;
+  screen: BoardPlace | null;
   whiteboard: BoardPlace;
 }
 
@@ -35,7 +37,7 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
   const walls=rectangles(value.walls,'model.walls');
   if(value.platforms!==undefined && (!Array.isArray(value.platforms)||value.platforms.length>300))throw new MapError('model.platforms must be a list of at most 300 rectangles');
   const platforms=rectangles((value.platforms??[]) as unknown[],'model.platforms');
-  for(const s of seats.slice(20)){
+  for(const s of value.source===undefined?seats.slice(20):[]){
     const x=s.x+Math.sin(s.rotY)*.85,z=s.z+Math.cos(s.rotY)*.85;
     if(platforms.some(w=>Math.hypot(x-Math.max(w.minX,Math.min(x,w.maxX)),z-Math.max(w.minZ,Math.min(z,w.maxZ)))<.578))throw new MapError('a soft seat overlaps a raised platform');
   }
@@ -65,5 +67,21 @@ export function checkModel(value: unknown, bounds: Bounds, height: number): Mode
     if(walls.some(w=>p.x+1.3>w.minX&&p.x-1.3<w.maxX&&p.z+half>w.minZ&&p.z-half<w.maxZ))throw new MapError('model lounge rug overlaps a wall');
     if(platforms.some(w=>p.x+1.3>w.minX&&p.x-1.3<w.maxX&&p.z+half>w.minZ&&p.z-half<w.maxZ))throw new MapError('model lounge rug overlaps a raised platform');
   }
-  return { asset: value.asset, seats, walls, platforms, labels, lounges, screen: surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
+  let source:ModelMapData['source'];
+  if(value.source!==undefined){
+    if(!isObj(value.source))throw new MapError('model.source must describe existing chairs');
+    const chairs=(raw:unknown,count:number,label:string):ModelChair[]=>{
+      if(!Array.isArray(raw)||raw.length!==count)throw new MapError(`${label} needs exactly ${count} anchors`);
+      const result=raw.map((v,i)=>({...point(v,`${label}[${i}]`),y:num((v as Record<string,unknown>).y,`${label}[${i}].y`,0,height)}));
+      if(new Set(result.map(p=>`${p.x},${p.z}`)).size!==count)throw new MapError(`${label} anchors must be distinct`);
+      for(const p of result)if(walls.some(w=>p.x>w.minX&&p.x<w.maxX&&p.z>w.minZ&&p.z<w.maxZ))throw new MapError(`${label} anchor is inside a wall`);
+      return result;
+    };
+    source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard')};
+    for(const [i,chair] of source.chairs.entries()){
+      const s=seats[i];
+      if(Math.hypot(s.x+Math.sin(s.rotY)*.85-chair.x,s.z+Math.cos(s.rotY)*.85-chair.z)>.02)throw new MapError('source chair must match its seat approach at 0.85 m');
+    }
+  }
+  return { asset: value.asset, seats, walls, platforms, labels, lounges, source, screen:value.screen===null?null:surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
 }

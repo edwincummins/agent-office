@@ -6,7 +6,9 @@ import path from 'node:path';
 import { checkModel } from '../src/shared/maps/model.js';
 import { planMap } from '../src/shared/maps/index.js';
 import { CASTLE } from '../src/shared/maps/castle.js';
-import { readMapModel } from '../src/server/http/routes/map-model.js';
+import { openMapModel } from '../src/server/http/routes/map-model.js';
+
+async function readMapModel(folder: string, name: string) { const model = await openMapModel(folder, name); try { return await model.handle.readFile(); } finally { await model.handle.close(); } }
 
 const bounds={minX:-30,maxX:30,minZ:-30,maxZ:30};
 test('lounge rugs stay in the room and clear of walls',()=>{
@@ -65,4 +67,26 @@ test('GLBs with external images or buffers are rejected',async()=>{
    await writeFile(path.join(dir,'assets','room.glb'),bytes);await assert.rejects(readMapModel(dir,'room.glb'),/embed all/);
   }
  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('source furniture preserves 32 worker ids and five explicit council chairs without a circle',()=>{
+ const value=model();
+ const chairs=value.seats.map(s=>({x:s.x,z:s.z+.85,rotY:Math.PI,y:.4}));
+ const council=Array.from({length:5},(_,i)=>({x:-8+i*2,z:-12,rotY:0,y:.4}));
+ const source={chairs,council,meetingBoard:value.whiteboard};
+ const config={...CASTLE,id:'source-room',style:'model' as const,hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:{...value,source}};
+ const plan=planMap(config);
+ assert.equal(plan.meeting.length,5);assert.equal(plan.desks.length+plan.overflow.length,32);
+ for(const [i,d] of plan.meeting.entries())assert.ok(Math.hypot(d.x+Math.sin(d.rotY)*.85-council[i].x,d.z+Math.cos(d.rotY)*.85-council[i].z)<1e-10);
+ assert.throws(()=>checkModel({...value,source:{...source,council:[]}},bounds,10),/exactly 5/);
+ assert.throws(()=>checkModel({...value,source:{...source,chairs:chairs.map(p=>({...p,x:p.x+1}))}},bounds,10),/approach/);
+});
+
+import {modelColliders} from '../src/client/world/model/colliders.js';
+test('authored low platform stays low when also present in navigation rectangles',()=>{
+ const platform={minX:-2,maxX:2,minZ:-12,maxZ:-10,top:.4};const checked=checkModel({...model(),platforms:[platform]},bounds,10);
+ const plan=planMap({...CASTLE,id:'platform-room',style:'model',hall:{width:60,length:60,height:10},tables:[],props:[],dungeon:null,throne:null,herald:null,lineup:null,sendHome:null,model:checked});
+ plan.obstacles!.rects.push([-2,2,-12,-10]);
+ const matching=modelColliders(plan,checked).filter(c=>c.minX===-2&&c.maxX===2&&c.minZ===-12&&c.maxZ===-10);
+ assert.equal(matching.length,1);assert.equal(matching[0].top,.4);
 });
