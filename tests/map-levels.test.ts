@@ -151,3 +151,12 @@ test('layered routes visit the stairs and cannot jump directly between overlappi
     2,
   );
 });
+
+test('exact decimal headroom accepts rounding but rejects insufficient clearance', () => {
+  const c = structuredClone(TWO_LEVELS);
+  c.floors[1].y = 2.4;
+  c.floors[1].thickness = 0.2;
+  assert.doesNotThrow(() => checkLevels(c, bounds, 7, []));
+  c.floors[1].thickness = 0.201;
+  assert.throws(() => checkLevels(c, bounds, 7, []), /clearance|headroom/);
+});

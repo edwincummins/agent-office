@@ -47,7 +47,7 @@ export function checkLevels(raw: unknown, bounds: Bounds, roof: number, seatIds:
       if (Math.min(a.maxX, b.maxX) > Math.max(a.minX, b.minX) && Math.min(a.maxZ, b.maxZ) > Math.max(a.minZ, b.minZ)) {
         const low = a.y < b.y ? a : b,
           high = low === a ? b : a;
-        if (high.y - high.thickness - low.y < 2.2) throw new MapError('overlapping levels need 2.2 m clear headroom');
+        if (high.y - high.thickness - low.y < 2.2 - 1e-8) throw new MapError('overlapping levels need 2.2 m clear headroom');
       }
     }
   const floor = (value: unknown): Level => {
