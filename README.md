@@ -423,3 +423,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+Opt-in model effects can also bound environment intensity, background and fog without changing other maps; see [model effects](docs/maps.md).

@@ -1,3 +1,4 @@
+import { applyModelScene } from './scene';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Ctx } from '../../core/context';
@@ -65,11 +66,13 @@ export function installModelEffects(ctx: Ctx) {
     });
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = profile.exposure;
     const restoreLights = profile.lights ? applyModelLights(ctx.world(), profile.lights) : undefined;
+    const restoreScene = profile.scene ? applyModelScene(ctx.world(), ctx.scene, profile.scene) : undefined;
     bloom = new ModelBloom(renderer, profile);
     bloom.prepare(ctx.scene, ctx.camera);
     restore = () => {
       renderer.toneMapping = tone; renderer.toneMappingExposure = exposure; renderer.setPixelRatio(ratio);
       materialRestores.forEach(fn => fn());
+      restoreScene?.();
       restoreLights?.();
     };
   }

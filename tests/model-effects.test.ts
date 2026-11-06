@@ -86,3 +86,22 @@ test('room lights replace daylight on every mood tick and restore colours/intens
   assert.deepEqual([hemi.color.getHex(), hemi.groundColor.getHex(), sun.color.getHex()], old);
   assert.equal(hemi.intensity, .65); assert.equal(sun.intensity, 1.8);
 });
+
+test('scene controls reject malformed values and clamp IBL intensity', async () => {
+  const { modelScene } = await import('../src/client/features/model-effects/scene.ts');
+  assert.equal(modelScene({ environmentIntensity: 99 })!.environmentIntensity, 2);
+  for (const bad of [null, [], { url: 'file://' }, { environmentIntensity: Infinity }, { background: 'blue' }, { fog: false }, { fog: { color: '#000000', near: 5, far: 4 } }, { fog: { color: '#000000', near: 0, far: 1001 } }]) assert.equal(modelEffects({ ...profile, scene: bad }), null);
+});
+test('scene controls override sky ticks and restore scene references and mood chain', async () => {
+  const { applyModelScene } = await import('../src/client/features/model-effects/scene.ts');
+  const scene = new THREE.Scene(); scene.background = new THREE.Color('#c8d8e5'); scene.fog = new THREE.Fog('#ffffff', 20, 100);
+  const old = { background: scene.background, fog: scene.fog, intensity: scene.environmentIntensity };
+  const environment = new THREE.Texture(); scene.environment = environment;
+  const world = { mood: () => { (scene.background as THREE.Color).set('#ffffff'); scene.fog!.color.set('#ffffff'); scene.environmentIntensity = 1; } };
+  const mood = world.mood;
+  const restore = applyModelScene(world as never, scene, { environmentIntensity: .35, background: '#101826', fog: { color: '#101826', near: 200, far: 500 } });
+  for (let i = 0; i < 3; i++) { world.mood(); assert.equal(scene.environmentIntensity, .35); assert.equal((scene.background as THREE.Color).getHex(), 0x101826); assert.equal(scene.fog!.color.getHex(), 0x101826); }
+  assert.equal(scene.environment, environment);
+  restore(); assert.equal(world.mood, mood); assert.equal(scene.background, old.background); assert.equal(scene.fog, old.fog); assert.equal(scene.environmentIntensity, old.intensity);
+  assert.equal((scene.background as THREE.Color).getHex(), 0xc8d8e5);
+});

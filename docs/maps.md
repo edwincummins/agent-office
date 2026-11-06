@@ -335,3 +335,5 @@ The optional `officeEffects.lights` profile replaces the model's existing daylig
 ```
 
 Colours must be six-digit hex. Finite intensities are clamped to 0–2; zero disables that contribution. Invalid shapes, non-finite numbers and unknown fields reject the profile. The directional setting reuses the existing sun light as the room's directional light, so no daylight sun remains in addition to it. Omit `lights` to keep the map's existing mood unchanged. Colours and intensities, and the original mood callback, are restored when leaving the model. Environment reflections remain unchanged.
+
+The optional `officeEffects.scene` object accepts `environmentIntensity` (finite, clamped 0–2), `background` (`#RRGGBB`), and `fog: {color, near, far}` (hex colour; 0 <= near < far <= 1000 metres). Put fog beyond the room to keep interiors clear. Omitted fields retain existing behavior; leaving restores the previous scene references and environment intensity. This uses the current environment texture and never loads a remote environment. Sign materials with their own environment remain independent.

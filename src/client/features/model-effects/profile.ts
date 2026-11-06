@@ -1,7 +1,9 @@
+import { modelScene, type ModelScene } from './scene';
 import { modelLights, type ModelLights } from './lighting';
 export interface ModelEffects {
   exposure: number;
   lights?: ModelLights;
+  scene?: ModelScene;
   bloom: { strength: number; radius: number; threshold: number };
 }
 
@@ -14,13 +16,14 @@ function range(value: unknown, min: number, max: number): value is number {
 
 /** Invalid asset extras are ignored, never coerced into renderer settings. */
 export function modelEffects(value: unknown): ModelEffects | null {
-  if (!record(value) || Object.keys(value).some(k => !['exposure', 'bloom', 'lights'].includes(k))) return null;
+  if (!record(value) || Object.keys(value).some(k => !['exposure', 'bloom', 'lights', 'scene'].includes(k))) return null;
   const b = value.bloom;
   if (!range(value.exposure, .1, 2) || !record(b) || Object.keys(b).some(k => !['strength', 'radius', 'threshold'].includes(k))) return null;
   if (!range(b.strength, 0, 2) || !range(b.radius, 0, 1) || !range(b.threshold, 0, 10)) return null;
   const lights = value.lights === undefined ? undefined : modelLights(value.lights);
-  if (lights === null) return null;
-  return { ...(lights ? { lights } : {}), exposure: value.exposure, bloom: { strength: b.strength, radius: b.radius, threshold: b.threshold } };
+  const scene = value.scene === undefined ? undefined : modelScene(value.scene);
+  if (lights === null || scene === null) return null;
+  return { ...(scene ? { scene } : {}), ...(lights ? { lights } : {}), exposure: value.exposure, bloom: { strength: b.strength, radius: b.radius, threshold: b.threshold } };
 }
 
 export function modelSurface(value: unknown) {
