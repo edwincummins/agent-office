@@ -7,6 +7,7 @@ import type { Collider, Interactable } from '../types';
 import { roomSign } from './sign';
 import { releaseModel,retainModelTextures } from './resources';
 import { ModelNav } from './navigation';
+import {retryModelLoad} from './retry';
 import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
 
@@ -60,7 +61,7 @@ export function buildModel(plan: MapPlan): World {
   const chairs=new Map(config.source?[...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]]):[]);
   const navigation=(obstacles: Obstacles)=>config.source?new ModelNav(plan.bounds,obstacles,chairs):new NavGrid(plan.bounds,obstacles);
   const nav=navigation(plan.obstacles!);
-  let disposed=false;
+  let disposed=false;const download=new AbortController();
   let loaded:THREE.Group|undefined;
   const doors: {node:THREE.Object3D;closed:THREE.Vector3;center:THREE.Vector3;amount:number}[]=[];
   const status: ModelSurfaces={screen,whiteboard,ready:Promise.resolve(),error:null};
@@ -70,7 +71,7 @@ export function buildModel(plan: MapPlan): World {
     if (url.startsWith('blob:') || url.startsWith('data:') || url===`/api/map-model/${config.asset}`) return url;
     throw new Error('Model assets must embed their textures and buffers');
   });
-  status.ready=loader.loadAsync(`/api/map-model/${config.asset}`).then(gltf=>{
+  status.ready=retryModelLoad(()=>loader.loadAsync(`/api/map-model/${config.asset}`),download.signal).then(gltf=>{
     if(disposed){releaseModel(gltf.scene);return;}
     loaded=gltf.scene;retainModelTextures(loaded);
     gltf.scene.updateMatrixWorld(true);
@@ -88,7 +89,7 @@ export function buildModel(plan: MapPlan): World {
       }
     });
     group.add(gltf.scene);
-  }).catch(error=>{status.error=String(error);console.error('Model map failed',error);});
+  }).catch(error=>{if(disposed)return;status.error=String(error);console.error('Model map failed',error);});
   const world: World={
     plan,group,colliders,interactables,pickables,desks,boardMeshes,meetingBoard,meetingSign,nav,navigation,
     ways:{home:(seat,from)=>({way:from?world.nav.route(from,[plan.door.x,plan.door.z]):world.nav.wayFrom(seat,[plan.door.x,plan.door.z]),chute:false}),in:seat=>world.nav.wayTo([plan.door.x,plan.door.z],seat)},
@@ -98,7 +99,7 @@ export function buildModel(plan: MapPlan): World {
       for(const d of doors){const near=positions.some(p=>Math.hypot(p.x-d.center.x,p.z-d.center.z)<2.2&&Math.abs(p.y-d.center.y)<2.2);d.amount=THREE.MathUtils.damp(d.amount,near?1:0,9,dt);d.node.position.copy(d.closed);d.node.position.y+=d.amount*2.8;}
     },
     mood(lights){lights.hemi.intensity=.65;lights.hemi.color.set(0xe2efff);lights.hemi.groundColor.set(0x8c887b);lights.ambient.intensity=0;lights.sun.intensity=1.8;lights.sun.color.set(0xffedcf);lights.sun.position.set(-35,30,-12);lights.sun.target.position.set(12,0,-5);lights.sun.target.updateMatrixWorld();if(lights.scene.background instanceof THREE.Color)lights.scene.background.set('#c8d8e5'); if(lights.scene.fog instanceof THREE.Fog){lights.scene.fog.near=150;lights.scene.fog.far=300;}},
-    dispose(){disposed=true;if(loaded){group.remove(loaded);releaseModel(loaded);}group.traverse(o=>{if(o instanceof THREE.Mesh){o.userData.ownedTexture?.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});},
+    dispose(){disposed=true;download.abort();if(loaded){group.remove(loaded);releaseModel(loaded);}group.traverse(o=>{if(o instanceof THREE.Mesh){o.userData.ownedTexture?.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});},
   };
   modelSurfaces.set(world,status);
   return world;
