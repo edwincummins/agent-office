@@ -59,12 +59,16 @@ export class EffectsBudget {
         if (this.bloom) { this.bloom = false; return this.finish('Bloom paused: sustained slow frames'); }
         if (!this.reduced) { this.reduced = true; return this.finish('Resolution reduced: sustained slow frames'); }
       }
-    } else if (average < .0175 && !this.bloom) {
+    } else if (average < .0175 && (!this.bloom || this.reduced)) {
       this.slow = 0;
       this.healthy += this.elapsed;
       if (this.healthy >= 12) {
-        this.bloom = true; this.healthy = 0; this.warm = 4;
-        return this.finish('Retrying bloom after sustained recovery');
+        if (!this.bloom) {
+          this.bloom = true; this.healthy = 0; this.warm = 4;
+          return this.finish('Retrying bloom after sustained recovery');
+        }
+        this.reduced = false; this.healthy = 0;
+        return this.finish('Resolution restored after sustained recovery');
       }
     } else { this.healthy = 0; this.slow = 0; }
     this.finish();

@@ -13,6 +13,7 @@ export function installModelEffects(ctx: Ctx) {
   let budget = new EffectsBudget();
   let studio: THREE.WebGLRenderTarget | null = null;
   let restore: (() => void) | null = null;
+  let originalPixelRatio = 1;
   const clear = () => { if (root) delete root.userData.officeEffectsRuntime; restore?.(); restore = null; bloom?.dispose(); bloom = null; studio?.dispose(); studio = null; root = null; };
   // Restore before model-map's HUD hook restores the stock renderer on departure.
   ctx.ticks.add('pre', () => {
@@ -28,7 +29,9 @@ export function installModelEffects(ctx: Ctx) {
     if (root) {
       const change = budget.frame(delta, !document.hidden);
       if (change) console.info('[model-effects]', change);
-      if (budget.reduced && ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
+      if (budget.reduced) {
+        if (ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
+      } else if (ctx.renderer.getPixelRatio() !== originalPixelRatio) ctx.renderer.setPixelRatio(originalPixelRatio);
       root.userData.officeEffectsRuntime = { bloom: budget.bloom, reducedResolution: budget.reduced };
     }
   });
@@ -42,6 +45,7 @@ export function installModelEffects(ctx: Ctx) {
     root = object; budget = new EffectsBudget();
     const renderer = ctx.renderer;
     const tone = renderer.toneMapping, exposure = renderer.toneMappingExposure, ratio = renderer.getPixelRatio();
+    originalPixelRatio = ratio;
     const materialRestores: (() => void)[] = [];
     const seen = new Set<THREE.Material>();
     object.traverse(o => {

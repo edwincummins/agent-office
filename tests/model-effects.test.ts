@@ -65,6 +65,20 @@ test('cold hitches are ignored and bloom retries after sustained healthy recover
   for (let i = 0; i < 20; i++) b.frame(2, false);
   assert.equal(b.bloom, true);
 });
+test('reduced resolution recovers only after bloom returns and another sustained healthy period', () => {
+  const b = new EffectsBudget();
+  for (let i = 0; i < 600; i++) b.frame(1 / 60);
+  for (let i = 0; i < 2400; i++) b.frame(.03);
+  assert.equal(b.bloom, false);
+  assert.equal(b.reduced, true);
+
+  for (let i = 0; i < 1100; i++) b.frame(1 / 60);
+  assert.equal(b.bloom, true);
+  assert.equal(b.reduced, true);
+  for (let i = 0; i < 960; i++) b.frame(1 / 60);
+  assert.equal(b.bloom, true);
+  assert.equal(b.reduced, false);
+});
 test('leaving an opted-in model restores renderer settings and disables the filter', (t) => {
   t.mock.method(ModelBloom.prototype, 'prepare', () => {});
   const group = new THREE.Group(), root = new THREE.Group();
@@ -80,6 +94,13 @@ test('leaving an opted-in model restores renderer settings and disables the filt
     ticks.get('hud')![0]({ delta: 1 / 60 });
     assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
     assert.equal(renderer.toneMappingExposure, 1);
+    for (let i = 0; i < 2400; i++) ticks.get('hud')![0]({ delta: .03 });
+    assert.equal(ratio, 1);
+    for (let i = 0; i < 1100; i++) ticks.get('hud')![0]({ delta: 1 / 60 });
+    assert.deepEqual(root.userData.officeEffectsRuntime, { bloom: true, reducedResolution: true });
+    for (let i = 0; i < 960; i++) ticks.get('hud')![0]({ delta: 1 / 60 });
+    assert.equal(ratio, 1.25);
+    assert.deepEqual(root.userData.officeEffectsRuntime, { bloom: true, reducedResolution: false });
     rooftop = true; ticks.get('pre')![0]({ delta: 1 / 60 });
     assert.equal(renderer.toneMapping, THREE.AgXToneMapping);
     assert.equal(renderer.toneMappingExposure, .8); assert.equal(ratio, 1.25);
