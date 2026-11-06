@@ -34,6 +34,7 @@ export class Worker {
   /** Its worktree was deleted outside the office (WorkerInfo.lost): its bubble says so until it's fixed. */
   private lost = false;
   private nameTag: THREE.Sprite | null = null;
+  private labelLift = 0;
   private eyes: THREE.Mesh[] = [];
   private blinkAt = Math.random() * 4;
   status: WorkerStatus = 'starting';
@@ -245,8 +246,17 @@ export class Worker {
       disposeSprite(this.nameTag);
     }
     this.nameTag = textSprite(name, { bg: '#2b2d42', color: '#fffaf3', size: 36, border: '#fffaf3' });
-    this.nameTag.position.y = 1.55;
+    this.nameTag.position.y = 1.55 + this.labelLift;
     this.root.add(this.nameTag);
+  }
+
+  /** Raises the name and work card together for a map-authored station label offset. */
+  setLabelLift(metres: number) {
+    const next = Math.max(0, Math.min(2, metres));
+    const delta = next - this.labelLift;
+    this.labelLift = next;
+    if (this.nameTag) this.nameTag.position.y += delta;
+    if (this.bubble) this.bubble.position.y += delta;
   }
 
   setStatus(status: WorkerStatus, bounce: boolean) {
@@ -341,7 +351,7 @@ export class Worker {
     this.bubbleKey = 'said';
     this.bubbleIsCard = false;
     this.bubble = textSprite(text, { bg: '#e9ecef', size: 34 });
-    if (!this.leaving) this.bubble.position.y = 1.95;
+    if (!this.leaving) this.bubble.position.y = 1.95 + this.labelLift;
     this.root.add(this.bubble);
   }
 
@@ -409,7 +419,7 @@ export class Worker {
       disposeSprite(this.bubble);
     }
     this.bubble = textSprite(text, { bg: '#e9ecef', size: 30 });
-    this.bubble.position.y = 1.5;
+    this.bubble.position.y = 1.5 + this.labelLift;
     this.root.add(this.bubble);
     this.mutterT = seconds;
   }
@@ -428,7 +438,7 @@ export class Worker {
         this.bubble = null;
       }
     }
-    if (this.nameTag) this.nameTag.position.y = dead ? 0.95 : 1.4;
+    if (this.nameTag) this.nameTag.position.y = (dead ? 0.95 : 1.4) + this.labelLift;
   }
 
   update(dt: number, t: number) {
@@ -500,8 +510,8 @@ export class Worker {
     this.props(dt, t);
     this.blink(dt, s.lid);
     this.bulbMesh.scale.setScalar(this.status === 'needs_input' ? 1 + Math.abs(Math.sin(t * 8)) * 0.5 : 1);
-    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + (hopping ? this.body.position.y : 0) + Math.sin(t * 3) * 0.03;
-    if (this.nameTag) this.nameTag.position.y = 1.55 + (hopping ? this.body.position.y : 0);
+    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + this.labelLift + (hopping ? this.body.position.y : 0) + Math.sin(t * 3) * 0.03;
+    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labelLift + (hopping ? this.body.position.y : 0);
     // Walking in to a meeting: the same waddle as on the way out, without the box.
     if (this.walking || this.stride) {
       this.stride = this.walking ? this.stride + dt * 9 * this.pace * this.gait : 0;
@@ -547,8 +557,8 @@ export class Worker {
   private carry(l: NonNullable<Worker['leaving']>, dt: number, t: number) {
     waddle(this.rig, l, this.walking, dt);
     this.blink(dt);
-    if (this.bubble) this.bubble.position.y = 1.95 + Math.sin(t * 3) * 0.03;
-    if (this.nameTag) this.nameTag.position.y = 1.55;
+    if (this.bubble) this.bubble.position.y = 1.95 + this.labelLift + Math.sin(t * 3) * 0.03;
+    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labelLift;
   }
 
   /** Up on the desk dancing: hop up, groove side to side, twirl, jump twice, hop back down. */
@@ -562,8 +572,8 @@ export class Worker {
     }
     const lift = groove(this.rig, d, dt, t);
     this.blink(dt);
-    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + lift + Math.sin(t * 3) * 0.03;
-    if (this.nameTag) this.nameTag.position.y = 1.55 + lift;
+    if (this.bubble) this.bubble.position.y = (this.bubbleIsCard ? 1.74 : 1.95) + this.labelLift + lift + Math.sin(t * 3) * 0.03;
+    if (this.nameTag) this.nameTag.position.y = 1.55 + this.labelLift + lift;
   }
 
   /** Back in its seat, standing straight, its light showing its status again. */

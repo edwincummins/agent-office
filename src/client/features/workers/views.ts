@@ -123,6 +123,7 @@ export function installWorkerViews(ctx: Ctx, core: CoreState, parts: WorkerViews
         departures.vacate(w.deskId);
         sendoffs.vacate(w.deskId);
         const model = new Worker(w.name, w.color);
+        if (desk.def.station) model.setLabelLift(plan().config?.model?.stationLabelOffsets?.[desk.def.station] ?? 0);
         model.setCostume(store.theme.active);
         model.setOutfit(plan().agents.outfit === 'peasant' ? 'peasant' : null);
         model.setAge(ageOf(w));

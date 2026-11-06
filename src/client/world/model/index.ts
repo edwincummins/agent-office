@@ -12,6 +12,7 @@ import {modelColliders} from './colliders';
 import { furnishings } from './furniture';
 import { seatFloor } from '../../../shared/levels/attach';
 import { mergeOpaqueModelMeshes } from './merge';
+import type { ModelChair } from '../../../shared/maps/model';
 
 export interface ModelSurfaces {
   screen: THREE.Mesh | null;
@@ -26,7 +27,13 @@ export function buildModel(plan: MapPlan): World {
   const group = new THREE.Group();
   const interactables: Interactable[] = [];
   const colliders=modelColliders(plan,config);
-  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,config.source?new Map([...plan.desks,...plan.overflow,...plan.meeting].map((d,i)=>[d.id,i<32?config.source!.chairs[i]:config.source!.council[i-32]])):undefined,id=>seatFloor(plan,id),config.source?.stations);
+  const authoredChairs = config.source ? new Map<string,ModelChair>() : undefined;
+  if(authoredChairs&&config.source){
+    [...plan.desks,...plan.overflow].forEach((d,i)=>authoredChairs.set(d.id,config.source!.chairs[i]));
+    plan.meeting.forEach((d,i)=>authoredChairs.set(d.id,config.source!.council[i]));
+    for(const d of plan.stations){const chair=config.source.stationChairs?.[d.station!];if(chair)authoredChairs.set(d.id,chair);}
+  }
+  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,authoredChairs,id=>seatFloor(plan,id),config.source?.stations);
   const face = (p: BoardPlace, kind: Interactable['kind']) => {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(p.width,p.height),new THREE.MeshBasicMaterial({color:'#d9e3e8',toneMapped:false}));
     mesh.position.set(p.x,p.y,p.z); mesh.rotation.y=p.rotY;

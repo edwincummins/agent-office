@@ -230,7 +230,8 @@ export function planMap(input: unknown): MapPlan {
   if (!isObj(c.stations)) throw new MapError('it needs stations: where the Issues, PR and Queue agents stand');
   const stations: DeskDef[] = STATION_KINDS.map((kind) => {
     const p = place(c.stations[kind], `stations.${kind}`);
-    const def = { id: `station-${kind}`, station: kind, x: p.x, z: p.z, rotY: p.rotY, label: STATION_AGENT[kind].name };
+    const chair=model?.source?.stationChairs?.[kind];
+    const def = chair?.sit ? { id: `station-${kind}`, station: kind, x: chair.x+Math.sin(chair.rotY)*chair.sit.forward, z: chair.z+Math.cos(chair.rotY)*chair.sit.forward, rotY: chair.rotY, label: STATION_AGENT[kind].name } : { id: `station-${kind}`, station: kind, x: p.x, z: p.z, rotY: p.rotY, label: STATION_AGENT[kind].name };
     // The agent stands behind its lectern: that's in the hall too.
     inside(p.x + Math.sin(p.rotY) * 0.9, p.z + Math.cos(p.rotY) * 0.9, `where the ${STATION_AGENT[kind].name} stands`, 0);
     // The lectern, and the agent standing behind it.
@@ -243,7 +244,12 @@ export function planMap(input: unknown): MapPlan {
   const council = place(c.council, 'council');
   const meeting: DeskDef[] = MEETING_SEATS.map((m, i) => {
     const anchor=model?.source?.council[i];
-    if(anchor){const a=anchor.rotY+Math.PI;circles.push([anchor.x,anchor.z,.28]);return {id:m.id,room:true,x:anchor.x-Math.sin(a)*.85,z:anchor.z-Math.cos(a)*.85,rotY:a,label:m.label};}
+    if(anchor){
+      const authored=anchor.sit!==undefined,forward=anchor.sit?.forward??.85;
+      const facing=authored?anchor.rotY:anchor.rotY+Math.PI;
+      circles.push([anchor.x,anchor.z,.28]);
+      return {id:m.id,room:true,x:anchor.x+Math.sin(anchor.rotY)*forward,z:anchor.z+Math.cos(anchor.rotY)*forward,rotY:facing,label:m.label};
+    }
     const a = council.rotY + (i * Math.PI * 2) / MEETING_SEATS.length;
     const def = { id: m.id, room: true, x: council.x + Math.sin(a) * COUNCIL.place, z: council.z + Math.cos(a) * COUNCIL.place, rotY: a, label: m.label };
     circles.push([council.x + Math.sin(a) * COUNCIL.chairs, council.z + Math.cos(a) * COUNCIL.chairs, 0.28]);

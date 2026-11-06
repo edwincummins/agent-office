@@ -3,9 +3,17 @@ import type { BoardPlace, Place } from './types.js';
 import type { StationKind } from '../layout.js';
 import { isObj, num, MapError } from './check.js';
 
-export interface ModelChair extends Required<Place> {y:number}
+const MODEL_STATIONS: readonly StationKind[] = ['issues','pulls','queue'];
+
+export interface ModelChair extends Required<Place> {
+  y:number;
+  chairType?: 'task'|'executive'|'guest'|'conference'|'lounge'|'sofaSeat'|'pouf'|'barStool';
+  /** A model-authored seat point relative to this chair. Omitted maps retain the legacy 0.85 m approach. */
+  sit?: {forward:number;y:number};
+}
 export interface ModelMapData {
-  source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace;stations?:StationKind[]};
+  source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace;stations?:StationKind[];stationChairs?:Partial<Record<StationKind,ModelChair>>};
+  stationLabelOffsets?: Partial<Record<StationKind,number>>;
   asset: string;
   seats: Required<Place>[];
   walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number; bottom?: number }[];
@@ -60,6 +68,15 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
     if(typeof text!=='string'||!text.trim()||text.length>60)throw new MapError('model label needs 1-60 characters');
     return {...p,text};
   });
+  let stationLabelOffsets:ModelMapData['stationLabelOffsets'];
+  if(value.stationLabelOffsets!==undefined){
+    if(!isObj(value.stationLabelOffsets))throw new MapError('model.stationLabelOffsets must be a station-to-metres map');
+    stationLabelOffsets={};
+    for(const [station,offset] of Object.entries(value.stationLabelOffsets)){
+      if(!MODEL_STATIONS.includes(station as StationKind))throw new MapError(`model.stationLabelOffsets has unknown station ${station}`);
+      stationLabelOffsets[station as StationKind]=num(offset,`model.stationLabelOffsets.${station}`,0,2);
+    }
+  }
   if(value.lounges!==undefined&&(!Array.isArray(value.lounges)||value.lounges.length>2))throw new MapError('model.lounges must contain at most two centres');
   const lounges=((value.lounges??[]) as unknown[]).map((v,i)=>({...point(v,`model.lounges[${i}]`),rugLength:num((v as Record<string,unknown>).rugLength??4,'lounge.rugLength',3.2,4)}));
   for(const p of lounges){
@@ -74,18 +91,42 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
     if(!isObj(value.source))throw new MapError('model.source must describe existing chairs');
     const chairs=(raw:unknown,count:number,label:string):ModelChair[]=>{
       if(!Array.isArray(raw)||raw.length!==count)throw new MapError(`${label} needs exactly ${count} anchors`);
-      const result=raw.map((v,i)=>({...point(v,`${label}[${i}]`),y:num((v as Record<string,unknown>).y,`${label}[${i}].y`,0,height)}));
+      const result=raw.map((v,i)=>{
+        const p=v as Record<string,unknown>;
+        const chairType=p.chairType;
+        if(chairType!==undefined&&!['task','executive','guest','conference','lounge','sofaSeat','pouf','barStool'].includes(String(chairType)))throw new MapError(`${label}[${i}].chairType is not supported`);
+        let sit:ModelChair['sit'];
+        if(p.sit!==undefined){
+          if(!isObj(p.sit))throw new MapError(`${label}[${i}].sit must be an anchor offset`);
+          sit={forward:num(p.sit.forward,`${label}[${i}].sit.forward`,-.5,.5),y:num(p.sit.y,`${label}[${i}].sit.y`,.2,1.2)};
+        }
+        return {...point(v,`${label}[${i}]`),y:num(p.y,`${label}[${i}].y`,0,height),...(chairType===undefined?{}:{chairType:chairType as NonNullable<ModelChair['chairType']>}),...(sit?{sit}:{})};
+      });
       if(new Set(result.map(p=>`${p.x},${p.z}`)).size!==count)throw new MapError(`${label} anchors must be distinct`);
       for(const p of result)if(walls.some(w=>w.top>p.y && (w.bottom??0)<p.y+1.2 && p.x>w.minX&&p.x<w.maxX&&p.z>w.minZ&&p.z<w.maxZ))throw new MapError(`${label} anchor is inside a wall`);
       return result;
     };
     const stations=value.source.stations===undefined?[]:value.source.stations;
     if(!Array.isArray(stations)||stations.some(s=>s!=='issues'&&s!=='pulls'&&s!=='queue')||new Set(stations).size!==stations.length)throw new MapError('model.source.stations must be a distinct list of issues, pulls and queue');
-    source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard'),stations};
+    let stationChairs:NonNullable<ModelMapData['source']>['stationChairs'];
+    if(value.source.stationChairs!==undefined){
+      if(!isObj(value.source.stationChairs))throw new MapError('model.source.stationChairs must be a station-to-chair map');
+      stationChairs={};
+      for(const [station,raw] of Object.entries(value.source.stationChairs)){
+        if(!MODEL_STATIONS.includes(station as StationKind))throw new MapError(`model.source.stationChairs has unknown station ${station}`);
+        if(!isObj(raw))throw new MapError(`model.source.stationChairs.${station} must be a chair anchor`);
+        const chairType=raw.chairType;
+        if(chairType!==undefined&&!['task','executive','guest','conference','lounge','sofaSeat','pouf','barStool'].includes(String(chairType)))throw new MapError(`model.source.stationChairs.${station}.chairType is not supported`);
+        if(!isObj(raw.sit))throw new MapError(`model.source.stationChairs.${station}.sit must describe its proxy seat`);
+        stationChairs[station as StationKind]={...point(raw,`model.source.stationChairs.${station}`),y:num(raw.y,`model.source.stationChairs.${station}.y`,0,height),chairType:chairType as NonNullable<ModelChair['chairType']>,sit:{forward:num(raw.sit.forward,`model.source.stationChairs.${station}.sit.forward`,-.5,.5),y:num(raw.sit.y,`model.source.stationChairs.${station}.sit.y`,.2,1.2)}};
+      }
+    }
+    source={chairs:chairs(value.source.chairs,32,'model.source.chairs'),council:chairs(value.source.council,5,'model.source.council'),meetingBoard:surface(value.source.meetingBoard,'model.source.meetingBoard'),stations,stationChairs};
     for(const [i,chair] of source.chairs.entries()){
       const s=seats[i];
-      if(Math.hypot(s.x+Math.sin(s.rotY)*.85-chair.x,s.z+Math.cos(s.rotY)*.85-chair.z)>.02)throw new MapError('source chair must match its seat approach at 0.85 m');
+      const forward=chair.sit?.forward??.85;
+      if(Math.hypot(s.x-chair.x-Math.sin(chair.rotY)*forward,s.z-chair.z-Math.cos(chair.rotY)*forward)>.02)throw new MapError(`source chair ${i+1} must match its authored sit offset`);
     }
   }
-  return { asset: value.asset, seats, walls, platforms, labels, lounges, source, screen:value.screen===null?null:surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
+  return { asset: value.asset, seats, walls, platforms, labels, lounges, source, stationLabelOffsets, screen:value.screen===null?null:surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
 }
