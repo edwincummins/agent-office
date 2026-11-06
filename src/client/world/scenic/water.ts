@@ -124,10 +124,10 @@ export function buildWater(kit: ScenicKit, road: Road): { waters: THREE.Texture[
         const zEnd = Math.min(z1, z + 40);
         let x = Infinity;
         for (let k = z; k <= zEnd; k += 2) x = Math.min(x, shoreX(k));
-        colliders.push({ minX: -1600, maxX: x - 6, minZ: z, maxZ: zEnd, bottom: G - 1, top: G + 2, fence: true });
+        colliders.push({ minX: -1600, maxX: x - 6, minZ: z, maxZ: zEnd, bottom: G - 1, top: G + 2, fence: true, cameraOcclusion: false });
       }
     }
-    colliders.push({ minX: -1600, maxX: shoreX(PIER.z) - PIER.length - 0.2, minZ: PIER.z - PIER.width / 2, maxZ: PIER.z + PIER.width / 2, bottom: G - 1, top: G + 2, fence: true });
+    colliders.push({ minX: -1600, maxX: shoreX(PIER.z) - PIER.length - 0.2, minZ: PIER.z - PIER.width / 2, maxZ: PIER.z + PIER.width / 2, bottom: G - 1, top: G + 2, fence: true, cameraOcclusion: false });
   }
 
   return { waters, surf };
