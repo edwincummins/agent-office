@@ -291,3 +291,5 @@ Keep purchased models, textures, coordinates and derived exports outside the rep
 6. Inspect the resolved `plan().slots` and `slotWarnings`, test every interaction, map switching and return, collisions and seating exits. Headless proofs should report whole-frame draw calls/triangles, worst-view FPS and GPU name, not a single render pass. Stop the disposable preview after checking it. Never test with another person's data or credentials.
 
 The stock office uses separate Services and TV placements because their original dimensions differ. Stock fixture data lives in `src/shared/fixtures/stock.ts`; the original numbers and builder offsets are preserved. The fixture registry adapts existing feature-owned builders, and consumers bind through active-world handles rather than a stock-only mesh. No switching UI or provider permissions are introduced by fixtures.
+
+The optional `fixtures.crew` slot describes standing or seated Cadre crew places. See [Crew places](cadre-crew.md#map-places) for the schema, arrival clearances and missing-slot behavior.

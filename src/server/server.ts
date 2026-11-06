@@ -16,6 +16,7 @@ import { requestHandler } from './http/router.js';
 import { routes } from './http/routes/index.js';
 import { startHookServer } from './hooks/server.js';
 import { acceptWebSockets } from './ws/upgrade.js';
+import { installFleet } from './fleet/index.js';
 
 /** What a test can set about how the office starts: the client bundle it serves, instead of the built one. */
 export interface StartOptions {
@@ -42,6 +43,7 @@ export async function startServer(cfg: Config, opts: StartOptions = {}) {
   // --- WebSocket -------------------------------------------------------------------------------
   acceptWebSockets(ctx, server);
   const stopTimers = startTimers(ctx);
+  const stopFleet = installFleet(ctx);
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -54,6 +56,7 @@ export async function startServer(cfg: Config, opts: StartOptions = {}) {
   /** With `keep` (a restart), workers' terminals keep running for the next office to pick up. */
   const shutdown = (keep = false) => {
     stopTimers();
+    stopFleet();
     ctx.cancelFloorsChanged();
     ctx.arcade.flush();
     ctx.upgrader.stop();

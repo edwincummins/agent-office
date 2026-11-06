@@ -460,6 +460,8 @@ export class Hooks {
 
 /** One part of the office with things of its own to use (the pictures, the dog, the ball): `I` is one of them, `O` what the aim can land on. */
 export interface UsableSource<I, O> {
+  /** Opt into custom maps; sources otherwise belong to the stock office. */
+  allMaps?: boolean;
   /** What there is to use of it right now. */
   usable(): readonly I[];
   /** What the aim can land on that isn't in the building itself (the dog walks about on its own), if anything. */
@@ -479,14 +481,14 @@ export class Usables<I, O> {
   }
 
   /** What each source has to use right now, a list each, in order. */
-  lists(): (readonly I[])[] {
-    return this.sources.items.map((s) => s.usable());
+  lists(allMapsOnly = false): (readonly I[])[] {
+    return this.sources.items.filter(s => !allMapsOnly || s.allMaps).map((s) => s.usable());
   }
 
   /** What the aim can land on besides the building, in order. */
-  pickables(): O[] {
+  pickables(allMapsOnly = false): O[] {
     const out: O[] = [];
-    for (const s of this.sources.items) if (s.pickable) out.push(s.pickable());
+    for (const s of this.sources.items) if (s.pickable && (!allMapsOnly || s.allMaps)) out.push(s.pickable());
     return out;
   }
 }

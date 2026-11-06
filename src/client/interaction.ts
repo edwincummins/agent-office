@@ -39,6 +39,7 @@ export function interactionAvailable(it: Interactable | null, key: DeskKey, stat
   }
 
   if (state.note && it.kind === 'issues') return key === 'E' || key === 'O';
+  if (it.kind === 'services' && key === 'B') return true;
   if (key !== 'E') return false;
 
   if (it.kind === 'decor') return !!it.decorId;

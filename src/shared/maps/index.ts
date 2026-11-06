@@ -376,7 +376,7 @@ export function planMap(input: unknown): MapPlan {
   const ageMinutes = c.agents?.ageMinutes === undefined ? 0 : num(c.agents.ageMinutes, 'agents.ageMinutes', 0, 100000);
   const byId = new Map([...desks, ...overflow, ...stations, ...meeting].map((d) => [d.id, d]));
   for (const d of byId.values()) inside(d.x, d.z, d.label);
-  const fixtures=resolveSlots(c.fixtures,bounds,height);
+  const fixtures=resolveSlots(c.fixtures,bounds,height,spawn);
   if(fixtures.slots.gong&&props.some(p=>p.kind==='gong'))throw new MapError('Use a gong fixture or legacy gong prop, not both');
   if(fixtures.slots.lounge)seating.push(...loungeSeats(fixtures.slots.lounge));
   if(fixtures.slots.services){const p=fixtures.slots.services;boards.services={...boards.services,...p.position,rotY:p.rotY,width:p.size.width,height:p.size.height};}

@@ -6,6 +6,7 @@
 import type * as THREE from 'three';
 import type { GhIssue } from '../../../shared/protocol';
 import type { Ctx } from '../../core/context';
+import { boardModes } from '../../core/board-modes';
 import { aside, boardHint, hintTitle, key, onE } from '../../core/hint';
 import { store, type Topic } from '../../state';
 import { openBoard } from '../../ui/boards';
@@ -121,8 +122,8 @@ export function installBoards(ctx: Ctx, deps: BoardsDeps) {
   });
   ctx.interactions.define('services', {
     reach: 9,
-    hint: () => boardHint('🌐 Services board'),
-    use: onE(() => openServices()),
+    hint: () => boardModes.get('services')?.hint() ?? boardHint('🌐 Services board'),
+    use: (_it,key) => { if(!boardModes.get('services')?.use(key)&&key==='E')openServices(); },
   });
   ctx.interactions.define('queue', {
     reach: 9,
@@ -144,7 +145,7 @@ export function installBoards(ctx: Ctx, deps: BoardsDeps) {
   function dressBoards(w: World) {
     showOn(w.boardMeshes.issues, issuesTex.texture);
     showOn(w.boardMeshes.pulls, pullsTex.texture);
-    showOn(w.boardMeshes.services, servicesTex.texture);
+    showOn(w.boardMeshes.services, boardModes.get('services')?.texture(servicesTex.texture,w.boardMeshes.services) ?? servicesTex.texture);
     showOn(w.boardMeshes.queue, queueTex.texture);
     if (w.meetingBoard) showOn(w.meetingBoard, meetingBoardTex.texture);
     if (w.meetingSign) showOn(w.meetingSign, meetingSignTex.texture);
