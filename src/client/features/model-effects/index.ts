@@ -1,3 +1,4 @@
+import { tintEnvironment } from './environment';
 import { applyModelScene } from './scene';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -66,6 +67,7 @@ export function installModelEffects(ctx: Ctx) {
     });
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = profile.exposure;
     const restoreLights = profile.lights ? applyModelLights(ctx.world(), profile.lights) : undefined;
+    const restoreEnvironment = profile.scene?.environmentTint ? tintEnvironment(renderer, ctx.scene, profile.scene.environmentTint) : undefined;
     const restoreScene = profile.scene ? applyModelScene(ctx.world(), ctx.scene, profile.scene) : undefined;
     bloom = new ModelBloom(renderer, profile);
     bloom.prepare(ctx.scene, ctx.camera);
@@ -73,6 +75,7 @@ export function installModelEffects(ctx: Ctx) {
       renderer.toneMapping = tone; renderer.toneMappingExposure = exposure; renderer.setPixelRatio(ratio);
       materialRestores.forEach(fn => fn());
       restoreScene?.();
+      restoreEnvironment?.();
       restoreLights?.();
     };
   }

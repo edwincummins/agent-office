@@ -3,6 +3,7 @@ import type { World } from '../../world/world';
 
 export interface ModelScene {
   environmentIntensity?: number;
+  environmentTint?: string;
   background?: string;
   fog?: { color: string; near: number; far: number };
 }
@@ -10,8 +11,9 @@ const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v ===
 const color = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 export function modelScene(v: unknown): ModelScene | null {
-  if (!record(v) || Object.keys(v).some(k => !['environmentIntensity', 'background', 'fog'].includes(k))) return null;
+  if (!record(v) || Object.keys(v).some(k => !['environmentIntensity', 'environmentTint', 'background', 'fog'].includes(k))) return null;
   if (v.environmentIntensity !== undefined && !finite(v.environmentIntensity)) return null;
+  if (v.environmentTint !== undefined && !color(v.environmentTint)) return null;
   if (v.background !== undefined && !color(v.background)) return null;
   const f = v.fog;
   if (f !== undefined && (!record(f) || Object.keys(f).some(k => !['color', 'near', 'far'].includes(k)) || !color(f.color) || !finite(f.near) || !finite(f.far) || f.near < 0 || f.far <= f.near || f.far > 1000)) return null;

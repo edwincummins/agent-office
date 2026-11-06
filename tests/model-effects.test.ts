@@ -105,3 +105,23 @@ test('scene controls override sky ticks and restore scene references and mood ch
   restore(); assert.equal(world.mood, mood); assert.equal(scene.background, old.background); assert.equal(scene.fog, old.fog); assert.equal(scene.environmentIntensity, old.intensity);
   assert.equal((scene.background as THREE.Color).getHex(), 0xc8d8e5);
 });
+
+test('environment tint validates and preserves original PMREM ownership', async () => {
+  const { tintEnvironment } = await import('../src/client/features/model-effects/environment.ts');
+  assert.equal(modelEffects({ ...profile, scene: { environmentTint: 'red' } }), null);
+  assert.equal(modelEffects({ ...profile, scene: { environmentTint: '#ffc890' } })!.scene!.environmentTint, '#ffc890');
+  const scene = new THREE.Scene(), original = new THREE.Texture({ width: 768, height: 1024 });
+  original.mapping = THREE.CubeUVReflectionMapping; scene.environment = original;
+  let sourceDisposed = false; original.addEventListener('dispose', () => { sourceDisposed = true; });
+  const previous = new THREE.WebGLRenderTarget(1, 1); let current = previous, renders = 0;
+  const renderer = { getRenderTarget: () => current, setRenderTarget: (t: THREE.WebGLRenderTarget) => { current = t; }, render: (quad: THREE.Scene) => {
+    renders++; const m = (quad.children[0] as THREE.Mesh).material as THREE.ShaderMaterial;
+    assert.equal(m.uniforms.source.value, original); assert.equal(m.uniforms.tint.value.getHex(), 0xffc890);
+    assert.equal(current.width, 768); assert.equal(current.height, 1024);
+  } };
+  const restore = tintEnvironment(renderer as never, scene, '#ffc890');
+  assert.equal(renders, 1); assert.equal(current, previous); assert.notEqual(scene.environment, original);
+  assert.equal(scene.environment!.mapping, THREE.CubeUVReflectionMapping);
+  restore(); assert.equal(scene.environment, original); assert.equal(sourceDisposed, false);
+  scene.environment = null; tintEnvironment(renderer as never, scene, '#ffffff')(); assert.equal(renders, 1);
+});

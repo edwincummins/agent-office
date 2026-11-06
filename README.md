@@ -425,3 +425,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 [MIT](LICENSE)
 
 Opt-in model effects can also bound environment intensity, background and fog without changing other maps; see [model effects](docs/maps.md).
+
+Model effects also support an optional environment tint without loading new HDR assets.
