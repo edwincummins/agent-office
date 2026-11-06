@@ -57,6 +57,8 @@ export function aimCamera(camera: THREE.PerspectiveCamera, p: Followed, bob: num
     Math.cos(p.camYaw) * Math.cos(p.camPitch),
   ).multiplyScalar(levelBoomDistance(p.pos, p.camDist, p.colliders, p.camPitch));
   const cam = target.clone().add(off);
+  // Looking up from low behind you: never through the floor you stand on.
+  cam.y = Math.max(cam.y, p.pos.y + 0.3);
   // Keep the camera on your side of the outside walls, so they never block the view: inside the
   // room while you're in the office, out of the building while you're outside or on the balcony.
   // And under the loft, its roof or the garage ceiling.

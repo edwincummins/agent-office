@@ -184,6 +184,7 @@ export class PlayerController extends PlayerInput {
     }
     const steering = ix !== 0 || iz !== 0;
     this.moving = steering;
+    this.levelWhileWalking(dt, steering);
     this.running = steering && (k.has('ShiftLeft') || k.has('ShiftRight'));
     if (this.path && (steering || (this.enabled && k.has('Space')))) {
       this.path = null;

@@ -209,8 +209,14 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
     floorRay.setFromCamera(ndc, camera);
     const hit = floorRay.intersectObjects(inOffice() ? [office.group] : ctx.world().pickables, true)[0];
     // On your own level only; walls and furniture are refused by teleport()'s room check.
-    if (!hit || Math.abs(hit.point.y - player.pos.y) > 0.6) return null;
-    return { x: hit.point.x, y: hit.point.y, z: hit.point.z };
+    if (hit && Math.abs(hit.point.y - player.pos.y) <= 0.6) return { x: hit.point.x, y: hit.point.y, z: hit.point.z };
+    // A map of your own keeps its building out of picking, so a double-click found no floor there (Fetty, 11-06,
+    // the HQ): aim at the level you stand on instead, inside the hall only (never out into the dark).
+    if (inOffice()) return null;
+    const at = floorRay.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -player.pos.y), new THREE.Vector3());
+    const b = ctx.plan().bounds;
+    if (!at || at.x < b.minX + 0.3 || at.x > b.maxX - 0.3 || at.z < b.minZ + 0.3 || at.z > b.maxZ - 0.3) return null;
+    return { x: at.x, y: player.pos.y, z: at.z };
   }
   /** Puts you at (x, z) if you fit there on this level; a quick fade so it reads as a jump, not a glitch. */
   function teleport(x: number, z: number, floorY = player.pos.y, look?: { x: number; z: number }): boolean {

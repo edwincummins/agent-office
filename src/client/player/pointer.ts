@@ -26,6 +26,8 @@ export abstract class PlayerInput {
   camDist = 7.5;
   /** First-person look up (+) / down (-). */
   lookPitch = -0.08;
+  /** When the view was last turned by hand (ms): walking only levels it once you've let go (Fetty, 11-06). */
+  lookAt = 0;
   view: ViewMode = 'first';
   /**
    * A click (not a drag) on the scene, in normalized device coordinates.
@@ -94,6 +96,8 @@ export abstract class PlayerInput {
 
     dom.addEventListener('pointerdown', (e) => {
       if (!this.enabled) return;
+      // The middle button puts the view straight ahead (Fetty, 11-06: stuck looking up or down).
+      if (e.button === 1) { e.preventDefault(); this.levelNow(); return; }
       if (this.view === 'first' && e.pointerType === 'mouse' && !this.lockFailed) {
         if (this.locked) {
           if (e.button === 0) this.onClick?.(CENTER);
@@ -142,7 +146,9 @@ export abstract class PlayerInput {
       if (this.view === 'first') this.look(dx * DRAG_LOOK_SPEED * mouseSensitivity(), dy * DRAG_LOOK_SPEED * mouseSensitivity());
       else {
         this.camYaw -= dx * 0.006 * mouseSensitivity();
-        this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.004 * mouseSensitivity(), 0.05, 1.3);
+        // Down to below your head, so you can look up at a tall sign or the ceiling (camera.ts keeps it off the floor).
+        this.camPitch = THREE.MathUtils.clamp(this.camPitch + dy * 0.004 * mouseSensitivity(), -0.35, 1.2);
+        this.lookAt = performance.now();
       }
     });
     document.addEventListener('pointerlockchange', () => {
@@ -264,7 +270,23 @@ export abstract class PlayerInput {
 
   private look(dx: number, dy: number) {
     this.camYaw -= dx;
-    this.lookPitch = THREE.MathUtils.clamp(this.lookPitch - dy, -1.45, 1.45);
+    // Short of straight up or down, where the view used to stick (Fetty, 11-06).
+    this.lookPitch = THREE.MathUtils.clamp(this.lookPitch - dy, -1.2, 1.2);
+    this.lookAt = performance.now();
+  }
+
+  /** Walking with the mouse let go for a moment eases the view back to straight ahead; standing still keeps it. */
+  levelWhileWalking(dt: number, walking: boolean) {
+    if (!walking || performance.now() - this.lookAt < 900) return;
+    const k = 1 - Math.exp(-dt * 3);
+    this.lookPitch += (-0.08 - this.lookPitch) * k;
+    this.camPitch += (0.42 - this.camPitch) * k;
+  }
+
+  /** Straight ahead at once (a middle-mouse click). */
+  levelNow() {
+    this.lookPitch = -0.08;
+    this.camPitch = 0.42;
   }
 }
 
