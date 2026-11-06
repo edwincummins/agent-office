@@ -19,6 +19,8 @@ export interface FloorMenuOptions {
   elevator(): void;
   /** Up to the rooftop bar, by elevator; null on a map with no roof to go up to. */
   roof: (() => void) | null;
+  /** Down to the garage under the building, by elevator; null on a map with no garage. */
+  garage?: { ride(): void; here(): boolean } | null;
   /** Switch the building to another office (a built-in map or one of your own), without going through Settings. */
   pickMap?: (id: string) => void;
 }
@@ -90,6 +92,20 @@ export function toggleFloorMenu(anchor: HTMLElement, opts: FloorMenuOptions): vo
       close();
       opts.roof?.();
     });
+    // The garage under the building: the cars and the way out. Only the elevator listed it, so from this menu it looked
+    // gone (Fetty, 11-05); now it sits under floor 1, as in the elevator.
+    const inGarage = !!opts.garage?.here();
+    const garage = h(
+      'button.floor-item',
+      { type: 'button', role: 'menuitem', class: inGarage ? 'here' : '', disabled: inGarage, title: inGarage ? "You're down at the street" : 'Take the elevator down to the garage' },
+      h('span.floor-no', { style: 'background:#2b2d42' }, '🏎️'),
+      h('span.floor-text', {}, h('span.floor-name', {}, 'Garage'), h('span.floor-sub', {}, inGarage ? 'you are here' : 'The cars, and the way out')),
+    );
+    garage.addEventListener('click', () => {
+      if (inGarage) return;
+      close();
+      opts.garage?.ride();
+    });
     // Your offices: the stock office, the castle, the station and your own maps (the L2 office, the loft...), one click
     // away instead of Settings (Fetty, 11-05). It's the same for everyone in the building, as in Settings.
     const offices = opts.pickMap
@@ -113,6 +129,7 @@ export function toggleFloorMenu(anchor: HTMLElement, opts: FloorMenuOptions): vo
       h('div.floor-menu-head', {}, `🏢 ${floors.length} floor${floors.length === 1 ? '' : 's'}`),
       ...(floors.length && opts.roof ? [roof] : []),
       ...items,
+      ...(floors.length && opts.garage ? [garage] : []),
       add,
       ...(offices.length ? [h('div.floor-menu-head', {}, `🗺️ Your offices`), ...offices] : []),
     );

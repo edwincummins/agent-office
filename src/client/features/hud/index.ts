@@ -4,6 +4,7 @@
  * character.
  */
 import { ROOF } from '../../../shared/rooftop';
+import { GARAGE } from '../../ui/elevator';
 import type { Ctx } from '../../core/context';
 import type { CoreState } from '../../core/ctx';
 import { builtFloors } from '../../core/floors';
@@ -43,7 +44,7 @@ export function installHud(ctx: Ctx, core: CoreState, parts: HudParts) {
     if (!store.floor) return travel.showElevator();
     // Asking for the map list has the office read its folder of maps again, so a new one (the loft) shows up.
     ctx.net.send({ t: 'map.set' });
-    toggleFloorMenu($('project'), { go: travel.switchFloor, indoors: () => (!inOffice() && !core.upTop) || parts.place.indoors(), elevator: travel.showElevator, roof: inOffice() ? () => travel.ride(ROOF) : null, pickMap: (map) => ctx.net.send({ t: 'map.set', map }) });
+    toggleFloorMenu($('project'), { go: travel.switchFloor, indoors: () => (!inOffice() && !core.upTop) || parts.place.indoors(), elevator: travel.showElevator, roof: inOffice() ? () => travel.ride(ROOF) : null, garage: inOffice() ? { ride: () => travel.ride(GARAGE), here: () => parts.place.downstairs() } : null, pickMap: (map) => ctx.net.send({ t: 'map.set', map }) });
   });
 
   // ---- The HUD: a few buttons on the top bar, everything else in the ☰ menu ----------------------------
