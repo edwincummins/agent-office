@@ -16,10 +16,14 @@ test('model batching merges opaque static siblings by material and keeps moving 
   const door = new THREE.Group();
   door.name = 'Door__north';
   door.add(new THREE.Mesh(cube, opaque));
-  root.add(west, east, pane, door);
+  const interactive = new THREE.Group();
+  interactive.userData.interact = { kind: 'meeting' };
+  const interactiveMesh = new THREE.Mesh(cube, opaque);
+  interactive.add(interactiveMesh);
+  root.add(west, east, pane, door, interactive);
 
   assert.equal(mergeOpaqueModelMeshes(root), 1);
-  assert.equal(root.children.length, 3);
+  assert.equal(root.children.length, 4);
   assert.equal(root.children.filter((child) => child.name.startsWith('local-model-batch:')).length, 1);
   const batch = root.children.find((child) => child.name.startsWith('local-model-batch:')) as THREE.Mesh;
   const bounds = new THREE.Box3().setFromObject(batch);
@@ -27,6 +31,7 @@ test('model batching merges opaque static siblings by material and keeps moving 
   assert.equal(bounds.max.x, 2.5);
   assert.ok(root.getObjectByName('Door__north'));
   assert.equal(pane.parent, root);
+  assert.equal(interactiveMesh.parent, interactive, 'geometry under an interactive node stays addressable');
 });
 
 test('model batching leaves reflected geometry and hidden named subtrees intact', () => {
@@ -56,4 +61,27 @@ test('model batching leaves reflected geometry and hidden named subtrees intact'
   const batch = root.children.find((child) => child.name.startsWith('local-model-batch:')) as THREE.Mesh;
   assert.equal(batch.frustumCulled, true);
   assert.deepEqual(batch.userData.sourceNames, ['visible-a', 'visible-b']);
+});
+
+test('model batching excludes hidden descendants from visible batch geometry', () => {
+  const root = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ color: '#735642' });
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const hidden = new THREE.Group();
+  hidden.visible = false;
+  const hiddenMesh = new THREE.Mesh(geometry, material);
+  hidden.add(hiddenMesh);
+  const sibling = new THREE.Mesh(geometry, material);
+  sibling.name = 'visible-sibling';
+  const secondSibling = new THREE.Mesh(geometry, material);
+  secondSibling.name = 'visible-second-sibling';
+  root.add(hidden, sibling, secondSibling);
+
+  assert.equal(mergeOpaqueModelMeshes(root), 1);
+  const batch = root.children.find((child) => child.name.startsWith('local-model-batch:')) as THREE.Mesh;
+  assert.ok(batch);
+  assert.equal(batch.geometry.index!.count / 3, 24, 'the batch contains exactly the two visible cubes');
+  assert.deepEqual(batch.userData.sourceNames, ['visible-sibling', 'visible-second-sibling']);
+  assert.equal(hidden.visible, false);
+  assert.equal(hiddenMesh.parent, hidden, 'the hidden mesh remains under its named ancestor');
 });

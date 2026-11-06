@@ -20,6 +20,14 @@ function belongsToMovingDoor(mesh: THREE.Object3D, root: THREE.Object3D): boolea
   return false;
 }
 
+function belongsToInteractiveObject(mesh: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = mesh; node; node = node.parent) {
+    if (node.userData.interact) return true;
+    if (node === root) break;
+  }
+  return false;
+}
+
 function hiddenByAncestor(object: THREE.Object3D, root: THREE.Object3D): boolean {
   for (let node: THREE.Object3D | null = object.parent; node && node !== root; node = node.parent) {
     if (!node.visible) return true;
@@ -40,7 +48,7 @@ export function mergeOpaqueModelMeshes(root: THREE.Group): number {
 
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh) || object instanceof THREE.SkinnedMesh || object instanceof THREE.InstancedMesh) return;
-    if (!object.visible || hiddenByAncestor(object, root) || object.userData.interact || belongsToMovingDoor(object, root)) return;
+    if (!object.visible || hiddenByAncestor(object, root) || belongsToInteractiveObject(object, root) || belongsToMovingDoor(object, root)) return;
     if (Array.isArray(object.material) || object.material.transparent || object.material.opacity < 1 || object.material.alphaTest > 0) return;
     if (Object.keys(object.geometry.morphAttributes).length > 0) return;
     // A reflection reverses triangle winding. Keep mirrored meshes intact rather than batch them with a changed face side.
