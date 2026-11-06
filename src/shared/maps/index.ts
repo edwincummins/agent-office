@@ -3,6 +3,7 @@ import {resolveSlots} from '../fixtures/index.js';
 import {STOCK_SLOTS} from '../fixtures/stock.js';
 import {checkLevels} from '../levels/plan.js';
 import {attachLevels} from '../levels/attach.js';
+import {attachTravel} from '../travel/config.js';
 import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
@@ -406,7 +407,7 @@ export function planMap(input: unknown): MapPlan {
   if(fixtures.slots.gong&&props.some(p=>p.kind==='gong'))throw new MapError('Use a gong fixture or legacy gong prop, not both');
   if(fixtures.slots.lounge)seating.push(...loungeSeats(fixtures.slots.lounge));
   if(fixtures.slots.services){const p=fixtures.slots.services;boards.services={...boards.services,...p.position,rotY:p.rotY,width:p.size.width,height:p.size.height};}
-  return attachLevels({
+  return attachTravel(attachLevels({
     ...fixtures,
     id,
     name,
@@ -438,7 +439,7 @@ export function planMap(input: unknown): MapPlan {
     ...(airlock ? { airlock } : {}),
     ...(openings ? { openings } : {}),
     ...(sendHome ? { sendHome } : {}),
-  });
+  }));
 }
 
 // ---- Which maps there are -------------------------------------------------------------------------

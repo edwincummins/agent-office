@@ -401,3 +401,25 @@ Colours must be six-digit hex. Finite intensities are clamped to 0–2; zero dis
 The optional `officeEffects.scene` object accepts `environmentIntensity` (finite, clamped 0–2), `background` (`#RRGGBB`), and `fog: {color, near, far}` (hex colour; 0 <= near < far <= 1000 metres). Put fog beyond the room to keep interiors clear. Omitted fields retain existing behavior; leaving restores the previous scene references and environment intensity. This uses the current environment texture and never loads a remote environment. Sign materials with their own environment remain independent.
 
 The optional scene environmentTint is a hex colour multiplying the existing CubeUV PMREM once into a disposable linear half-float copy. It adds no steady-frame pass, never mutates the source, and restores it on exit. Other environment types remain unchanged. No HDR file or URL is loaded.
+
+## Named travel configuration
+
+A custom map may add an optional `travel` object. All coordinates and names belong in that map file; the client has no map-specific destinations. Omitting `travel` preserves the map's existing behavior and config; Home is not handled, while J still lists project floors and other maps.
+
+```json
+{
+  "travel": {
+    "home": {"x": 2, "y": 0, "z": 3, "rotY": 0},
+    "visitorHome": {"x": 1, "y": 0, "z": 1, "rotY": 0},
+    "places": [
+      {"id": "library", "name": "Library", "icon": "📚", "group": "Ground floor", "description": "Reading tables", "at": {"x": -2, "y": 0, "z": 2, "rotY": 0}}
+    ]
+  }
+}
+```
+
+`home` is the owner's standing arrival. `visitorHome` is the separate arrival offered to other accounts (and to the owner if no `home` exists). Omit it to leave visitor Home unavailable. Home uses the active map name as its label. Named-place headings combine that map name with their optional group. No seat ID, seated pose, or chair permission is accepted: seated Home requires a separately implemented, authorized seat interaction.
+
+The schema rejects unknown keys, non-finite coordinates, coordinates beyond the map bounds (including a 0.32 m body margin), insufficient headroom, and elevated arrivals without a declared level beneath them. `rotY` is radians within ±2π. Named places are limited to 32; IDs are unique lowercase letters/digits/dashes (first character a letter, 40 characters maximum), with `home`, `roof`, and `garage` reserved. Names and groups are capped at 60 characters, icons at 8, descriptions at 160; empty text and control characters are rejected.
+
+At travel time the client checks physical colliders, supporting floor height, and other people. Inside map bounds, an absent ground collider uses the base floor at y = 0; elevated arrivals still require supporting geometry, and blockers remain enforced. If the exact arrival is occupied, it checks nearby points up to 1.5 m away on the same level, otherwise refuses the trip. Worker occupancy is not checked. These convenience destinations do not grant access privileges. Changing maps still affects everyone and stays outside the travel menu.

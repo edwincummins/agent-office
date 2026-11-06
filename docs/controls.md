@@ -49,3 +49,13 @@ The prompt edits the way it does in your own terminal (iTerm2's *Natural Text Ed
 | ⌘ + ← / → | Jump to the start / end of the line (Mac) |
 
 In third-person view, walls and other collision boxes pull the camera closer so they do not cover your character. The camera eases back to the selected zoom distance when the path clears. First-person view is unchanged.
+
+## Named travel
+
+**J** or the square compass button beside Workers opens Go to. Use arrow keys and Enter, or 1–9 for the first nine rows. The current destination is disabled and marked “you are here”. Close with the top-right ✕ or Esc to resume mouse-look.
+
+**Home** uses the active map's optional `travel.home` standing arrival for the owner. Visitors use `travel.visitorHome` when configured. This never sits the player or grants chair permissions. Labels follow the active map name and its named-place configuration. Trips stop walking and active activities; a clear arrival within 1.5 m is used if needed, and travel is refused when none is clear or a lift ride is active. Home and J respect the existing text-entry, terminal and modal key guards.
+
+Project-floor travel uses the existing floor switch and elevator behavior. The rooftop and garage are offered on the stock office map, where those destinations exist. Other maps are visible but disabled: changing the map changes the building for everyone, so use Settings. Home is unavailable when the active map does not configure an arrival for you; it never switches maps. The existing double-click teleport behavior is unchanged.
+
+The travel menu adds **0 scene draw calls**: it is DOM UI only. Headless UI checks do not establish GPU frame rate in a populated scene. Configure destinations with the [map travel slot](maps.md#named-travel-configuration).
