@@ -11,6 +11,7 @@ import { pageRoutes } from './pages.js';
 import { searchRoutes } from './search.js';
 import { serviceRoutes } from './services.js';
 import { cadreWebRoute } from '../../fleet/web.js';
+import { cadreShowApi, cadreShowPage } from '../../fleet/showcase.js';
 import { mapModelRoute } from './map-model.js';
 import {onboardingRoutes} from '../../onboarding/routes.js';
 
@@ -33,6 +34,8 @@ export const routes: readonly Route[] = [
   // Signed in.
   authRoutes.whoami,
   cadreWebRoute,
+  cadreShowPage,
+  cadreShowApi,
   mapModelRoute,
   ownerRoute(agentRoutes.models),
   fileRoutes.image,

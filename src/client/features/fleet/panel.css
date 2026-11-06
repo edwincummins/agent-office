@@ -72,3 +72,4 @@
 .cw-tile .cadre-tail.cadre-screen{white-space:pre;overflow-wrap:normal;background:var(--cw-term)}
 .cw-tile .cadre-tail.cadre-hidden{display:flex;align-items:center;justify-content:center;color:var(--cw-dim);font:600 15px 'Segoe UI',sans-serif}
 @media(max-width:800px){.cw{grid-template-columns:1fr}.cw-rail{display:none}.cw-grid{grid-template-columns:1fr!important}}
+.cadre-eye a.cadre-eye-preview{margin-top:6px;padding:6px 8px;color:#d8b25a;text-decoration:none;border-top:1px solid #2c3036}.cadre-eye a.cadre-eye-preview:hover{text-decoration:underline}

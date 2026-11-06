@@ -35,7 +35,8 @@ export function maskText(text: string): string {
     .replace(/\b(Bearer|token|apikey|api_key|secret|password|passwd|pwd)(\s*[:=]\s*|\s+)("?)[^\s"']{4,}\3/gi, '$1$2‹hidden›')
     .replace(/\b(sk|pk|rk)-[A-Za-z0-9_-]{12,}/g, '‹key›')
     .replace(/\b(ghp|gho|ghu|ghs|github_pat|xox[abprs]|AKIA|AIza|glpat)[A-Za-z0-9_-]{10,}/g, '‹key›')
-    .replace(/\b[A-Za-z0-9+/_-]{32,}={0,2}/g, '‹key›')
+    // Long key-like runs (with a digit, no slashes or dots): file paths and names stay readable.
+    .replace(/\b(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{32,}={0,2}/g, '‹key›')
     .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '‹email›')
     .replace(/(?:\\\\\?\\)?[A-Za-z]:\\[^\s"'<>|]*/g, '‹path›')
     .replace(/(?:~|\/(?:home|Users|mnt|root))\/[^\s"'<>|]*/g, '‹path›');

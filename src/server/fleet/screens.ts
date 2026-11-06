@@ -73,7 +73,7 @@ export class ScreenWatcher {
   /** Every followed seat's current screen, for someone who just opened the view. */
   all(): Record<string, FleetScreen> {
     const out: Record<string, FleetScreen> = {};
-    for (const [seat, w] of this.watches) if (w.term) out[seat] = { cols: w.cols, lines: screenOf(w.term) };
+    for (const [seat, w] of this.watches) if (w.term) out[seat] = { cols: w.cols, rows: w.rows, lines: screenOf(w.term) };
     return out;
   }
 
@@ -81,7 +81,7 @@ export class ScreenWatcher {
 
   private flush() {
     const out: Record<string, FleetScreen> = {};
-    for (const [seat, w] of this.watches) if (w.dirty && w.term) { w.dirty = false; out[seat] = { cols: w.cols, lines: screenOf(w.term) }; }
+    for (const [seat, w] of this.watches) if (w.dirty && w.term) { w.dirty = false; out[seat] = { cols: w.cols, rows: w.rows, lines: screenOf(w.term) }; }
     if (Object.keys(out).length) this.emit(out);
   }
 

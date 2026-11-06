@@ -9,7 +9,8 @@ import { ScreenWatcher, maskScreen } from './screens.js';
 import { cadreWeb } from './web.js';
 import type { FleetGuestSettings, FleetScreen } from '../../shared/protocol/fleet.js';
 
-const feeds=new WeakMap<Ctx,{subscribe:(client:Client)=>void;remove:(client:Client)=>void;setGuests:(client:Client,settings:FleetGuestSettings)=>void;screens:(client:Client,on:boolean)=>void}>();
+const feeds=new WeakMap<Ctx,{subscribe:(client:Client)=>void;remove:(client:Client)=>void;setGuests:(client:Client,settings:FleetGuestSettings)=>void;screens:(client:Client,on:boolean)=>void;
+  guests:()=>FleetGuestSettings;seatTeam:(seat:string)=>string|null;stream:(seat:string,write:(s:FleetScreen)=>void)=>(()=>void)|null}>();
 /** Shared-password guests are admins elsewhere, but never receive private fleet data. */
 export const maySeeFleet=(ctx:Pick<Ctx,'cfg'|'accounts'>,c:Pick<Client,'accountId'|'out'>)=>!c.out&&!!cadreOwner(ctx,c.accountId);
 
@@ -38,14 +39,17 @@ export function installFleet(ctx:Ctx):()=>void {
     for(const [seat,sc] of Object.entries(all))if(guestSeat(seat))out[seat]={cols:sc.cols,lines:maskScreen(sc.lines)};
     return out;
   };
+  // Live tiles of the read-only Cadre showcase (showcase.ts) follow their seats here too.
+  const streamers=new Map<string,Set<(s:FleetScreen)=>void>>();
   const screenWatch=new ScreenWatcher(()=>{try{return cadreWeb(ctx.cfg.dataDir);}catch{return null;}},all=>{
+    for(const [seat,sc] of Object.entries(all))for(const w of streamers.get(seat)??[])w(sc);
     for(const c of viewers){if(c.out){viewers.delete(c);continue;}const mine=forClient(c,all);if(Object.keys(mine).length)ctx.sendTo(c,{t:'fleet.screens',screens:mine});}
   });
   const refollow=()=>{
     for(const c of viewers)if(c.out||(!subscribers.has(c)&&!watchers.has(c)))viewers.delete(c);
     const running=(poller.state?.seats??[]).filter(s=>s.state!=='stopped').map(s=>s.session);
     const owner=[...viewers].some(c=>subscribers.has(c)),guest=[...viewers].some(c=>watchers.has(c));
-    screenWatch.follow(running.filter(seat=>owner||(guest&&guestSeat(seat))));
+    screenWatch.follow([...new Set([...running.filter(seat=>owner||(guest&&guestSeat(seat))),...[...streamers.keys()].filter(s=>running.includes(s))])]);
   };
   const poller=new FleetPoller(signal=>runFleet(command!,signal),state=>{
     check();for(const c of subscribers)ctx.sendTo(c,{t:'fleet',state});sendGuests();refollow();
@@ -57,6 +61,15 @@ export function installFleet(ctx:Ctx):()=>void {
       else{watchers.add(c);ctx.sendTo(c,{t:'fleet',state:guestCopy(),guest:true});}
     },
     remove:c=>{subscribers.delete(c);watchers.delete(c);if(viewers.delete(c))refollow();},
+    guests:()=>guests,
+    seatTeam:seat=>poller.state?.seats.find(s=>s.session===seat)?.rig??null,
+    stream:(seat,write)=>{
+      if(!(poller.state?.seats??[]).some(s=>s.session===seat&&s.state!=='stopped'))return null;
+      let set=streamers.get(seat);if(!set)streamers.set(seat,set=new Set());
+      set.add(write);refollow();
+      const now=screenWatch.all()[seat];if(now)write(now);
+      return ()=>{set!.delete(write);if(!set!.size)streamers.delete(seat);refollow();};
+    },
     screens:(c,on)=>{
       if(!on){if(viewers.delete(c))refollow();return;}
       if(!subscribers.has(c)&&!watchers.has(c))return;
@@ -81,3 +94,6 @@ export function subscribeFleet(ctx:Ctx,c:Client){feeds.get(ctx)?.subscribe(c);}
 export function leaveFleet(ctx:Ctx,c:Client){feeds.get(ctx)?.remove(c);}
 export function setFleetGuests(ctx:Ctx,c:Client,msg:{settings:FleetGuestSettings}){feeds.get(ctx)?.setGuests(c,msg.settings);}
 export function fleetScreens(ctx:Ctx,c:Client,msg:{on:boolean}){feeds.get(ctx)?.screens(c,msg.on===true);}
+export const fleetGuestSettings=(ctx:Ctx)=>feeds.get(ctx)?.guests()??loadGuests(ctx.cfg.dataDir);
+export const fleetSeatTeam=(ctx:Ctx,seat:string)=>feeds.get(ctx)?.seatTeam(seat)??null;
+export const openScreenStream=(ctx:Ctx,seat:string,write:(s:FleetScreen)=>void)=>feeds.get(ctx)?.stream(seat,write)??null;

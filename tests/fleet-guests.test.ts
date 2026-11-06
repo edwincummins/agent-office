@@ -45,3 +45,8 @@ test('guests may subscribe, only the owner may change what they see', () => {
   assert.equal(visitorMessage('fleet.subscribe'), true);
   assert.equal(visitorMessage('fleet.guests'), false);
 });
+
+test('file paths and names stay readable; long keys still go', () => {
+  assert.equal(maskText('openrig-operating-model/scripts/compose.py'), 'openrig-operating-model/scripts/compose.py');
+  assert.equal(maskText('a3f9c2e1b7d4058e6a1c9f2b3d4e5f60a1b2c3d4'), '‹key›');
+});

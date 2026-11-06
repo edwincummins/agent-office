@@ -24,7 +24,8 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
       row('Terminals',s.terminals,()=>({...s,terminals:!s.terminals})),
       row('Gold cards',s.cards,()=>({...s,cards:!s.cards})),
       h('div.cadre-eye-head',{},'Teams guests can watch'),
-      ...teams.map(t=>row(t,s.teams[t]===true,()=>({...s,teams:{...s.teams,[t]:s.teams[t]!==true}}))));
+      ...teams.map(t=>row(t,s.teams[t]===true,()=>({...s,teams:{...s.teams,[t]:s.teams[t]!==true}}))),
+      h('a.cadre-eye-preview',{href:'/api/cadre/show?as=guest',target:'_blank',rel:'noopener'},'Preview as a guest ↗'));
   };
   const eye=h('button.cadre-eye-toggle',{title:'What watchers can see','aria-haspopup':'menu',onclick:(e:Event)=>{e.stopPropagation();eyeBar.hidden=!eyeBar.hidden;drawEye();}},'👁 Guests ▾');
   const eyeWrap=h('div.cadre-eye-wrap',{},eye,eyeBar);
@@ -84,6 +85,9 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
     rows.append(h('div.cw',{},rail,h('div.cw-main',{},head,...bars,grid)));
     for(const pre of rows.querySelectorAll<HTMLElement>('.cadre-tail'))pre.scrollTop=pre.scrollHeight;
   };
+  // Guests, and Fetty off the PC, get the real Cadre read-only (server fleet/showcase.ts); the lookalike shows meanwhile.
+  let showMode=false,showRetry:ReturnType<typeof setTimeout>|undefined;
+  const loadShow=()=>{showMode=true;showRetry=undefined;connectionAttempted=true;frame?.remove();lastAlive=Date.now();frame=h('iframe',{title:'Cadre (read-only)',src:'/api/cadre/show',sandbox:'allow-scripts allow-same-origin',referrerpolicy:'no-referrer',hidden:true});content.append(frame);};
   const load=()=>{connectionAttempted=true;frame?.remove();lastAlive=Date.now();frame=h('iframe',{title:'Cadre connection',src:'/api/cadre/embed',sandbox:'allow-scripts allow-same-origin allow-forms',referrerpolicy:'no-referrer',hidden:true});content.append(frame);};
   const recovery=reconnect(async signal=>{
     const response=await fetch('/api/cadre/health',{cache:'no-store',signal});
@@ -97,7 +101,8 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
     retryTimer=setTimeout(async()=>{await recovery.tick();retryTimer=undefined;scheduleRetry();},delay);
   };
   const message=(event:MessageEvent)=>{
-    if(opts.guest||!frame||store.me.account?.role!=='admin'||event.source!==frame.contentWindow||event.origin!==location.origin)return;
+    if(!frame||event.source!==frame.contentWindow||event.origin!==location.origin)return;
+    if(!showMode&&(opts.guest||store.me.account?.role!=='admin'))return;
     if(event.data?.type==='cadre.web.connected'||event.data?.type==='cadre.web.heartbeat'){
       recovery.connected();lastAlive=Date.now();frame.hidden=false;body.hidden=true;
     }
@@ -109,14 +114,16 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts
     if(opts.guest&&!snapshot()){modal.close();return;}
     render();if(!eyeBar.hidden)drawEye();
     watchView();const sv=opts.screens?.();if(sv&&sv.version!==painted)paint();
+    if(showMode){if((!frame||Date.now()-lastAlive>10000)&&!showRetry){frame?.remove();frame=undefined;body.hidden=false;showRetry=setTimeout(loadShow,5000);}return;}
     if(connectionAttempted&&(!frame||Date.now()-lastAlive>6000)){frame?.remove();frame=undefined;body.hidden=false;notice.textContent='Read-only preview · Reconnecting…';recovery.waiting();}
     scheduleRetry();
   },1000);
-  const modal=openModal(content,{onClose:()=>{closed=true;document.removeEventListener('pointerdown',closeEye,true);if(watching){watching=false;opts.watch?.(false);}recovery.close();clearTimeout(retryTimer);clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
+  const modal=openModal(content,{onClose:()=>{closed=true;document.removeEventListener('pointerdown',closeEye,true);if(watching){watching=false;opts.watch?.(false);}recovery.close();clearTimeout(retryTimer);clearInterval(timer);clearTimeout(showRetry);window.removeEventListener('message',message);frame?.remove();}});
   render();
-  if(opts.guest)return modal;
+  if(opts.guest){loadShow();return modal;}
   void fetch('/api/cadre/web',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
-    if(closed||store.me.account?.role!=='admin'||!config?.available){if(config?.reason)notice.textContent=`Read-only preview. ${config.reason}`;return;}
+    if(closed)return;
+    if(store.me.account?.role!=='admin'||!config?.available){loadShow();return;}
     load();
   }).catch(()=>{notice.textContent='Read-only preview. Cadre Web could not be reached.';});
   return modal;
