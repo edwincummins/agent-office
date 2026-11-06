@@ -10,7 +10,7 @@ export function installModelEffects(ctx: Ctx) {
   let budget = new EffectsBudget();
   let studio: THREE.WebGLRenderTarget | null = null;
   let restore: (() => void) | null = null;
-  const clear = () => { restore?.(); restore = null; bloom?.dispose(); bloom = null; studio?.dispose(); studio = null; root = null; };
+  const clear = () => { if (root) delete root.userData.officeEffectsRuntime; restore?.(); restore = null; bloom?.dispose(); bloom = null; studio?.dispose(); studio = null; root = null; };
   // Restore before model-map's HUD hook restores the stock renderer on departure.
   ctx.ticks.add('pre', () => {
     if (root && (ctx.upTop() || !ctx.world().group.getObjectById(root.id))) clear();
@@ -25,6 +25,7 @@ export function installModelEffects(ctx: Ctx) {
     if (root) {
       budget.frame(delta, !document.hidden);
       if (budget.reduced && ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
+      root.userData.officeEffectsRuntime = { bloom: budget.bloom, reducedResolution: budget.reduced };
     }
   });
   ctx.view.add({ filter: {
