@@ -164,8 +164,8 @@ export function planMap(input: unknown): MapPlan {
   const model = style === 'model' ? checkModel(c.model, bounds, height,[...MAP_DESKS,...BEANBAGS].map(d=>checkedLevels?.floors.find(f=>f.id===checkedLevels.seats[d.id])?.y??0)) : undefined;
   if (model) {
     if(c.tables?.length || c.throne || c.herald || c.dungeon || c.lineup || c.sendHome || c.airlock) throw new MapError('model maps use explicit seats and walls; remove tables, throne, herald, dungeon, lineup, sendHome and airlock');
-    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
-    rects.push(...model.walls.map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
+    if(model.source)rects.push(...(model.platforms??[]).filter(w=>w.top>.3 && (w.bottom??0)<1.7).map(w=>[w.minX,w.maxX,w.minZ,w.maxZ] as Rect));
+    rects.push(...model.walls.filter(w=>(w.bottom??0)<1.7).map(w => [w.minX, w.maxX, w.minZ, w.maxZ] as Rect));
     if(!model.source)rects.push(...model.seats.slice(0,20).map(s=>boxFootprint(s.x,s.z,1.6,.8,s.rotY)));
     rects.push(...(model.lounges??[]).map(s=>boxFootprint(s.x,s.z,.6,1.2,0)));
   }

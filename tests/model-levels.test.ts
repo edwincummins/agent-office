@@ -100,3 +100,11 @@ test('source council chairs remain obstacles, with only the destination exempted
   const chair = c.model!.source!.council[0];
   assert.equal(nav.clearLine([chair.x - 1, chair.z], [chair.x + 1, chair.z]), false);
 });
+
+test('overhead model solids do not block ground spawn or door validation', () => {
+ const c = structuredClone(TWO_LEVEL_MODEL);
+ c.model!.walls = [{minX:-13,maxX:13,minZ:-20,maxZ:20,bottom:6,top:7}];
+ assert.doesNotThrow(()=>planMap(c));
+ c.model!.walls[0].bottom=0;
+ assert.throws(()=>planMap(c));
+});
