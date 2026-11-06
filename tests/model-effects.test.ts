@@ -1,3 +1,4 @@
+import { applyModelLights } from '../src/client/features/model-effects/lighting.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EffectsBudget, modelEffects, modelSurface } from '../src/client/features/model-effects/profile.ts';
@@ -61,4 +62,27 @@ test('leaving an opted-in model restores renderer settings and disables the filt
     if (oldDocument) Object.defineProperty(globalThis, 'document', oldDocument);
     else Reflect.deleteProperty(globalThis, 'document');
   }
+});
+
+test('room light profile clamps finite intensities and rejects malformed values', () => {
+  const lights = { hemi: { sky: '#ffd9a8', ground: '#2a2d33', intensity: -5 }, directional: { color: '#ffb46b', intensity: 99 } };
+  const parsed = modelEffects({ ...profile, lights })!;
+  assert.equal(parsed.lights!.hemi.intensity, 0); assert.equal(parsed.lights!.directional.intensity, 2);
+  for (const bad of [null, {}, { ...lights, extra: true }, { ...lights, directional: { color: 'red', intensity: 1 } }, { ...lights, hemi: { ...lights.hemi, intensity: NaN } }]) assert.equal(modelEffects({ ...profile, lights: bad }), null);
+  assert.equal(modelEffects(profile)!.lights, undefined);
+});
+test('room lights replace daylight on every mood tick and restore colours/intensities on leave', () => {
+  const hemi = new THREE.HemisphereLight('#aabbcc', '#112233', .65), sun = new THREE.DirectionalLight('#ffeedd', 1.8);
+  const original = () => { hemi.intensity = .65; sun.intensity = 1.8; };
+  const world = { mood: original };
+  const old = [hemi.color.getHex(), hemi.groundColor.getHex(), sun.color.getHex()];
+  const restore = applyModelLights(world as never, { hemi: { sky: '#ffd9a8', ground: '#2a2d33', intensity: .45 }, directional: { color: '#ffb46b', intensity: .5 } });
+  for (let i = 0; i < 3; i++) {
+    (world.mood as Function)({ hemi, sun }, 1, 0);
+    assert.equal(hemi.intensity, .45); assert.equal(sun.intensity, .5);
+    assert.equal(sun.color.getHex(), 0xffb46b);
+  }
+  restore(); assert.equal(world.mood, original);
+  assert.deepEqual([hemi.color.getHex(), hemi.groundColor.getHex(), sun.color.getHex()], old);
+  assert.equal(hemi.intensity, .65); assert.equal(sun.intensity, 1.8);
 });

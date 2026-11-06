@@ -327,3 +327,11 @@ A model that includes its own desks and chairs can provide `model.source`: `chai
 `model.screen: null` omits the legacy presentation plane when a separate fixture supplies the TV. In source-furniture mode, platforms higher than 0.3 m also block navigation, so source tables can be represented without treating them as full-height walls.
 
 Authored chairs use a finer navigation grid and collision-checked side approaches. If no safe approach exists, a newly hired worker appears seated and a departing worker finishes at its chair; neither walks through a wall. Validate inbound and outbound routes for every authored chair, including the last hop, before distributing a local map. Fixture installation preserves the model's navigation factory when rebuilding around additional obstacles.
+
+The optional `officeEffects.lights` profile replaces the model's existing daylight contribution, without adding lights or shadow passes:
+
+```json
+{"hemi":{"sky":"#ffd9a8","ground":"#2a2d33","intensity":0.45},"directional":{"color":"#ffb46b","intensity":0.5}}
+```
+
+Colours must be six-digit hex. Finite intensities are clamped to 0–2; zero disables that contribution. Invalid shapes, non-finite numbers and unknown fields reject the profile. The directional setting reuses the existing sun light as the room's directional light, so no daylight sun remains in addition to it. Omit `lights` to keep the map's existing mood unchanged. Colours and intensities, and the original mood callback, are restored when leaving the model. Environment reflections remain unchanged.

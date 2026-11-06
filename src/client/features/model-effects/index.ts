@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Ctx } from '../../core/context';
 import { ModelBloom } from './filter';
+import { applyModelLights } from './lighting';
 import { EffectsBudget, modelEffects, modelSurface } from './profile';
 
 export function installModelEffects(ctx: Ctx) {
@@ -63,11 +64,13 @@ export function installModelEffects(ctx: Ctx) {
       }
     });
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = profile.exposure;
+    const restoreLights = profile.lights ? applyModelLights(ctx.world(), profile.lights) : undefined;
     bloom = new ModelBloom(renderer, profile);
     bloom.prepare(ctx.scene, ctx.camera);
     restore = () => {
       renderer.toneMapping = tone; renderer.toneMappingExposure = exposure; renderer.setPixelRatio(ratio);
       materialRestores.forEach(fn => fn());
+      restoreLights?.();
     };
   }
 }
