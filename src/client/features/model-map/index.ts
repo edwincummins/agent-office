@@ -41,7 +41,7 @@ export function installModelMap(ctx: Ctx) {
     }
     if(!surfaces)return;
     ctx.world().group.traverse(o=>{if(o instanceof THREE.Mesh)for(const mat of Array.isArray(o.material)?o.material:[o.material]){
-      if(!outlines.has(mat)){outlines.set(mat,mat.userData.outlineParameters);mat.userData.outlineParameters={visible:false};}
+      if(!outlines.has(mat)){outlines.set(mat,mat.userData.outlineParameters);mat.userData.outlineParameters={visible:false};if(mat.userData.localModel)for(const value of Object.values(mat))if(value instanceof THREE.Texture){value.anisotropy=Math.min(8,ctx.renderer.capabilities.getMaxAnisotropy());value.needsUpdate=true;}}
     }});
     const tv=ctx.office.tvScreen.material as THREE.MeshBasicMaterial;
     for(const [mesh,map] of [[surfaces.screen,tv.map instanceof THREE.VideoTexture?tv.map:idle],[surfaces.whiteboard,whiteboardTexture]] as const){

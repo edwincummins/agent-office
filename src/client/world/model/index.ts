@@ -79,7 +79,7 @@ export function buildModel(plan: MapPlan): World {
       if(!(o instanceof THREE.Mesh)) return;
       o.geometry.computeBoundingSphere(); o.frustumCulled=true;
       for(const m of Array.isArray(o.material)?o.material:[o.material]) {
-        m.userData.outlineParameters={visible:false};m.fog=false;
+        m.userData.localModel=true;m.userData.outlineParameters={visible:false};m.fog=false;
         if(!(m instanceof THREE.MeshStandardMaterial)) continue;
         const n=m.name.toLowerCase();
         if(n.includes('glass')) {const interior=n.includes('interior')||n.includes('partition');m.transparent=true;m.opacity=interior?.13:.3;m.depthWrite=false;m.color.set(interior?'#c4c6c5':'#91b7c5');m.roughness=.05;m.metalness=0;m.normalMap=null;m.side=THREE.DoubleSide;m.forceSinglePass=true;}
