@@ -25,3 +25,9 @@
 .cadre-grid{flex:1;min-height:0;grid-auto-rows:minmax(260px,1fr)}.cadre-grid .cadre-team{margin:0;display:flex;flex-direction:column;min-height:0}
 .cadre-grid .cadre-tail{flex:1;min-height:0;max-height:none}
 .cadre-grid .cadre-tail{white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:auto}
+/* The owner's privacy eye bar. */
+.cadre-eye-toggle{margin-left:auto}
+.cadre-eye{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid #22252a;background:#0d0e10;font:14px 'Segoe UI',sans-serif}
+.cadre-eye .cadre-eye-label{color:#c9a24a;font-weight:600;letter-spacing:.04em}
+.cadre-eye button.off{color:#8b8676;text-decoration:line-through}
+.cadre-eye button.on{border-color:#3d6b4f}

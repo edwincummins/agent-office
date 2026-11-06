@@ -19,7 +19,7 @@ test('owner allow-list gates HTTP and fleet; other admins and unset config get n
  const dir=mkdtempSync(path.join(tmpdir(),'cadre-owner-'));
  const accounts=new Map([['owner',{id:'owner',name:'Synthetic owner',role:'admin'}],['other',{id:'other',name:'Other admin',role:'admin'}]]);
  const received:{client:Client;state:unknown}[]=[];
- const ctx={cfg:{dataDir:dir,port:0},accounts:{get:(id:string)=>accounts.get(id)},auth:{fromRequest:(req:any)=>req.headers['x-test-account']?{account:accounts.get(req.headers['x-test-account'])}:undefined},sendTo:(client:Client,message:any)=>received.push({client,state:message.state})} as unknown as Ctx;
+ const ctx={cfg:{dataDir:dir,port:0},accounts:{get:(id:string)=>accounts.get(id)},auth:{fromRequest:(req:any)=>req.headers['x-test-account']?{account:accounts.get(req.headers['x-test-account'])}:undefined},sendTo:(client:Client,message:any)=>received.push({client,state:message.state,guest:message.guest,t:message.t})} as unknown as Ctx;
  const config=(allow?:unknown)=>writeFileSync(path.join(dir,'config.json'),JSON.stringify({cadre:{ownerAllowlist:allow,fleetCommand:[process.execPath,'-e','console.log(JSON.stringify({teams:[],seats:[],needs:[],tasks:{}}))']}}));
  config([{id:'owner'}]);const server=createServer(requestHandler(ctx,[cadreWebRoute]));const port=await listen(server);const base=`http://127.0.0.1:${port}`;ctx.cfg.port=port;
  let stop=installFleet(ctx);
@@ -31,14 +31,16 @@ test('owner allow-list gates HTTP and fleet; other admins and unset config get n
   }
   const owner={accountId:'owner'} as Client,other={accountId:'other'} as Client;
   subscribeFleet(ctx,other);subscribeFleet(ctx,owner);
-  assert.equal(received.length,1);assert.equal(received[0].client,owner);
+  // 11-06: a non-owner now watches a filtered, masked guest copy (fleet/guests.ts); only the owner gets the real feed.
+  assert.ok(received.filter(r=>r.client===other).every(r=>(r as any).guest===true));
+  assert.ok(received.some(r=>r.client===owner&&!(r as any).guest));
   assert.equal((await fetch(base+'/api/cadre/web',{headers:{'x-test-account':'owner'}})).status,200);
   assert.equal((await fetch(base+'/api/cadre/open',{method:'POST',headers:{'x-test-account':'owner',Origin:base}})).status,200);
   const audit=JSON.parse(readFileSync(path.join(dir,'cadre-audit.jsonl'),'utf8').trim());assert.equal(audit.accountId,'owner');assert.equal(audit.event,'panel.open');
   config();assert.equal(cadreOwner(ctx,'owner'),undefined);
   assert.equal((await fetch(base+'/api/cadre/web',{headers:{'x-test-account':'owner'}})).status,403);
-  const count=received.length;subscribeFleet(ctx,other);subscribeFleet(ctx,owner);assert.equal(received.length,count);
-  stop();stop=installFleet(ctx);subscribeFleet(ctx,owner);assert.equal(received.length,count);
+  const count=received.filter(r=>!(r as any).guest).length;subscribeFleet(ctx,other);subscribeFleet(ctx,owner);assert.equal(received.filter(r=>!(r as any).guest).length,count);
+  stop();stop=installFleet(ctx);subscribeFleet(ctx,owner);assert.equal(received.filter(r=>!(r as any).guest).length,count);
   config([{name:'Synthetic owner'}]);assert.equal(cadreOwner(ctx,'owner'),undefined);assert.equal(cadreOwner(ctx,'other'),undefined);
  }finally{stop();await close(server);rmSync(dir,{recursive:true,force:true});}
 });
@@ -132,6 +134,6 @@ test('screen content is sent only to the allow-listed owner, including subsequen
  try{
   for(const id of ['owner','other',undefined])subscribeFleet(ctx,{accountId:id} as Client);
   for(let i=0;i<100&&!JSON.stringify(received).includes('OWNER SCREEN ONLY');i++)await new Promise(r=>setTimeout(r,20));
-  assert.ok(JSON.stringify(received).includes('OWNER SCREEN ONLY'));assert.ok(received.every(r=>r.id==='owner'));
+  assert.ok(JSON.stringify(received).includes('OWNER SCREEN ONLY'));assert.ok(received.filter(r=>JSON.stringify(r.message).includes('OWNER SCREEN ONLY')).every(r=>r.id==='owner'));
  }finally{stop();rmSync(dir,{recursive:true,force:true});}
 });

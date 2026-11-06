@@ -7,5 +7,8 @@ export interface FleetSnapshot {
   seats:FleetSeat[];
   needs:FleetNeed[];
 }
-export type FleetClientMsg = {t:'fleet.subscribe'};
-export type FleetServerMsg = {t:'fleet'; state:FleetSnapshot|null};
+/** The owner's privacy eye: which teams guests may watch, and whether they see live terminals and his gold cards. */
+export interface FleetGuestSettings { terminals:boolean; cards:boolean; teams:Record<string,boolean> }
+export type FleetClientMsg = {t:'fleet.subscribe'} | {t:'fleet.guests'; settings:FleetGuestSettings};
+/** `guest` marks a filtered, read-only copy; `guests` reaches only the owner. */
+export type FleetServerMsg = {t:'fleet'; state:FleetSnapshot|null; guest?:boolean} | {t:'fleet.guests'; settings:FleetGuestSettings};

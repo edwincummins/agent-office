@@ -1,17 +1,32 @@
 import './panel.css';
 import {reconnect} from './reconnect';
-import type { FleetSnapshot } from '../../../shared/protocol/fleet';
+import type { FleetGuestSettings, FleetSnapshot } from '../../../shared/protocol/fleet';
 import { h,openModal } from '../../ui/dom';
 import { store } from '../../state';
 import { fleetColors } from './draw';
 
 /** The fallback is a data viewer. Interactive work remains in the separately hosted Cadre app. */
-export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
-  const notice=h('p.cadre-notice',{},'Read-only preview. Live Cadre is not connected yet (Cadre Web).');
+export interface FleetPanelOptions { guest:boolean; guests:()=>FleetGuestSettings|null; setGuests:(s:FleetGuestSettings)=>void }
+export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void,opts:FleetPanelOptions={guest:false,guests:()=>null,setGuests:()=>{}}) {
+  const notice=h('p.cadre-notice',{},opts.guest?'Watching Cadre, read-only.':'Read-only preview. Live Cadre is not connected yet (Cadre Web).');
+  // The owner's privacy eye (Fetty, 11-06): what guests see, changed live; the office filters on his PC.
+  const eyeBar=h('div.cadre-eye',{hidden:true});
+  const drawEye=()=>{
+    const s=opts.guests();if(!s){eyeBar.replaceChildren(h('span',{},'Guest settings loading…'));return;}
+    const flip=(next:FleetGuestSettings)=>{opts.setGuests(next);};
+    const chip=(label:string,on:boolean,next:()=>FleetGuestSettings)=>h('button',{class:on?'on':'off','aria-pressed':String(on),onclick:()=>flip(next())},`${on?'👁':'🚫'} ${label}`);
+    const teams=[...new Set([...(snapshot()?.teams??[]),...Object.keys(s.teams)])].sort();
+    eyeBar.replaceChildren(h('span.cadre-eye-label',{},'Guests see:'),
+      chip('Terminals',s.terminals,()=>({...s,terminals:!s.terminals})),
+      chip('Gold cards',s.cards,()=>({...s,cards:!s.cards})),
+      h('span.cadre-eye-label',{},'Teams:'),
+      ...teams.map(t=>chip(t,s.teams[t]===true,()=>({...s,teams:{...s.teams,[t]:s.teams[t]!==true}}))));
+  };
+  const eye=h('button.cadre-eye-toggle',{title:'What guests can see',onclick:()=>{eyeBar.hidden=!eyeBar.hidden;drawEye();}},'👁 Guests');
   const rows=h('div');
   const body=h('div.cadre-body',{},notice,rows);
   const content=h('div.modal.cadre-panel',{role:'dialog','aria-label':'Cadre'},
-    h('header',{},h('h2',{},'Cadre'),h('div.cadre-modes',{},h('button',{onclick:()=>{modal.close();services();}},'Services'),h('span.selected',{},'Cadre'))),body);
+    h('header',{},h('h2',{},'Cadre'),...(opts.guest?[]:[eye]),h('div.cadre-modes',{},h('button',{onclick:()=>{modal.close();services();}},'Services'),h('span.selected',{},'Cadre'))),...(opts.guest?[]:[eyeBar]),body);
   let closed=false,connectionAttempted=false,key='',frame:HTMLIFrameElement|undefined,lastAlive=0;
   const render=()=>{
     const state=snapshot(),next=JSON.stringify(state);if(next===key)return;key=next;
@@ -43,7 +58,7 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
     retryTimer=setTimeout(async()=>{await recovery.tick();retryTimer=undefined;scheduleRetry();},delay);
   };
   const message=(event:MessageEvent)=>{
-    if(!frame||store.me.account?.role!=='admin'||event.source!==frame.contentWindow||event.origin!==location.origin)return;
+    if(opts.guest||!frame||store.me.account?.role!=='admin'||event.source!==frame.contentWindow||event.origin!==location.origin)return;
     if(event.data?.type==='cadre.web.connected'||event.data?.type==='cadre.web.heartbeat'){
       recovery.connected();lastAlive=Date.now();frame.hidden=false;body.hidden=true;
     }
@@ -51,13 +66,15 @@ export function openFleet(snapshot:()=>FleetSnapshot|null,services:()=>void) {
   };
   window.addEventListener('message',message);
   const timer=setInterval(()=>{
-    if(store.me.account?.role!=='admin'){modal.close();return;}
-    render();
+    if(!opts.guest&&store.me.account?.role!=='admin'){modal.close();return;}
+    if(opts.guest&&!snapshot()){modal.close();return;}
+    render();if(!eyeBar.hidden)drawEye();
     if(connectionAttempted&&(!frame||Date.now()-lastAlive>6000)){frame?.remove();frame=undefined;body.hidden=false;notice.textContent='Read-only preview · Reconnecting…';recovery.waiting();}
     scheduleRetry();
   },1000);
   const modal=openModal(content,{onClose:()=>{closed=true;recovery.close();clearTimeout(retryTimer);clearInterval(timer);window.removeEventListener('message',message);frame?.remove();}});
   render();
+  if(opts.guest)return modal;
   void fetch('/api/cadre/web',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
     if(closed||store.me.account?.role!=='admin'||!config?.available){if(config?.reason)notice.textContent=`Read-only preview. ${config.reason}`;return;}
     load();

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { FleetSnapshot } from '../../../shared/protocol/fleet';
+import type { FleetGuestSettings, FleetSnapshot } from '../../../shared/protocol/fleet';
 import type { Ctx } from '../../core/context';
 import { boardModes } from '../../core/board-modes';
 import { hintTitle,key } from '../../core/hint';
@@ -30,7 +30,10 @@ export function installFleet(ctx:Ctx) {
   // Cadre's own logo on the sign (and on the board's header, see draw.ts), once the image has loaded.
   cadreLogo.then(img=>{labelPaint.drawImage(img,labelLeft,28,72,72);labelTexture.needsUpdate=true;last='';draw(state);}).catch(()=>{labelPaint.fillStyle='#F0643B';labelPaint.fillRect(labelLeft+12,40,48,48);labelTexture.needsUpdate=true;});
   let authorized=false,permissionRequest=0;
-  const allowed=()=>authorized&&store.me.account?.role==='admin';
+  // Guests watch a filtered, read-only copy the office sends them (server fleet/guests.ts); the owner sets what's in it.
+  let guest=false,guestSettings:FleetGuestSettings|null=null;
+  const owner=()=>authorized&&store.me.account?.role==='admin';
+  const allowed=()=>owner()||(guest&&state!==null);
   const header=document.createElement('canvas');header.width=1024;header.height=250;
   const headerTexture=new THREE.CanvasTexture(header);headerTexture.colorSpace=THREE.SRGBColorSpace;
   const switchMesh=new THREE.Group();
@@ -60,8 +63,9 @@ export function installFleet(ctx:Ctx) {
   };
   const toggle=()=>{if(!allowed())return;selected=!selected;try{writeMode(localStorage,scope,selected);}catch{}apply();};
   const open=async()=>{
-    const response=await fetch('/api/cadre/open',{method:'POST'}).catch(()=>null);
-    if(response?.ok&&allowed()){panel?.close();panel=openFleet(()=>state,()=>{toggle();});}
+    const response=owner()?await fetch('/api/cadre/open',{method:'POST'}).catch(()=>null):null;
+    if(!owner()&&guest&&state){panel?.close();panel=openFleet(()=>state,()=>{toggle();},{guest:true,guests:()=>null,setGuests:()=>{}});return;}
+    if(response?.ok&&allowed()){panel?.close();panel=openFleet(()=>state,()=>{toggle();},{guest:false,guests:()=>guestSettings,setGuests:s=>ctx.net.send({t:'fleet.guests',settings:s})});}
     else {authorized=false;panel?.close();apply();}
   };
   const draw=(next:FleetSnapshot|null)=>{
@@ -86,8 +90,8 @@ export function installFleet(ctx:Ctx) {
   ctx.interactions.define('fleetmode',{reach:9,hint:()=>({k:'switch',parts:[hintTitle('Services | Cadre'),key('E','Switch')]}),use:(it,k)=>{if(k==='E'&&allowed()&&selected!==(it.label==='Cadre'))toggle();}});
   draw(null);
   const sync=()=>{
-    const request=++permissionRequest;authorized=false;panel?.close();draw(null);apply();
-    if(store.me.account?.role!=='admin')return;
+    const request=++permissionRequest;authorized=false;guest=false;panel?.close();draw(null);apply();
+    if(store.me.account?.role!=='admin'){ctx.net.send({t:'fleet.subscribe'});return;}
     void fetch('/api/cadre/web',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
       if(request!==permissionRequest)return;
       authorized=config?.allowed===true;if(allowed())ctx.net.send({t:'fleet.subscribe'});apply();
@@ -96,7 +100,8 @@ export function installFleet(ctx:Ctx) {
   let watching=false;
   ctx.messages.on('welcome',()=>{draw(null);sync();if(!watching){watching=true;ctx.net.onStatus(up=>{if(!up){permissionRequest++;authorized=false;panel?.close();draw(null);apply();}});}});
   store.on('me',sync);
-  ctx.messages.on('fleet',m=>{if(m.state===null)sync();else if(allowed())draw(m.state);});
+  ctx.messages.on('fleet',m=>{if(m.guest){guest=true;authorized=false;draw(m.state);apply();return;}if(m.state===null)sync();else if(allowed())draw(m.state);});
+  ctx.messages.on('fleet.guests',m=>{guestSettings=m.settings;});
   store.on('floor',()=>{if(mesh&&base)mount(base,ctx.world().boardMeshes.services);});
   const initial=ctx.office.boardMeshes.services;
   mount((initial.material as THREE.MeshBasicMaterial).map!,initial);
