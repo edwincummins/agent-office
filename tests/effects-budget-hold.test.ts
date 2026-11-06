@@ -39,11 +39,11 @@ test('healthy frames cannot undo a reduction within sixty seconds; each transiti
   assert.equal(messages.length, 1);
 });
 
-test('recovery requires twenty sustained seconds below fifteen ms after the hold', () => {
+test('recovery requires twenty sustained seconds at or below eighteen ms after the hold', () => {
   const b = shedBloom();
   advance(b, 65, .02); // expires hold, but is not healthy enough to recover
   advance(b, 14, .01); assert.equal(b.bloom, false);
-  advance(b, 4, .018); // breaks healthy-window streak
+  advance(b, 4, .02); // breaks healthy-window streak
   advance(b, 14, .01); assert.equal(b.bloom, false);
   advance(b, 9, .01); assert.equal(b.bloom, true);
 });
@@ -57,8 +57,8 @@ test('entry warm-up and cold/hidden handling remain conservative', () => {
   advance(b, 4, .03); assert.equal(b.bloom, false);
 });
 
-test('fifteen ms average is not below the recovery threshold', () => {
+test('nineteen ms average is above the recovery threshold', () => {
   const b = shedBloom();
-  advance(b, 90, .015);
+  advance(b, 90, .019);
   assert.equal(b.bloom, false);
 });

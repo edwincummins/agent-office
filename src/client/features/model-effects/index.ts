@@ -19,7 +19,7 @@ export function installModelEffects(ctx: Ctx) {
   ctx.ticks.add('pre', () => {
     if (root && (ctx.upTop() || !ctx.world().group.getObjectById(root.id))) clear();
   });
-  ctx.ticks.add('hud', ({ delta }) => {
+  ctx.ticks.add('hud', ({ delta, performance: timing }) => {
     if (ctx.upTop()) return;
     if (!root && ctx.plan().style === 'model') {
       let found: THREE.Object3D | null = null;
@@ -27,12 +27,12 @@ export function installModelEffects(ctx: Ctx) {
       if (found) activate(found);
     }
     if (root) {
-      const change = budget.frame(delta, !document.hidden);
-      if (change) console.info('[model-effects]', change);
+      const change = budget.frame(timing ? timing.rawDelta : delta, !document.hidden, timing ? timing.samples : 1);
+      if (change) console.info('[model-effects]', change, timing ?? { tickDelta: delta, rawDelta: null, renderCpuMs: null, gpuMs: null });
       if (budget.reduced) {
         if (ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
       } else if (ctx.renderer.getPixelRatio() !== originalPixelRatio) ctx.renderer.setPixelRatio(originalPixelRatio);
-      root.userData.officeEffectsRuntime = { bloom: budget.bloom, reducedResolution: budget.reduced };
+      root.userData.officeEffectsRuntime = { bloom: budget.bloom, reducedResolution: budget.reduced, ...(timing ? { timing } : {}) };
     }
   });
   ctx.view.add({ filter: {

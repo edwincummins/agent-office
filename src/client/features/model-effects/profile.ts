@@ -44,13 +44,14 @@ export class EffectsBudget {
   private frames = 0;
   private healthy = 0;
   private slow = 0;
-  frame(seconds: number, visible = true) {
+  frame(seconds: number, visible = true, samples = 1) {
     if (!visible) { this.elapsed = 0; this.frames = 0; this.healthy = 0; this.slow = 0; return; }
-    if (!Number.isFinite(seconds) || seconds <= 0) return;
-    if (seconds <= .25) this.hold = Math.max(0, this.hold - seconds);
-    if (this.warm > 0) { this.warm -= Math.min(seconds, .25); return; }
+    if (!Number.isFinite(seconds) || seconds <= 0 || !Number.isInteger(samples) || samples < 1) return;
+    const duration = seconds * samples;
+    if (seconds <= .25) this.hold = Math.max(0, this.hold - duration);
+    if (this.warm > 0) { this.warm -= Math.min(duration, .25); return; }
     if (seconds > .25) return;
-    this.elapsed += seconds; this.frames++;
+    this.elapsed += duration; this.frames += samples;
     if (this.elapsed < 2) return;
     const average = this.elapsed / this.frames;
     if (average >= .028) {
@@ -61,7 +62,7 @@ export class EffectsBudget {
         if (this.bloom) { this.bloom = false; return this.finish('Bloom paused: sustained slow frames'); }
         if (!this.reduced) { this.reduced = true; return this.finish('Resolution reduced: sustained slow frames'); }
       }
-    } else if (average < .015 - Number.EPSILON && (!this.bloom || this.reduced)) {
+    } else if (average <= .018 + Number.EPSILON && (!this.bloom || this.reduced)) {
       this.slow = 0;
       this.healthy += this.elapsed;
       if (this.healthy >= 20 && this.hold === 0) {
