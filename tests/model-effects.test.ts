@@ -15,18 +15,18 @@ test('bounded opt-in profile; absent and malformed extras leave the renderer alo
   assert.equal(modelSurface({ envMap: 'file://' }), null);
   assert.deepEqual(modelSurface({ studioIntensity: 2.2, additive: true }), { studioIntensity: 2.2, additive: true });
 });
-test('loaded 60 Hz frames keep quality; three consecutive 24 ms windows shed bloom before resolution', () => {
+test('loaded 60 Hz frames keep quality; twelve seconds of 28 ms frames shed bloom before resolution', () => {
   const slow = new EffectsBudget();
   for (let i = 0; i < 600; i++) slow.frame(1 / 60);
   for (let i = 0; i < 3000; i++) slow.frame(.02);
   assert.equal(slow.bloom, true); assert.equal(slow.reduced, false);
-  for (let i = 0; i < 2 * 78; i++) slow.frame(.026);
+  for (let i = 0; i < 8 * 34; i++) slow.frame(.03);
   assert.equal(slow.bloom, true); assert.equal(slow.reduced, false);
-  for (let i = 0; i < 78; i++) slow.frame(.026);
+  for (let i = 0; i < 5 * 34; i++) slow.frame(.03);
   assert.equal(slow.bloom, false); assert.equal(slow.reduced, false);
-  for (let i = 0; i < 2 * 78; i++) slow.frame(.026);
+  for (let i = 0; i < 8 * 34; i++) slow.frame(.03);
   assert.equal(slow.reduced, false);
-  for (let i = 0; i < 78; i++) slow.frame(.026);
+  for (let i = 0; i < 5 * 34; i++) slow.frame(.03);
   assert.equal(slow.reduced, true);
   const normal = new EffectsBudget();
   for (let i = 0; i < 600; i++) normal.frame(1 / 60);
@@ -39,12 +39,26 @@ test('a loaded near-60 Hz display averaging 18 ms never sheds quality', () => {
   assert.equal(b.bloom, true);
   assert.equal(b.reduced, false);
 });
+test('loaded 24–26 ms frames and occasional long frames keep quality', () => {
+  const b = new EffectsBudget();
+  for (let i = 0; i < 3000; i++) b.frame(i % 20 === 0 ? .06 : .026);
+  assert.equal(b.bloom, true);
+  assert.equal(b.reduced, false);
+});
+test('loaded 18–24 ms windows with occasional long frames keep quality', () => {
+  const b = new EffectsBudget();
+  for (let i = 0; i < 2400; i++) b.frame(i % 20 === 0 ? .06 : .021);
+  assert.equal(b.bloom, true);
+  assert.equal(b.reduced, false);
+});
 test('cold hitches are ignored and bloom retries after sustained healthy recovery', () => {
   const b = new EffectsBudget();
   b.frame(.538); b.frame(.456);
   for (let i = 0; i < 600; i++) b.frame(1 / 60);
   assert.equal(b.bloom, true);
-  for (let i = 0; i < 3 * 67; i++) b.frame(.03);
+  for (let i = 0; i < 8 * 34; i++) b.frame(.03);
+  assert.equal(b.bloom, true);
+  for (let i = 0; i < 7 * 34; i++) b.frame(.03);
   assert.equal(b.bloom, false);
   for (let i = 0; i < 1000; i++) b.frame(1 / 60);
   assert.equal(b.bloom, true);
