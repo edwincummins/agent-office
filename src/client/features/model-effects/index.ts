@@ -23,7 +23,8 @@ export function installModelEffects(ctx: Ctx) {
       if (found) activate(found);
     }
     if (root) {
-      budget.frame(delta, !document.hidden);
+      const change = budget.frame(delta, !document.hidden);
+      if (change) console.info('[model-effects]', change);
       if (budget.reduced && ctx.renderer.getPixelRatio() > 1) ctx.renderer.setPixelRatio(1);
       root.userData.officeEffectsRuntime = { bloom: budget.bloom, reducedResolution: budget.reduced };
     }
@@ -63,6 +64,7 @@ export function installModelEffects(ctx: Ctx) {
     });
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = profile.exposure;
     bloom = new ModelBloom(renderer, profile);
+    bloom.prepare(ctx.scene, ctx.camera);
     restore = () => {
       renderer.toneMapping = tone; renderer.toneMappingExposure = exposure; renderer.setPixelRatio(ratio);
       materialRestores.forEach(fn => fn());

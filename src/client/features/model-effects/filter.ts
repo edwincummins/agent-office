@@ -14,6 +14,17 @@ export class ModelBloom {
     const b = profile.bloom;
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), b.strength, b.radius, b.threshold);
   }
+  prepare(scene: THREE.Scene, camera: THREE.Camera) {
+    const previous = this.renderer.getRenderTarget();
+    const scratch = new THREE.WebGLRenderTarget(1, 1);
+    try {
+      this.renderer.compile(scene, camera);
+      this.renderer.setRenderTarget(scratch);
+      this.begin();
+      this.renderer.render(scene, camera);
+      this.end();
+    } finally { this.renderer.setRenderTarget(previous); scratch.dispose(); }
+  }
   begin() {
     this.renderer.getDrawingBufferSize(this.size);
     if (this.target.width !== this.size.x || this.target.height !== this.size.y) {

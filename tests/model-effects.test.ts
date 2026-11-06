@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EffectsBudget, modelEffects, modelSurface } from '../src/client/features/model-effects/profile.ts';
 import * as THREE from 'three';
+import { ModelBloom } from '../src/client/features/model-effects/filter.ts';
 import { installModelEffects } from '../src/client/features/model-effects/index.ts';
 
 const profile = { exposure: 1, bloom: { strength: .9, radius: .3, threshold: 3.5 } };
@@ -15,6 +16,7 @@ test('bounded opt-in profile; absent and malformed extras leave the renderer alo
 });
 test('sustained slow frames shed bloom before resolution; healthy frames do neither', () => {
   const slow = new EffectsBudget();
+  for (let i = 0; i < 250; i++) slow.frame(1 / 60);
   for (let i = 0; i < 101; i++) slow.frame(.02);
   assert.equal(slow.bloom, false); assert.equal(slow.reduced, false);
   for (let i = 0; i < 101; i++) slow.frame(.02);
@@ -24,13 +26,20 @@ test('sustained slow frames shed bloom before resolution; healthy frames do neit
   normal.frame(NaN); normal.frame(100, false);
   assert.equal(normal.bloom, true); assert.equal(normal.reduced, false);
 });
-test('very slow visible frames still shed effects, hidden windows do not', () => {
+test('cold hitches are ignored and bloom retries after sustained healthy recovery', () => {
   const b = new EffectsBudget();
-  b.frame(10, false); assert.equal(b.bloom, true);
-  for (let i = 0; i < 4; i++) b.frame(.5);
+  b.frame(.538); b.frame(.456);
+  for (let i = 0; i < 600; i++) b.frame(1 / 60);
+  assert.equal(b.bloom, true);
+  for (let i = 0; i < 200; i++) b.frame(.03);
   assert.equal(b.bloom, false);
+  for (let i = 0; i < 1000; i++) b.frame(1 / 60);
+  assert.equal(b.bloom, true);
+  for (let i = 0; i < 20; i++) b.frame(2, false);
+  assert.equal(b.bloom, true);
 });
-test('leaving an opted-in model restores renderer settings and disables the filter', () => {
+test('leaving an opted-in model restores renderer settings and disables the filter', (t) => {
+  t.mock.method(ModelBloom.prototype, 'prepare', () => {});
   const group = new THREE.Group(), root = new THREE.Group();
   root.userData.officeEffects = profile; group.add(root);
   let ratio = 1.25, rooftop = false;
