@@ -420,3 +420,5 @@ Every change to the app that lands on `main` is published as a GitHub release by
 ## License
 
 [MIT](LICENSE)
+
+Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media-wall fixtures with level faces and matching thin frames. See [Converting a purchased office](docs/maps.md#converting-a-purchased-office) and the synthetic fixture demo; licensed room assets stay local.

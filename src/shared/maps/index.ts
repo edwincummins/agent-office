@@ -1,3 +1,6 @@
+import {loungeSeats} from '../fixtures/seating.js';
+import {resolveSlots} from '../fixtures/index.js';
+import {STOCK_SLOTS} from '../fixtures/stock.js';
 import { BEANBAGS, BOARDS, DESKS, ELEVATOR, ELEVATOR_CAR, EXIT_DOOR, FLOOR, MEETING_SEATS, SEATING, STATIONS, STATION_AGENT, WALL_HEIGHT, WING_DESKS, seatHere, seatPlace, type DeskDef, type SeatDef, type SeatPlace, type StationKind } from '../layout.js';
 import type { Circle, Rect } from '../nav.js';
 import { planAirlock, wallOpenings } from './airlock.js';
@@ -62,6 +65,7 @@ function officePlan(): MapPlan {
   const boards = {} as Record<BoardKey, BoardDef>;
   for (const k of BOARD_KEYS) boards[k] = { ...BOARDS[k] };
   return {
+    slots: STOCK_SLOTS, slotWarnings: [],
     id: OFFICE_MAP,
     name: 'Office',
     icon: '🏢',
@@ -372,7 +376,12 @@ export function planMap(input: unknown): MapPlan {
   const ageMinutes = c.agents?.ageMinutes === undefined ? 0 : num(c.agents.ageMinutes, 'agents.ageMinutes', 0, 100000);
   const byId = new Map([...desks, ...overflow, ...stations, ...meeting].map((d) => [d.id, d]));
   for (const d of byId.values()) inside(d.x, d.z, d.label);
+  const fixtures=resolveSlots(c.fixtures,bounds,height);
+  if(fixtures.slots.gong&&props.some(p=>p.kind==='gong'))throw new MapError('Use a gong fixture or legacy gong prop, not both');
+  if(fixtures.slots.lounge)seating.push(...loungeSeats(fixtures.slots.lounge));
+  if(fixtures.slots.services){const p=fixtures.slots.services;boards.services={...boards.services,...p.position,rotY:p.rotY,width:p.size.width,height:p.size.height};}
   return {
+    ...fixtures,
     id,
     name,
     icon: typeof c.icon === 'string' && c.icon.trim() ? c.icon.trim().slice(0, 8) : '🗺️',

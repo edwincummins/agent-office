@@ -1,3 +1,4 @@
+import {NATIVE_SLOTS} from '../../../shared/fixtures/stock';
 import * as THREE from 'three';
 import { CABINET, FLOOR } from '../../../shared/layout';
 import { mesh, roundedBox, toon } from '../../world/toon';
@@ -137,7 +138,8 @@ export function buildCabinet(): CabinetModel {
   group.add(mesh(new THREE.BoxGeometry(inner, 0.1, 0.01), toon('#0b1320'), 0, 0.05, 0.266, false));
 
   // Built facing +z; it stands against the east wall facing into the room (-x).
-  group.position.set(CABINET.x, 0, CABINET.z);
+  const slot=NATIVE_SLOTS.arcade!;
+  group.position.set(slot.position.x,slot.position.y,slot.position.z);
   group.rotation.y = -Math.PI / 2;
   const collider: Collider = { minX: CABINET.x - 0.45, maxX: FLOOR.maxX, minZ: CABINET.z - W / 2 - 0.02, maxZ: CABINET.z + W / 2 + 0.02, top: CABINET.height };
   const interactable: Interactable = { kind: 'cabinet', x: CABINET.x - 1.2, z: CABINET.z, radius: 1.3 };

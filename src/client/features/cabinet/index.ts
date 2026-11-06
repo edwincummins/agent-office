@@ -1,3 +1,4 @@
+import {fixturesOf} from '../../world/fixtures/handles';
 import { GAME, scoreText } from '../../../shared/cabinet';
 import type { Ctx } from '../../core/context';
 import { aside, hintTitle, key, onE } from '../../core/hint';
@@ -21,7 +22,8 @@ export interface CabinetDeps {
 export function installCabinet(ctx: Ctx, deps: CabinetDeps): Cabinet {
   // The arcade cabinet next to it: BLOCKFALL up close, and on its screen for everyone else on the floor.
   const cabinet = new Cabinet(ctx.office.cabinet.screen, ctx.net, { openTerminal: (id) => deps.openTerminal(id), sound: (kind, lines) => ctx.sound.arcade(kind, lines) });
-  ctx.ticks.add('play', ({ dt }) => cabinet.update(ctx.camera, dt));
+  let active: typeof ctx.office.cabinet.screen|undefined=ctx.office.cabinet.screen;
+  ctx.ticks.add('play', ({ dt }) => {const screen=fixturesOf(ctx.world()).arcade?.screen;if(screen!==active){cabinet.leaveMap();if(screen)cabinet.setScreen(screen);active=screen;}if(screen)cabinet.update(ctx.camera, dt);});
   ctx.interactions.define('cabinet', {
     reach: 4,
     hint: () => {
@@ -36,7 +38,7 @@ export function installCabinet(ctx: Ctx, deps: CabinetDeps): Cabinet {
       const about = left !== null ? `your game's paused at ${scoreText(left)}` : best ? `🏆 ${clip(best.name, 24)} · ${scoreText(best.score)}` : 'no high score yet';
       return { k: `${left}|${best?.name}|${best?.score}`, parts: [hintTitle(`🕹️ ${GAME}`), aside(about), key('E', left !== null ? 'Carry on' : 'Play')] };
     },
-    use: onE(() => cabinet.play()),
+    use: onE(() => {if(fixturesOf(ctx.world()).arcade)cabinet.play();}),
   });
   // With the camera up at its screen, the game has the screen: no hands drawn over it.
   ctx.view.add({ covers: () => cabinet.zoomed });

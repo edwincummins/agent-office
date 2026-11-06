@@ -1,3 +1,4 @@
+import {fixturesOf} from '../../world/fixtures/handles';
 /**
  * The office TV: the screen someone on the floor is sharing, or its idle card while nobody is. What's
  * shared, and watching it full screen, is features/voice's.
@@ -62,6 +63,7 @@ export function installTv(ctx: Ctx, deps: TvDeps) {
   });
 
   let tvStream: MediaStream | null = null;
+  ctx.ticks.add('hud',()=>{const screen=fixturesOf(ctx.world()).tv;if(!screen)return;const mat=screen.material as THREE.MeshBasicMaterial;const map=tvStream?tvTexture:tvIdle;if(mat.map!==map){mat.map=map;mat.color.set('#ffffff');mat.toneMapped=false;mat.needsUpdate=true;}});
   /** Puts `stream` up on the TV, or the idle card when there's none. */
   function show(stream: MediaStream | null) {
     if (stream !== tvStream) {

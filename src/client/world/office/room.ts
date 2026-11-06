@@ -1,3 +1,4 @@
+import {NATIVE_SLOTS} from '../../../shared/fixtures/stock';
 import * as THREE from 'three';
 import { BOARDS, LOFT, MACHINE_MONITOR, PLANTS, SEATING_BY_ID, STAIRS, STREET_Y, TV, WALL_HEIGHT, plantByWing } from '../../../shared/layout';
 import { wallFacing } from '../../../shared/decor';
@@ -93,8 +94,9 @@ export const tv: Fixture<'tvScreen'> = (site) => {
   const tvScreen = new THREE.Mesh(new THREE.PlaneGeometry(TV.width, TV.height), new THREE.MeshBasicMaterial({ color: '#1b1d2e' }));
   tvScreen.position.z = 0.08;
   tvGroup.add(tvScreen);
-  tvGroup.position.set(TV.x - 0.1, TV.y, TV.z);
-  tvGroup.rotation.y = -Math.PI / 2;
+  const slot=NATIVE_SLOTS.tv!;
+  tvGroup.position.set(slot.position.x,slot.position.y,slot.position.z);
+  tvGroup.rotation.y = slot.rotY;
   site.group.add(tvGroup);
   const it: Interactable = { kind: 'tv', x: TV.x - 4.5, z: TV.z, radius: 3.2 };
   site.interactables.push(it);

@@ -1,0 +1,80 @@
+{
+  "id": "fixture-demo",
+  "name": "Fixture demo",
+  "extends": "castle",
+  "props": [],
+  "throne": null,
+  "herald": null,
+  "lineup": null,
+  "dungeon": null,
+  "sendHome": null,
+  "fixtures": {
+    "mediaWall": {
+      "position": {
+        "x": 0,
+        "y": 2.4,
+        "z": 26
+      },
+      "size": {
+        "width": 8.4,
+        "height": 2.25,
+        "depth": 0.2
+      },
+      "rotY": 3.141592653589793,
+      "gap": 0.4,
+      "boardSide": "left"
+    },
+    "jukebox": {
+      "position": {
+        "x": 10,
+        "y": 0,
+        "z": 22
+      },
+      "size": {
+        "width": 1.3,
+        "height": 1.85,
+        "depth": 0.72
+      },
+      "rotY": -1.5707963267948966
+    },
+    "arcade": {
+      "position": {
+        "x": 8,
+        "y": 0,
+        "z": 22
+      },
+      "size": {
+        "width": 0.8,
+        "height": 1.9,
+        "depth": 0.8
+      },
+      "rotY": -1.5707963267948966
+    },
+    "lounge": {
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 18
+      },
+      "size": {
+        "width": 5,
+        "height": 1.2,
+        "depth": 4
+      },
+      "rotY": 0
+    },
+    "gong": {
+      "position": {
+        "x": -10,
+        "y": 0,
+        "z": 22
+      },
+      "size": {
+        "width": 1.9,
+        "height": 2.45,
+        "depth": 0.6
+      },
+      "rotY": 0
+    }
+  }
+}

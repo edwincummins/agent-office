@@ -1,3 +1,4 @@
+import {withFixtures} from './fixtures/build';
 import type { MapPlan, MapStyle } from '../../shared/maps';
 import { buildCastle } from './castle';
 import { buildStation } from './station';
@@ -12,3 +13,6 @@ export const BUILDERS: Record<MapStyle, (plan: MapPlan) => World> = {
   castle: buildCastle,
   station: buildStation,
 };
+
+// Decorate registry entries uniformly, including separately installed map styles.
+for(const style of Object.keys(BUILDERS) as MapStyle[])BUILDERS[style]=withFixtures(BUILDERS[style]);
