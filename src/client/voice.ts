@@ -11,6 +11,10 @@ interface Conn {
   screen?: MediaStream;
   micSender?: RTCRtpSender;
   screenSender?: RTCRtpSender;
+  /** The shared screen's own sound (a tab, or the whole system), sent beside its video. */
+  shareAudioSender?: RTCRtpSender;
+  /** Plays a peer's share sound at full volume: it isn't their voice, so proximity doesn't fade it. */
+  shareAudio: HTMLAudioElement;
   level: number;
   analyser?: AnalyserNode;
 }
@@ -176,14 +180,15 @@ export class Voice {
     try {
       // Up to 4K at 30 fps: charts and small text need the screen's own pixels (15 fps at the browser's default bitrate,
       // then a 1440p cap, blurred them; 11-05). What's sent to others is held to 12 Mbps below.
-      this.screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 3840, max: 3840 }, height: { ideal: 2160, max: 2160 } }, audio: false });
+      // Its sound too, like a Zoom share (Fetty, 11-06): Chrome offers 'Share tab audio' / 'Share system audio' in its picker.
+      this.screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 3840, max: 3840 }, height: { ideal: 2160, max: 2160 } }, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, systemAudio: 'include', suppressLocalAudioPlayback: false } as DisplayMediaStreamOptions);
     } catch (err) {
       return (err as Error).name === 'NotAllowedError' ? null : `Could not share: ${(err as Error).message}`;
     }
     const track = this.screen.getVideoTracks()[0];
     track.contentHint = 'detail';
     track.addEventListener('ended', () => this.stopShare());
-    for (const c of this.conns.values()) c.screenSender = crisp(c.pc.addTrack(track, this.screen));
+    for (const c of this.conns.values()) this.sendShare(c);
     this.changed();
     return null;
   }
@@ -191,18 +196,26 @@ export class Voice {
   stopShare() {
     if (!this.screen) return;
     for (const c of this.conns.values()) {
-      if (c.screenSender) {
+      for (const sender of [c.screenSender, c.shareAudioSender]) {
         try {
-          c.pc.removeTrack(c.screenSender);
+          if (sender) c.pc.removeTrack(sender);
         } catch {
           // closed
         }
-        c.screenSender = undefined;
       }
+      c.screenSender = c.shareAudioSender = undefined;
     }
     this.screen.getTracks().forEach((t) => t.stop());
     this.screen = null;
     this.changed();
+  }
+
+  /** Send our share (video, plus its sound when the picker's audio box was ticked) to one peer. */
+  private sendShare(c: Conn) {
+    if (!this.screen) return;
+    c.screenSender = crisp(c.pc.addTrack(this.screen.getVideoTracks()[0], this.screen));
+    const sound = this.screen.getAudioTracks()[0];
+    if (sound) c.shareAudioSender = c.pc.addTrack(sound, this.screen);
   }
 
   /** Called whenever the set of peers changes. */
@@ -266,7 +279,9 @@ export class Voice {
     const pc = new RTCPeerConnection({ iceServers: store.ice });
     const audio = new Audio();
     audio.autoplay = true;
-    const c: Conn = { pc, polite: store.you < id, makingOffer: false, ignoreOffer: false, audio, level: 0 };
+    const shareAudio = new Audio();
+    shareAudio.autoplay = true;
+    const c: Conn = { pc, polite: store.you < id, makingOffer: false, ignoreOffer: false, audio, shareAudio, level: 0 };
     this.conns.set(id, c);
 
     pc.onnegotiationneeded = async () => {
@@ -289,7 +304,11 @@ export class Voice {
     };
     pc.ontrack = ({ track, streams }) => {
       const stream = streams[0] ?? new MediaStream([track]);
-      if (track.kind === 'audio') {
+      // A share's sound rides in the same stream as its video; a voice is a stream of its own.
+      if (track.kind === 'audio' && stream.getVideoTracks().length) {
+        c.shareAudio.srcObject = stream;
+        void c.shareAudio.play().catch(() => window.addEventListener('pointerdown', () => void c.shareAudio.play().catch(() => {}), { once: true }));
+      } else if (track.kind === 'audio') {
         c.audioStream = stream;
         audio.srcObject = stream;
         void audio.play().catch(() => {
@@ -317,7 +336,7 @@ export class Voice {
 
     // Share whatever we're already sending.
     if (this.mic) c.micSender = pc.addTrack(this.mic.getAudioTracks()[0], this.mic);
-    if (this.screen) c.screenSender = crisp(pc.addTrack(this.screen.getVideoTracks()[0], this.screen));
+    this.sendShare(c);
     return c;
   }
 
@@ -326,6 +345,7 @@ export class Voice {
     if (!c) return;
     c.pc.close();
     c.audio.srcObject = null;
+    c.shareAudio.srcObject = null;
     this.conns.delete(id);
     this.listeners.forEach((fn) => fn());
   }

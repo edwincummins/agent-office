@@ -102,6 +102,8 @@ export type PresenceClientMsg =
   | { t: 'doing'; what?: string; reading?: boolean }
   | { t: 'voice'; voice: boolean; muted: boolean; sharing: boolean }
   | { t: 'rtc'; to: string; data: unknown }
+  /** The owner takes the screen: everyone else sharing stops (owner-only; the gate refuses visitors). */
+  | { t: 'share.take' }
   | { t: 'chat'; text: string }
   | { t: 'ping'; at: number };
 
@@ -143,6 +145,8 @@ export type PresenceServerMsg =
   | { t: 'peer.act'; id: string; smoke?: boolean; golf?: boolean; drink?: DrinkId | null; throwing?: BarGame | null }
   | { t: 'peer.emote'; id: string; emote: EmoteId }
   | { t: 'rtc'; from: string; data: unknown }
+  /** The owner took the screen, so stop sharing. */
+  | { t: 'share.stop'; by: string }
   | ({ t: 'chat' } & ChatLine)
   | { t: 'toast'; text: string; level: 'info' | 'warn' | 'error' }
   /** Sent to whoever tried to sit where someone on the floor already is. */

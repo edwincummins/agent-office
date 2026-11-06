@@ -99,6 +99,11 @@ export const presenceHandlers = {
     c.peer.sharing = !!msg.sharing;
     ctx.broadcast({ t: 'peer.update', peer: c.peer });
   },
+  // Owner priority (Fetty, 11-06): a guest who shares first must not keep him off the screen. Not in the social
+  // list, so the owner gate refuses it from anyone else.
+  'share.take'(ctx, c) {
+    for (const other of ctx.clients.values()) if (other !== c && other.peer.sharing) ctx.sendTo(other, { t: 'share.stop', by: c.peer.name });
+  },
   rtc(ctx, c, msg) {
     const target = ctx.clients.get(str(msg.to, 32));
     if (target) ctx.sendTo(target, { t: 'rtc', from: c.id, data: msg.data });

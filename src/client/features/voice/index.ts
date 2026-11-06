@@ -48,6 +48,8 @@ export function installVoice(ctx: Ctx, deps: VoiceDeps) {
   async function toggleShare() {
     if (voice.sharing) voice.stopShare();
     else {
+      // The owner's share wins: anyone else sharing is stopped first.
+      if (store.me.owner === true && voice.remoteScreens().size) ctx.net.send({ t: 'share.take' });
       const err = await voice.startShare();
       if (err) toast(err, 'warn');
     }
@@ -118,6 +120,11 @@ export function installVoice(ctx: Ctx, deps: VoiceDeps) {
   ctx.messages.on('peer.join', () => voice.syncPeers());
   ctx.messages.on('peer.leave', () => voice.syncPeers());
   ctx.messages.on('rtc', (msg) => void voice.handleSignal(msg.from, msg.data as never));
+  ctx.messages.on('share.stop', (msg) => {
+    if (!voice.sharing) return;
+    voice.stopShare();
+    toast(`📺 ${msg.by} took over the screen`, 'info');
+  });
 
   return { toggleVoice, toggleShare, currentShares, refreshShares, watchShare };
 }
