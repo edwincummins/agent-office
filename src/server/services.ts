@@ -49,7 +49,7 @@ interface Tracked {
 
 function run(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { encoding: 'utf8', timeout: 5000, maxBuffer: 8 * 1024 * 1024 }, (_err, out) => resolve(out ?? ''));
+    execFile(cmd, args, { encoding: 'utf8', timeout: 5000, maxBuffer: 8 * 1024 * 1024, windowsHide: true }, (_err, out) => resolve(out ?? ''));
   });
 }
 
