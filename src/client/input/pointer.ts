@@ -56,7 +56,7 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
   function usable(): (readonly Interactable[])[] {
     const roof = parts.rooftop.roof();
     if (core.upTop && roof) return [roof.interactables];
-    return inOffice() ? [office.interactables, ...ctx.usables.lists()] : [ctx.world().interactables, parts.worlds.court()?.interactables ?? []];
+    return inOffice() ? [office.interactables, ...ctx.usables.lists()] : [ctx.world().interactables, parts.worlds.court()?.interactables ?? [], ...ctx.usables.lists(true)];
   }
 
   /** `note` is the issue note you're pointing at on the issues board, if any (see aimedNote). */
@@ -90,7 +90,7 @@ export function installPointer(ctx: Ctx, core: CoreState, parts: PointerParts) {
     eye.set(player.pos.x, player.pos.y + EYE_HEIGHT, player.pos.z);
     // (Workers standing in line in the castle carry their spot's interactable: see Court.)
     const roof = parts.rooftop.roof();
-    for (const hit of raycaster.intersectObjects(core.upTop && roof ? roof.pickables : inOffice() ? [office.group, ...ctx.usables.pickables()] : ctx.world().pickables, true)) {
+    for (const hit of raycaster.intersectObjects(core.upTop && roof ? roof.pickables : inOffice() ? [office.group, ...ctx.usables.pickables()] : [...ctx.world().pickables, ...ctx.usables.pickables(true)], true)) {
       let it: Interactable | undefined;
       let shown = true;
       for (let o: THREE.Object3D | null = hit.object; o; o = o.parent) {

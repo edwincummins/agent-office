@@ -1,3 +1,4 @@
+import {STOCK_CREW} from './crew-stock.js';
 import {TV,JUKEBOX,CABINET,GONG} from '../layout.js';
 import type {ResolvedSlots} from './index.js';
 /** Exact existing builder roots. TV.x already includes a wall offset; its group has another. */
@@ -10,4 +11,4 @@ export const NATIVE_SLOTS:ResolvedSlots={
 };
 
 /** Stock map data; separate from the fixed source dimensions used by reusable builders. */
-export const STOCK_SLOTS:ResolvedSlots=structuredClone(NATIVE_SLOTS);
+export const STOCK_SLOTS:ResolvedSlots={...structuredClone(NATIVE_SLOTS),crew:STOCK_CREW};
