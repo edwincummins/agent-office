@@ -6,7 +6,9 @@ import path from 'node:path';
 import { checkModel } from '../src/shared/maps/model.js';
 import { planMap } from '../src/shared/maps/index.js';
 import { CASTLE } from '../src/shared/maps/castle.js';
-import { readMapModel } from '../src/server/http/routes/map-model.js';
+import { openMapModel } from '../src/server/http/routes/map-model.js';
+
+async function readMapModel(folder: string, name: string) { const model = await openMapModel(folder, name); try { return await model.handle.readFile(); } finally { await model.handle.close(); } }
 
 const bounds={minX:-30,maxX:30,minZ:-30,maxZ:30};
 test('lounge rugs stay in the room and clear of walls',()=>{
