@@ -1,16 +1,18 @@
+import {resolveCrew,type CrewSlot} from './crew.js';
 import type {Bounds} from '../nav.js';
 import {MapError,isObj,num} from '../maps/check.js';
 export const SLOT_KEYS=['tv','jukebox','arcade','lounge','mediaWall','gong'] as const;
 export type SlotKind=typeof SLOT_KEYS[number];
 export interface Slot {position:{x:number;y:number;z:number};size:{width:number;height:number;depth:number};rotY:number}
 export interface MediaWall extends Slot {gap?:number;boardSide?:'left'|'right';panels?:{board:{width:number;mountDepth:number};tv:{width:number;mountDepth:number}}}
-export type FixtureConfig=Partial<Record<Exclude<SlotKind,'mediaWall'>,Slot>> & {mediaWall?:MediaWall};
+export type FixtureConfig=Partial<Record<Exclude<SlotKind,'mediaWall'>,Slot>> & {mediaWall?:MediaWall;crew?:CrewSlot};
 export interface ResolvedSlots extends FixtureConfig {services?:Slot}
-export function resolveSlots(raw:unknown,bounds:Bounds,height:number):{slots:ResolvedSlots;slotWarnings:string[]}{
+export function resolveSlots(raw:unknown,bounds:Bounds,height:number,spawn?:{x:number;z:number;rotY:number}):{slots:ResolvedSlots;slotWarnings:string[]}{
  const slots:ResolvedSlots={},slotWarnings:string[]=[];
  if(raw===undefined)return {slots,slotWarnings};
  if(!isObj(raw))throw new MapError('fixtures must be an object');
  for(const key of Object.keys(raw)){
+  if(key==='crew'){try{slots.crew=resolveCrew(raw.crew,bounds,height,spawn);}catch(error){slotWarnings.push(String(error));}continue;}
   if(!SLOT_KEYS.includes(key as SlotKind))throw new MapError(`Unknown fixture slot ${key}`);
   const v=raw[key];if(!isObj(v)||!isObj(v.position)||!isObj(v.size))throw new MapError(`fixtures.${key} needs position and size`);
   const label=`fixtures.${key}`;

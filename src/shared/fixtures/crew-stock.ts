@@ -1,0 +1,4 @@
+import type {CrewSlot} from './crew.js';
+/** Public stock-office south strip; preserve the balcony lane and existing soft seats. */
+const points=[[-16.6,7.4],[-16.175,8.5],[-15.75,7.4],[-15.325,8.5],[-14.9,7.4],[-14.475,8.5],[-14.05,7.4],[-13.625,8.5],[-13.2,7.4],[-12.35,7.4],[-11.5,7.4],[-11.075,8.5],[-10.65,7.4],[-10.225,8.5],[-9.8,7.4],[-9.375,8.5],[-8.95,7.4],[-8.525,8.5],[-8.1,7.4],[-7.675,8.5],[-7.25,7.4],[-6.825,8.5],[-6.4,7.4],[-2,7.4],[-1.575,8.5],[-1.15,7.4],[-.725,8.5],[-.3,7.4],[.125,8.5],[.55,7.4],[.975,8.5],[1.4,7.4],[1.825,8.5],[2.25,7.4]];
+export const STOCK_CREW:CrewSlot={zones:[{id:'south-strip',gapBetweenTeams:true,marker:{kind:'post',offset:{x:.85,y:0,z:0}},places:points.map(([x,z])=>({x,y:0,z,rotY:Math.PI,pose:'stand',seatHeight:0,tagLift:z===8.5?.18:0}))}],overflow:{x:2.25,y:0,z:7.4,rotY:Math.PI}};

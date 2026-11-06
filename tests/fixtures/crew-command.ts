@@ -1,0 +1,11 @@
+import {readFileSync} from 'node:fs';
+import {fleetStateFixture} from './fleet.js';
+const source=process.argv[2]??'32';
+const input=/^\d+$/.test(source)?{count:Number(source)}:JSON.parse(readFileSync(source,'utf8'));
+const count=Number(input.count??32);
+const fixture=fleetStateFixture(Math.max(0,Math.min(64,count)));
+fixture.teams=Array.from({length:4},(_,i)=>({rig:`team-${i+1}`}));
+fixture.seats.forEach((seat,i)=>{seat.rig=`team-${Math.floor(i/8)%4+1}`;seat.status='running';if(i===4)seat.state={key:'idle'};});
+fixture.seats.forEach((seat,i)=>{const state=input.states?.[i];if(state)seat.state={key:state};});
+fixture.needs=[];
+console.log(JSON.stringify(fixture));
