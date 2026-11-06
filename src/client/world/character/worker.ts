@@ -157,7 +157,7 @@ export class Worker {
 
     this.rig = { root: this.root, body: this.body, skin: this.skin, armL: this.armL, armR: this.armR, feet: this.feet, pupils: this.pupils, bulb: this.bulb, bulbMesh: this.bulbMesh, props: [this.papers.group, this.globe.group] };
     this.setName(name);
-    this.releaseBatches = batchRigidParts(this.body, [skin, white, ink]);
+    this.releaseBatches = batchRigidParts(this.body, [skin, white, ink, toon('#2b2d42')]);
   }
 
   /** Where the globe floats, in its own space: beside its laptop, where the card over its head doesn't hide it. */

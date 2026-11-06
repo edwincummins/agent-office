@@ -18,3 +18,18 @@ test('rigid batch follows transforms and visibility without losing source pickin
 test('different shadow settings are never merged and unrelated materials remain untouched',()=>{
  const root=new THREE.Group(),m=new THREE.MeshBasicMaterial();const a=new THREE.Mesh(new THREE.BoxGeometry(),m),b=new THREE.Mesh(new THREE.BoxGeometry(),m);b.castShadow=true;root.add(a,b);const original=a.geometry;batchRigidParts(root,[m]);assert.equal(a.geometry,original);assert.equal(root.children.length,2);
 });
+
+test('blink scaling, parent rotation and hidden headsets update before upload; cleanup owns only copies', () => {
+ const root=new THREE.Group(), pivot=new THREE.Group(), m=new THREE.MeshBasicMaterial();root.add(pivot);
+ const a=new THREE.Mesh(new THREE.BoxGeometry(),m),b=new THREE.Mesh(new THREE.BoxGeometry(),m);pivot.add(a,b);
+ const source=a.geometry;let originalDisposed=0, batchDisposed=0;source.addEventListener('dispose',()=>originalDisposed++);
+ const release=batchRigidParts(root,[m]),batch=root.getObjectByName('rigid-part-batch') as THREE.Mesh;
+ batch.geometry.addEventListener('dispose',()=>batchDisposed++);
+ a.scale.y=.1;pivot.rotation.z=Math.PI/2;root.position.x=20;root.updateMatrixWorld(true);
+ const p=batch.geometry.getAttribute('position');assert.ok(Math.abs(p.getX(0)+.05)<1e-6);
+ const normal=batch.geometry.getAttribute('normal');assert.ok(Math.abs(normal.getY(0)-1)<1e-6);
+ assert.ok(batch.geometry.boundingSphere!.radius>0);assert.equal(batch.frustumCulled,true);
+ pivot.visible=false;root.updateMatrixWorld(true);assert.ok(Array.from(p.array).every(v=>v===0));
+ pivot.visible=true;root.updateMatrixWorld(true);assert.ok(Array.from(p.array).some(v=>v!==0));
+ release();release();assert.equal(batchDisposed,1);assert.equal(originalDisposed,0);
+});

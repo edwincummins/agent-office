@@ -16,7 +16,7 @@ export function batchRigidParts(root: THREE.Object3D, materials: THREE.Material[
       if (!geometry) { copies.forEach(g => g.dispose()); continue; }
       const first = members[0], batch = new THREE.Mesh(geometry, material);
       batch.name = 'rigid-part-batch'; batch.raycast = () => {}; batch.castShadow = first.castShadow; batch.receiveShadow = first.receiveShadow;
-      batch.renderOrder = first.renderOrder; batch.layers.mask = first.layers.mask; batch.frustumCulled = false;
+      batch.renderOrder = first.renderOrder; batch.layers.mask = first.layers.mask; batch.frustumCulled = true;
       const originals = members.map(p => ({ geometry: p.geometry, raycast: p.raycast }));
       const empty = new THREE.BufferGeometry();
       members.forEach((p, i) => {
@@ -39,6 +39,7 @@ export function batchRigidParts(root: THREE.Object3D, materials: THREE.Material[
           offset += source.count;
         });
         positions.needsUpdate = true; if (normals) normals.needsUpdate = true;
+        geometry.computeBoundingSphere();
       };
       const updateWorld = batch.updateMatrixWorld;
       batch.updateMatrixWorld = function(force) { updateWorld.call(this, force); update(); };
