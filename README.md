@@ -421,4 +421,4 @@ Every change to the app that lands on `main` is published as a GitHub release by
 
 [MIT](LICENSE)
 
-Worker rendering batches same-material body parts to reduce draw calls while preserving animation and picking. No configuration is required.
+Repeated headset parts are combined once under their shared group to reduce draw calls; the whole headset still follows worker motion and hides with costumes.
