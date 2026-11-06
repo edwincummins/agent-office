@@ -14,6 +14,7 @@ import { disposeSprite, mesh, textSprite, toon, toonUnique } from '../toon';
 import { EXHALE_AT, REACH_TIME, SMOKE_CYCLE, dragCurve, reachCurve } from './curves';
 import { cigarette, coffeeMug, drinkGlass, putDownGlass } from './props';
 import { styleHair } from './person-hair';
+import { personFaceDetails } from './person-face';
 import { clubSwing, strike, swingStep, type Golf } from './person-golf';
 import { propPosition, throwStep, type Oche } from './person-throw';
 import { poseEmote, type Emoting } from './person-emote';
@@ -141,10 +142,7 @@ export class Person {
     head.add(mesh(new THREE.SphereGeometry(0.34, 20, 16), skin));
     head.add(this.hair);
     this.buildHair();
-    for (const sx of [-1, 1]) {
-      head.add(mesh(new THREE.SphereGeometry(0.055, 10, 8), ink, sx * 0.12, 0.02, 0.3, false));
-      head.add(mesh(new THREE.SphereGeometry(0.05, 10, 8), toon('#ff9f9f'), sx * 0.2, -0.08, 0.27, false));
-    }
+    head.add(personFaceDetails(ink));
     const smile = (this.smile = mesh(new THREE.TorusGeometry(0.06, 0.015, 6, 12, Math.PI), ink, 0, -0.08, 0.32, false));
     smile.rotation.z = Math.PI;
     head.add(smile);

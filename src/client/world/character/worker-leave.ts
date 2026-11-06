@@ -15,7 +15,7 @@ export interface Leaving {
 /** Its face falls and its things pop into a box in its arms: returns the box. */
 export function packUp(rig: WorkerRig): THREE.Group {
   // Looking down, brows up in the middle.
-  for (const p of rig.pupils) p.position.y -= 0.035;
+  rig.pupils.position.y -= 0.035;
   for (const sx of [-1, 1]) {
     const brow = mesh(new THREE.CapsuleGeometry(0.014, 0.08, 4, 6), toon('#1d1d1d'), sx * 0.11, 0.83, 0.228, false);
     brow.rotation.z = Math.PI / 2 - sx * 0.4;
