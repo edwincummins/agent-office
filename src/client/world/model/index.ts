@@ -116,7 +116,9 @@ export function buildModel(plan: MapPlan): World {
     plan,group,colliders,interactables,pickables,desks,boardMeshes,meetingBoard,meetingSign,nav,navigation,
     ways:{home:(seat,from)=>({way:from?world.nav.route(from,[plan.door.x,plan.door.z]):world.nav.wayFrom(seat,[plan.door.x,plan.door.z]),chute:false}),in:seat=>world.nav.wayTo([plan.door.x,plan.door.z],seat)},
     rain:[{area:plan.bounds,top:()=>plan.height}],device:'laptop',room:{wall:.2,enclosed:true},
-    setBeanbags(){return [];},setLook(){},setProjectName(){},update(_t,dt,people){
+    setBeanbags(){return [];},setLook(){},setProjectName(){},update(t,dt,people){
+      // The free desks' "+" bobs and turns, as in the stock office.
+      for(const d of desks.values()){if(!d.vacancy.visible||d.def.station)continue;d.vacancy.position.y=d.vacancyY+Math.sin(t*2+d.def.x)*.06;d.vacancy.rotation.y=t*1.2;}
       const positions=[...people];
       for(const d of doors){const near=positions.some(p=>Math.hypot(p.x-d.center.x,p.z-d.center.z)<2.2&&Math.abs(p.y-d.center.y)<2.2);d.amount=THREE.MathUtils.damp(d.amount,near?1:0,9,dt);d.node.position.copy(d.closed);d.node.position.y+=d.amount*2.8;}
     },

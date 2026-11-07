@@ -4,7 +4,7 @@ import type {StationKind} from '../../../shared/layout';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { DeskDef } from '../../../shared/layout';
 import type { DeskView, Interactable } from '../types';
-import { mergeByMaterial } from '../toon';
+import { mergeByMaterial, toon } from '../toon';
 
 export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0, sourceStations: readonly StationKind[] = [], laptops:ReadonlyMap<string,ModelLaptop> = new Map()) {
   const still = new THREE.Group();
@@ -79,7 +79,9 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
       laptopAnchor.rotation.y=laptop.rotY+Math.PI-def.rotY;
     }
     const stage = new THREE.Object3D(); stage.position.set(.55,0,.85); g.add(stage);
-    const vacancy = new THREE.Group(); if(def.station) vacancy.add(seatAnchor.clone()); g.add(vacancy);
+    // An empty desk shows the office's floating green "+" (Fetty, 11-06: "invite anybody who sees it to click"), a little
+    // smaller than the stock office's; a station keeps its standing figure instead.
+    const vacancy = def.station ? new THREE.Group() : plusMarker(1.4); if(def.station) vacancy.add(seatAnchor.clone()); else vacancy.scale.setScalar(.75); g.add(vacancy);
     const it: Interactable = {kind:def.station?'station':'desk',deskId:def.id,x:def.x+Math.sin(def.rotY)*1.1,y,z:def.z+Math.cos(def.rotY)*1.1,radius:1.25};
     const hit=new THREE.Mesh(new THREE.BoxGeometry(soft?.81:1.5,soft?.46:1.3,soft?.85:1.8),hitMaterial);hit.position.set(0,soft?.23:.65,soft?.85:.4);g.add(hit);
     g.userData.interact=it; interactables.push(it); group.add(g);
@@ -87,4 +89,12 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
   }
   group.add(mergeByMaterial(still));
   return desks;
+}
+
+/** The office's floating green "+" over a free desk (the same shape as the stock office's seats.ts vacancyMarker). */
+function plusMarker(y: number): THREE.Group {
+  const plus = new THREE.Group(), mat = toon('#7cf29a', { emissive: '#1f7a3a' });
+  for (const [w, h] of [[0.28, 0.08], [0.08, 0.28]]) plus.add(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), mat));
+  plus.position.set(0, y, 0);
+  return plus;
 }
