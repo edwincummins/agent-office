@@ -6,6 +6,7 @@ import type { Ctx } from '../../core/context';
 import { ModelBloom } from './filter';
 import { applyModelLights } from './lighting';
 import { EffectsBudget, modelEffects, modelSurface } from './profile';
+import { limitEmission } from './emission';
 
 export function installModelEffects(ctx: Ctx) {
   let root: THREE.Object3D | null = null;
@@ -54,18 +55,18 @@ export function installModelEffects(ctx: Ctx) {
         if (!(m instanceof THREE.MeshStandardMaterial) || seen.has(m)) continue;
         seen.add(m);
         const surface = modelSurface(m.userData.officeSurface);
-        if (!surface) continue;
         const old = { envMap: m.envMap, envMapIntensity: m.envMapIntensity, blending: m.blending, transparent: m.transparent, depthWrite: m.depthWrite, emissiveIntensity: m.emissiveIntensity };
         materialRestores.push(() => { Object.assign(m, old); m.needsUpdate = true; });
-        if (surface.studioIntensity !== undefined) {
+        if (surface?.studioIntensity !== undefined) {
           if (!studio) {
             const pmrem = new THREE.PMREMGenerator(renderer), room = new RoomEnvironment();
             studio = pmrem.fromScene(room, .04); room.dispose(); pmrem.dispose();
           }
           m.envMap = studio.texture; m.envMapIntensity = surface.studioIntensity;
         }
-        if (surface.additive) { m.blending = THREE.AdditiveBlending; m.transparent = true; m.depthWrite = false; }
-        if (surface.emissiveIntensity !== undefined) m.emissiveIntensity = surface.emissiveIntensity;
+        if (surface?.additive) { m.blending = THREE.AdditiveBlending; m.transparent = true; m.depthWrite = false; }
+        if (surface?.emissiveIntensity !== undefined) m.emissiveIntensity = surface.emissiveIntensity;
+        limitEmission(m);
         m.needsUpdate = true;
       }
     });
