@@ -51,7 +51,7 @@ export class Worker {
   private cheerT = 0;
   /** Up on its desk dancing (a pull request merged): where, and how many seconds in. */
   private dancing: Dancing | null = null;
-  private pupils: THREE.Mesh[] = [];
+  private pupils = new THREE.Group();
   private feet: THREE.Mesh[] = [];
   /** Sent home: the box of its things in its arms, and how far into its waddle it is. */
   private leaving: Leaving | null = null;
@@ -309,7 +309,7 @@ export class Worker {
     this.armL.position.set(-0.3, 0.55, 0.05);
     this.armR.position.set(0.3, 0.55, 0.05);
     this.feet.forEach((f, i) => f.position.set(i ? 0.12 : -0.12, 0.2, 0.05));
-    for (const p of this.pupils) p.position.y = 0.7;
+    this.pupils.position.y = 0.7;
     this.bulb.color.set(STATUS_BULB.exited);
     this.bulb.emissive.set('#000000');
     if (this.bubble) {
@@ -465,7 +465,7 @@ export class Worker {
     this.armL.position.set(-0.3 + s.reach * 0.07, 0.55 - s.drop, 0.05 + s.reach * 0.12);
     this.armR.position.set(0.3 - s.reach * 0.07, 0.55 - s.drop + s.reach * 0.04, 0.05 + s.reach * 0.14);
     this.feet.forEach((f, i) => f.position.set(i ? 0.12 : -0.12, 0.2 + (i ? s.tap * 0.07 : 0), 0.05 + s.kick + (i ? s.tap * 0.03 : 0)));
-    for (const p of this.pupils) p.position.y = 0.7 + s.look - 0.02 * this.age;
+    this.pupils.position.y = 0.7 + s.look - 0.02 * this.age;
     // Worn out, it hunches over and its eyes droop.
     this.body.rotation.x = s.lean + 0.2 * this.age;
     s.lid = Math.min(s.lid, 1 - 0.38 * this.age);

@@ -74,4 +74,4 @@ Everything in the office, room by room. Back to the [README](../README.md).
 
 ### Avatar rendering
 
-Hair styles render as one rigid mesh per person (none for Bald), including after changing appearance. Colours, head movement, shadows and style choices are unchanged. Curly hair previously used 31 meshes plus their outline draws; it now uses one mesh plus its outline.
+Hair styles render as one rigid mesh per person (none for Bald), including after changing appearance. Colours, head movement, shadows and style choices are unchanged. Curly hair previously used 31 meshes plus their outline draws; it now uses one mesh plus its outline. Face details and worker pupils are also batched within their moving groups, preserving gaze and blink motion without per-frame vertex updates.

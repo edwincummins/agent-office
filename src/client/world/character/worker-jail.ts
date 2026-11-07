@@ -87,7 +87,7 @@ export function slump(rig: WorkerRig, k: Jailed, skeleton: THREE.Group | null, f
     rig.body.position.set(0, -0.08, 0);
     rig.armL.rotation.set(-0.35, 0, -0.12);
     rig.armR.rotation.set(-0.35, 0, 0.12);
-    for (const p of rig.pupils) p.position.y = 0.66 - 0.02 * thin;
+    rig.pupils.position.y = 0.66 - 0.02 * thin;
   }
   if (skeleton) {
     skeleton.visible = dead && rot > 0.2;

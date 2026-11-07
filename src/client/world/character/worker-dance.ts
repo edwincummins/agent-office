@@ -73,7 +73,7 @@ export function groove(rig: WorkerRig, d: Dancing, dt: number, t: number): numbe
   // Whatever it was acting out waits: shoulders back in place, eyes ahead, the papers and globe put away.
   rig.armL.position.set(-0.3, 0.55, 0.05);
   rig.armR.position.set(0.3, 0.55, 0.05);
-  for (const p of rig.pupils) p.position.y = 0.7;
+  rig.pupils.position.y = 0.7;
   for (const prop of rig.props) prop.visible = false;
   const k = 1 - Math.exp(-dt * 18);
   [rig.armL, rig.armR].forEach((a, i) => {
