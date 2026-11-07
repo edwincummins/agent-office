@@ -97,7 +97,7 @@ export function buildModel(plan: MapPlan): World {
         m.userData.localModel=true;m.userData.outlineParameters={visible:false};m.fog=false;
         if(!(m instanceof THREE.MeshStandardMaterial)) continue;
         const n=m.name.toLowerCase();
-        if(n.includes('glass')) {const interior=n.includes('interior')||n.includes('partition');m.transparent=true;m.opacity=interior?.13:.3;m.depthWrite=false;m.color.set(interior?'#c4c6c5':'#91b7c5');m.roughness=.05;m.metalness=0;m.normalMap=null;m.side=THREE.DoubleSide;m.forceSinglePass=true;}
+        if(n.includes('glass')) {o.renderOrder=0;const interior=n.includes('interior')||n.includes('partition');m.transparent=true;m.opacity=interior?.13:.3;m.depthWrite=false;m.color.set(interior?'#c4c6c5':'#91b7c5');m.roughness=.05;m.metalness=0;m.normalMap=null;m.side=THREE.DoubleSide;m.forceSinglePass=true;}
         else if(n.includes('marble')||n.includes('tiles')) {m.roughness=.2;m.envMapIntensity=1.2;}
         if(!authoredEmission.has(m)&&(n.includes('poster')||n.includes('glow'))) {m.emissive.set('#ffffff');m.emissiveMap=m.map;m.emissiveIntensity=1.6;}
       }

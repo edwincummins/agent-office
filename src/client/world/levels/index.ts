@@ -5,6 +5,7 @@ import type { MapPlan } from '../../../shared/maps';
 import type { World } from '../world';
 import { mergeByMaterial } from '../toon';
 import { buildLifts } from './lifts';
+import { railGeometry } from './rail';
 
 /** Optional layer over any world builder; maps without levels return unchanged. */
 export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => World {
@@ -17,10 +18,10 @@ export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => 
     group.name = 'map-levels';
     const concrete = new THREE.MeshStandardMaterial({ color: '#777c82', roughness: 0.8 });
     const stair = new THREE.MeshStandardMaterial({ color: '#8b9096', roughness: 0.7 });
-    const glass = new THREE.MeshStandardMaterial({ color: '#a9bdc1', transparent: true, opacity: 0.22, depthWrite: false, roughness: 0.15 });
+    const glass = new THREE.MeshStandardMaterial({ color: '#a9bdc1', transparent: true, opacity: 0.22, depthWrite: false, roughness: 0.15, side: THREE.DoubleSide, forceSinglePass: true });
     for (const c of levels.solids) {
       const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(c.maxX - c.minX, c.top - c.bottom, c.maxZ - c.minZ),
+        c.fence ? railGeometry(c) : new THREE.BoxGeometry(c.maxX - c.minX, c.top - c.bottom, c.maxZ - c.minZ),
         c.fence ? glass : levels.floors.some((f) => f.y === c.top) ? concrete : stair,
       );
       mesh.position.set((c.minX + c.maxX) / 2, (c.top + c.bottom) / 2, (c.minZ + c.maxZ) / 2);
@@ -29,6 +30,7 @@ export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => 
       w.colliders.push({ ...c, levelSurface: true });
     }
     const merged = mergeByMaterial(group);
+    merged.traverse(o => { if (o instanceof THREE.Mesh && o.material === glass) o.renderOrder = 0; });
     w.group.add(merged);
     w.pickables.push(merged);
     const solids = [

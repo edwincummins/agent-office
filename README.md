@@ -450,7 +450,7 @@ Custom maps can place TV, jukebox, arcade cabinet, lounge, gong and paired media
 Avatar hairstyles keep their existing appearance while batching rigid hair parts into one mesh, reducing rendering cost in third person and crowded rooms. Rigid face details and worker pupils also share batches under their moving parent groups. See [features](docs/features.md).
 Rigid worker details are combined once within their own animated parent groups (headset, eye whites, cap and beard accents). The parent keeps its normal motion and visibility; no per-frame vertex rewrites are needed.
 
-Custom maps can also describe mezzanine slabs, stair links, glass rails and passenger lifts. Worker routes use stairs between levels; people can walk or ride the lift. See [multi-level maps](docs/maps.md#multiple-levels-and-lifts) and the synthetic fixture in `tests/fixtures/two-level-map.ts`.
+Custom maps can also describe mezzanine slabs, stair links, glass rails and passenger lifts. Rails render as single glass sheets while retaining their full collision bounds. Worker routes use stairs between levels; people can walk or ride the lift. See [multi-level maps](docs/maps.md#multiple-levels-and-lifts) and the synthetic fixture in `tests/fixtures/two-level-map.ts`.
 
 Two-level maps bound shared avatar coordinates to the hall and use a shorter third-person camera near stairs and before low slab edges. Lifts are visitor walking interactions; owner-only worker permissions do not restrict passenger travel. These bounds do not replace server-authoritative movement for a hosted office.
 
