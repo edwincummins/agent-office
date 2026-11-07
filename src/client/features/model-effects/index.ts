@@ -55,7 +55,7 @@ export function installModelEffects(ctx: Ctx) {
         if (!(m instanceof THREE.MeshStandardMaterial) || seen.has(m)) continue;
         seen.add(m);
         const surface = modelSurface(m.userData.officeSurface);
-        const old = { envMap: m.envMap, envMapIntensity: m.envMapIntensity, blending: m.blending, transparent: m.transparent, depthWrite: m.depthWrite, emissiveIntensity: m.emissiveIntensity };
+        const old = { envMap: m.envMap, envMapIntensity: m.envMapIntensity, blending: m.blending, transparent: m.transparent, depthWrite: m.depthWrite, emissiveIntensity: m.emissiveIntensity, opacity: m.opacity };
         materialRestores.push(() => { Object.assign(m, old); m.needsUpdate = true; });
         if (surface?.studioIntensity !== undefined) {
           if (!studio) {

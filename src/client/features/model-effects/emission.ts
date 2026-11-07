@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { modelEffects } from './profile';
 
 const EMISSION_CEILING = 2;
+/** Additive glow layers sum with whatever is behind them (Fetty, 11-06: the lift sign blew out the screen). */
+const ADDITIVE_CEILING = 0.45;
 
 /** Preserve authored glow colour below a validated model-effects root. */
 export function authoredEmissionMaterials(root: THREE.Object3D): Set<THREE.Material> {
@@ -18,5 +20,8 @@ export function authoredEmissionMaterials(root: THREE.Object3D): Set<THREE.Mater
 /** Bound effective linear emission without changing its hue, texture, or bloom threshold. */
 export function limitEmission(material: THREE.MeshStandardMaterial): void {
   const peak = Math.max(material.emissive.r, material.emissive.g, material.emissive.b);
-  if (peak > 0) material.emissiveIntensity = Math.min(material.emissiveIntensity, EMISSION_CEILING / peak);
+  const ceiling = material.blending === THREE.AdditiveBlending ? ADDITIVE_CEILING : EMISSION_CEILING;
+  if (peak > 0) material.emissiveIntensity = Math.min(material.emissiveIntensity, ceiling / peak);
+  // An additive layer also adds its own colour: keep that from stacking up past the bloom threshold too.
+  if (material.blending === THREE.AdditiveBlending) material.opacity = Math.min(material.opacity, 0.5);
 }

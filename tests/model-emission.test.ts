@@ -53,7 +53,8 @@ test('ceiling runs after surface overrides and restores on leave and reentry', t
     const hud = () => (ticks.get('hud')![0] as (f: {delta: number}) => void)({ delta: 1 / 60 });
     for (let i = 0; i < 2; i++) {
       rooftop = false; hud();
-      assert.equal(overridden.emissiveIntensity, 2); assert.equal(plain.emissiveIntensity, 4);
+      // Additive layers sum with what's behind them, so they're held to 0.45 (Fetty 11-06, the lift sign); solid ones to 2.
+      assert.equal(overridden.emissiveIntensity, 0.45); assert.equal(plain.emissiveIntensity, 4);
       assert.equal(overridden.blending, THREE.AdditiveBlending);
       assert.deepEqual(overridden.emissive.toArray(), [1, .5, .1]);
       rooftop = true; ticks.get('pre')![0]();

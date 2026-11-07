@@ -98,7 +98,13 @@ export function buildModel(plan: MapPlan): World {
         m.userData.localModel=true;m.userData.outlineParameters={visible:false};m.fog=false;
         if(!(m instanceof THREE.MeshStandardMaterial)) continue;
         const n=m.name.toLowerCase();
-        if(n.includes('glass')) {o.renderOrder=0;const interior=n.includes('interior')||n.includes('partition');m.transparent=true;m.opacity=interior?.13:.3;m.depthWrite=false;m.color.set(interior?'#c4c6c5':'#91b7c5');m.roughness=.05;m.metalness=0;m.normalMap=null;m.side=THREE.DoubleSide;m.forceSinglePass=true;}
+        // Steady at grazing angles: without anisotropy fine textures (the dais's stone tiles) shimmer into stripes as you
+        // move (Fetty, 11-06). three clamps it to what the GPU supports.
+        for(const t of [m.map,m.normalMap,m.roughnessMap,m.metalnessMap,m.aoMap,m.emissiveMap]) if(t&&t.anisotropy<8){t.anisotropy=8;t.needsUpdate=true;}
+        // Glass the map tints on purpose ("interior-glass-#5a5044-0.4": a colour and a strength of 0.3 or more, like the round
+        // room's smoked bronze) keeps its look; plain glass gets the office's own (Fetty, 11-06: the bronze never showed).
+        const tint=/glass-(#[0-9a-f]{6})-([0-9.]+)/.exec(n), tinted=!!tint&&Number(tint[2])>=.3;
+        if(n.includes('glass')) {o.renderOrder=0;const interior=n.includes('interior')||n.includes('partition');m.transparent=true;m.opacity=tinted?Math.min(.75,Number(tint![2])):interior?.13:.3;m.depthWrite=false;m.color.set(tinted?tint![1]:interior?'#c4c6c5':'#91b7c5');m.roughness=.05;m.metalness=0;m.normalMap=null;m.side=THREE.DoubleSide;m.forceSinglePass=true;}
         else if(n.includes('marble')||n.includes('tiles')) {m.roughness=.2;m.envMapIntensity=1.2;}
         if(!authoredEmission.has(m)&&(n.includes('poster')||n.includes('glow'))) {m.emissive.set('#ffffff');m.emissiveMap=m.map;m.emissiveIntensity=1.6;}
       }
