@@ -35,7 +35,8 @@ export function buildModel(plan: MapPlan): World {
     plan.meeting.forEach((d,i)=>authoredChairs.set(d.id,config.source!.council[i]));
     for(const d of plan.stations){const chair=config.source.stationChairs?.[d.station!];if(chair)authoredChairs.set(d.id,chair);}
   }
-  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,authoredChairs,id=>seatFloor(plan,id),config.source?.stations);
+  const laptops=new Map(config.seats.flatMap((seat,i)=>seat.laptop?[[[...plan.desks,...plan.overflow][i].id,seat.laptop] as const]:[]));
+  const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,authoredChairs,id=>seatFloor(plan,id),config.source?.stations,laptops);
   const face = (p: BoardPlace, kind: Interactable['kind']) => {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(p.width,p.height),new THREE.MeshBasicMaterial({color:'#d9e3e8',toneMapped:false}));
     mesh.position.set(p.x,p.y,p.z); mesh.rotation.y=p.rotY;

@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import type {ModelChair} from '../../../shared/maps/model';
+import type {ModelChair,ModelLaptop} from '../../../shared/maps/model';
 import type {StationKind} from '../../../shared/layout';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { DeskDef } from '../../../shared/layout';
 import type { DeskView, Interactable } from '../types';
 import { mergeByMaterial } from '../toon';
 
-export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0, sourceStations: readonly StationKind[] = []) {
+export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: Interactable[], lounges: {x:number;z:number;rugLength:number}[] = [], source?:Map<string,ModelChair>, floor: (id:string)=>number = ()=>0, sourceStations: readonly StationKind[] = [], laptops:ReadonlyMap<string,ModelLaptop> = new Map()) {
   const still = new THREE.Group();
   const oak = new THREE.MeshStandardMaterial({ color: '#aa8260', roughness: .6 });
   const metal = new THREE.MeshStandardMaterial({ color: '#30353b', roughness: .5, metalness: .3 });
@@ -70,6 +70,13 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
       if(anchored.sit)seatAnchor.position.z=0;
       seatAnchor.rotation.y=anchored.rotY-def.rotY;
       laptopAnchor.position.y=.8;
+    }
+    const laptop=laptops.get(def.id);
+    if(laptop){
+      g.updateMatrixWorld(true);
+      laptopAnchor.position.copy(g.worldToLocal(new THREE.Vector3(laptop.x,laptop.y,laptop.z)));
+      // The screen's local normal is +Z; the sitter looks toward it along their facing.
+      laptopAnchor.rotation.y=laptop.rotY+Math.PI-def.rotY;
     }
     const stage = new THREE.Object3D(); stage.position.set(.55,0,.85); g.add(stage);
     const vacancy = new THREE.Group(); if(def.station) vacancy.add(seatAnchor.clone()); g.add(vacancy);

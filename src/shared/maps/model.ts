@@ -6,6 +6,9 @@ import { isObj, num, MapError } from './check.js';
 const MODEL_STATIONS: readonly StationKind[] = ['issues','pulls','queue'];
 export type ModelChairType = 'task'|'executive'|'guest'|'conference'|'lounge'|'sofaSeat'|'pouf'|'barStool';
 
+/** World mount position; rotY is the sitter facing, not the screen normal. */
+export type ModelLaptop = Required<Place> & {y:number};
+
 export interface ModelChair extends Required<Place> {
   y:number;
   chairType?: ModelChairType;
@@ -16,7 +19,7 @@ export interface ModelMapData {
   source?: {chairs:ModelChair[];council:ModelChair[];meetingBoard:BoardPlace;stations?:StationKind[];stationChairs?:Partial<Record<StationKind,ModelChair>>};
   stationLabelOffsets?: Partial<Record<StationKind,number>>;
   asset: string;
-  seats: (Required<Place> & {chairType?:ModelChairType})[];
+  seats: (Required<Place> & {chairType?:ModelChairType;laptop?:ModelLaptop})[];
   walls: { minX: number; maxX: number; minZ: number; maxZ: number; top: number; bottom?: number }[];
   platforms?: ModelMapData['walls'];
   labels?: (Required<Place> & {text:string})[];
@@ -40,7 +43,13 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
   if (!Array.isArray(value.seats) || value.seats.length !== 32) throw new MapError('model.seats must contain exactly 20 desks then 12 soft seats');
   const seats = value.seats.map((s, i) => {
     const label=`model.seats[${i}]`,type=isObj(s)?chairType(s.chairType,label):undefined;
-    return {...point(s,label),...(type===undefined?{}:{chairType:type})};
+    let laptop:ModelLaptop|undefined;
+    if(isObj(s)&&s.laptop!==undefined){
+      const mount=s.laptop,key=`${label}.laptop`;
+      if(!isObj(mount)||Object.keys(mount).some(k=>!['x','y','z','rotY'].includes(k)))throw new MapError(`${key} needs only x, y, z and rotY`);
+      laptop={...point(mount,key),y:num(mount.y,`${key}.y`,0,height),rotY:num(mount.rotY,`${key}.rotY`,-Math.PI,Math.PI)};
+    }
+    return {...point(s,label),...(type===undefined?{}:{chairType:type}),...(laptop?{laptop}:{})};
   });
   if (new Set(seats.map(s => `${s.x},${s.z}`)).size !== 32) throw new MapError('model seats must have distinct positions');
   if (!Array.isArray(value.walls) || value.walls.length > 300) throw new MapError('model.walls must be a list of at most 300 collision rectangles');
