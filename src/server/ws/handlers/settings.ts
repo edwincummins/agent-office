@@ -133,4 +133,4 @@ export const settingsHandlers = {
     if (err) return ctx.warn(c, err);
     ctx.toastAll(choice ? `🤖 ${who} set the office’s default worker` : `🤖 ${who} put the office’s default worker back to ${path.basename(ctx.cfg.agentCmd)}`);
   },
-} satisfies HandlerMap<SettingsClientMsg>;
+} satisfies HandlerMap<Exclude<SettingsClientMsg, { t: 'sky.location' }>>;

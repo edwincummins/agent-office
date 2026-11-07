@@ -6,7 +6,13 @@ The sky sent to connected clients includes optional `weatherReport` metadata. Ol
 
 `fetchedAt` is the Unix receipt time in milliseconds of the last successful fetch, retained across failed refreshes. It is not the provider's observation timestamp. `current` describes the latest successful refresh, not a guarantee of live observations; consumers can compare receipt age with the normal 15-minute refresh interval. Existing rain, snow and lighting behavior stays unchanged during a missed refresh.
 
-This metadata is a foundation for location-aware environment controls; it does not add computer geolocation or a new status display. The existing `--city` selection is server-wide. Without it the sun position is approximated from the server's timezone and weather is simulated. Select real-time sky mode separately when the sky should follow the actual day rather than an accelerated cycle.
+In **Settings → Building → Outside**, only the office owner can select **Follow this computer**, enter a city, or restore **Use server default**. These controls select the shared sky for everyone. A location selection switches the sky to real time; the clock buttons remain available for previews. `--weather` still explicitly pins the conditions, and the status says so.
+
+**Follow this computer** requests the browser's normal geolocation permission after a click, using low-accuracy mode and rounding coordinates to two decimal places. Location requires a browser-supported secure context, typically HTTPS or localhost; a denied or unavailable location leaves the existing selection in place and offers the city field. Approximate coordinates are sent to the office server and its existing weather provider, and appear in shared sky state. No IP geolocation service is used.
+
+The chosen city or computer coordinates are saved in `.agent-office/sky-location.json`. The selecting browser stores a random identifier locally; only that selected browser resumes location updates on reconnect, and only when permission is already granted. Selecting a different browser or city stops the previous browser's watcher. While the browser is closed or location is unavailable, the server keeps fetching weather for the last selected position. It cannot detect a computer moving while no location-capable browser is connected. Resetting the selection restores `--city`, or timezone-based sun and simulated weather without it.
+
+The displayed weather receipt age updates while Settings is open. A failed refresh or a receipt at least 30 minutes old is labelled overdue; this does not claim the provider observation was taken at receipt time. This feature changes controls and sky state, not exported background geometry. Maps containing static backdrop images need a separate compatible backdrop update before those images can follow the sky.
 
 ## Mouse sensitivity
 

@@ -115,6 +115,8 @@ export const WEATHERS: readonly Weather[] = ['clear', 'cloudy', 'rain', 'storm',
 
 /** What it's like outside the windows. The server decides it, so everyone sees the same sky. */
 export interface SkyState {
+  /** An owner-selected city or computer; omitted for the server's configured default. */
+  location?: import('../sky-location.js').SkyLocation;
   /** Optional for older servers. A receipt time is not the provider's observation time. */
   weatherReport?: import('../weather-report.js').WeatherReport;
   /** Where the office is, for the sun: a configured city, or a guess from the host's time zone. */
@@ -187,6 +189,7 @@ export type SettingsClientMsg =
   | { t: 'theme.set'; pick: ThemePick }
   /** The sky on the real clock (true), or a whole day and night every hour (false), for everyone. */
   | { t: 'sky.clock'; real: boolean }
+  | { t: 'sky.location'; location: import('../sky-location.js').SkyLocation | null }
   /** Change the building's map (see MapState), or with no map, read the custom maps' folder again. */
   | { t: 'map.set'; map?: string }
   /** Workers whose pull request merged go home by themselves (true), or wait to be sent home. */

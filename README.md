@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/AgentSystemLabs/agent-office/main/i
 
 ## What it is
 
-The sky state distinguishes simulated, pinned and forecast weather, including pending, failed and stale forecast refreshes. See [weather reporting](docs/configuration.md#weather-reporting) for the metadata and current location limitations.
+In **Settings → Building → Outside**, the owner can follow this computer's approximate location or choose a city for the shared sky. Location selection uses real time; the controls identify simulated, pinned and stale weather. See [weather reporting](docs/configuration.md#weather-reporting) for permissions, persistence and fallback behavior.
 
 Only the locally allow-listed owner can use a **Services | Cadre** view on the Services board, with live seat-screen tiles in engine order and a labeled read-only panel until Cadre Web is connected. An open panel reconnects automatically after Cadre Web restarts and follows its version updates through the owner-authenticated office wrapper. See [Cadre configuration and controls](docs/cadre.md).
 

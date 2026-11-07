@@ -2,6 +2,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import type { SkyState, Weather } from '../shared/protocol.js';
 import { guessPlace } from '../shared/sun.js';
 import { missedForecast } from '../shared/weather-report.js';
+import { parseSkyLocation, type SkyLocation } from '../shared/sky-location.js';
+import { readSkyLocation, saveSkyLocation } from './sky-location.js';
 
 // The sky over the office: where it is (which sets when the sun rises and sets) and the weather.
 // With --city, both follow that city's live forecast from open-meteo.com (free, no key needed).
@@ -114,11 +116,18 @@ export class Sky {
   private realTime: boolean;
   private generation = 0;
   private running = false;
+  private defaultCity?: string;
+  private location: SkyLocation | null;
 
   constructor(
-    private opts: { city?: string; weather?: Weather; realTime?: boolean; placeFile?: string; clockFile?: string },
+    private opts: { city?: string; weather?: Weather; realTime?: boolean; placeFile?: string; clockFile?: string; locationFile?: string },
     private onChange: (state: SkyState) => void,
   ) {
+    this.opts = { ...opts };
+    this.defaultCity = opts.city;
+    this.location = readSkyLocation(opts.locationFile);
+    if (this.location) this.opts.city = this.location.kind === 'city' ? this.location.city : `${this.location.lat},${this.location.lon}`;
+    opts = this.opts;
     this.realTime = this.savedClock() ?? !!opts.realTime;
     const now = new Date();
     const here = guessPlace(now);
@@ -131,6 +140,11 @@ export class Sky {
     if (known) this.place = { lat: known.lat, lon: known.lon, name: known.name };
     this.state.weatherReport = opts.weather ? { source: 'pinned' } : opts.city
       ? { source: 'forecast', status: 'pending' } : { source: 'simulated' };
+    if (this.location) this.state.location = this.location;
+    if (this.location?.kind === 'device') {
+      this.place = { lat: this.location.lat, lon: this.location.lon, name: 'Selected computer' };
+      Object.assign(this.state, { lat: this.location.lat, lon: this.location.lon, utcOffset: this.location.utcOffset });
+    }
   }
 
   /** Where the last forecast for `city` put it (see placeFile), if it's that city. */
@@ -195,9 +209,31 @@ export class Sky {
   private set(next: SkyState) {
     const { realTime: _, ...rest } = next;
     next = this.realTime ? { ...rest, realTime: true } : rest;
+    if (this.location) next.location = this.location;
+    else delete next.location;
     if (JSON.stringify(next) === JSON.stringify(this.state)) return;
     this.state = next;
     this.onChange(next);
+  }
+
+  /** Owner-selected location; stale in-flight requests cannot replace a newer selection. */
+  setLocation(value: unknown): string | undefined {
+    const location = parseSkyLocation(value);
+    if (location === undefined) return 'Choose a city or a valid computer location';
+    if (JSON.stringify(location) === JSON.stringify(this.location)) return;
+    if (!saveSkyLocation(this.opts.locationFile, location)) return 'The location could not be saved; please try again';
+    const running = this.running;
+    this.stop();
+    this.location = location;
+    this.opts.city = location?.kind === 'city' ? location.city : location?.kind === 'device' ? `${location.lat},${location.lon}` : this.defaultCity;
+    this.place = location?.kind === 'device' ? { lat: location.lat, lon: location.lon, name: 'Selected computer' } : null;
+    this.misses = 0;
+    this.warned = false;
+    const here = location?.kind === 'device' ? { lat: location.lat, lon: location.lon } : guessPlace();
+    this.set({ ...here, utcOffset: location?.kind === 'device' ? location.utcOffset : -new Date().getTimezoneOffset(), ...pinned(this.opts.weather ?? 'clear'),
+      weatherReport: this.opts.weather ? { source: 'pinned' } : this.opts.city ? { source: 'forecast', status: 'pending' } : { source: 'simulated' } });
+    if (location) this.setClock(true);
+    if (running) this.start();
   }
 
   /** Made-up weather: a new spell every 20–50 minutes, in the host's time zone. */
