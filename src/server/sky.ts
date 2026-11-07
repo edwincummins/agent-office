@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { SkyState, Weather } from '../shared/protocol.js';
 import { guessPlace } from '../shared/sun.js';
+import { missedForecast } from '../shared/weather-report.js';
 
 // The sky over the office: where it is (which sets when the sun rises and sets) and the weather.
 // With --city, both follow that city's live forecast from open-meteo.com (free, no key needed).
@@ -111,6 +112,8 @@ export class Sky {
   private misses = 0;
   /** The sky keeps the real time of day, not a day every hour (see setClock). */
   private realTime: boolean;
+  private generation = 0;
+  private running = false;
 
   constructor(
     private opts: { city?: string; weather?: Weather; realTime?: boolean; placeFile?: string; clockFile?: string },
@@ -126,6 +129,8 @@ export class Sky {
       ? { lat: known.lat, lon: known.lon, utcOffset: known.utcOffset, ...weather, city: known.name, ...(this.realTime ? { realTime: true } : {}) }
       : { ...here, utcOffset: -now.getTimezoneOffset(), ...weather, ...(this.realTime ? { realTime: true } : {}) };
     if (known) this.place = { lat: known.lat, lon: known.lon, name: known.name };
+    this.state.weatherReport = opts.weather ? { source: 'pinned' } : opts.city
+      ? { source: 'forecast', status: 'pending' } : { source: 'simulated' };
   }
 
   /** Where the last forecast for `city` put it (see placeFile), if it's that city. */
@@ -140,16 +145,22 @@ export class Sky {
   }
 
   start() {
+    if (this.running) return;
+    this.running = true;
+    this.generation++;
     if (this.opts.city) void this.forecast();
     else this.later(rand(20, 50) * 60_000, () => this.drift());
   }
 
   stop() {
+    this.running = false;
+    this.generation++;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
   }
 
   private later(ms: number, fn: () => void) {
+    if (!this.running) return;
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(fn, ms);
     this.timer.unref();
@@ -194,14 +205,17 @@ export class Sky {
     const now = new Date();
     const here = guessPlace(now);
     const weather = this.opts.weather ? pinned(this.opts.weather) : wander(this.state.weather, now.getMonth(), here.lat < 0);
-    this.set({ ...here, utcOffset: -now.getTimezoneOffset(), ...weather });
+    this.set({ ...here, utcOffset: -now.getTimezoneOffset(), ...weather, weatherReport: { source: this.opts.weather ? 'pinned' : 'simulated' } });
     this.later(rand(20, 50) * 60_000, () => this.drift());
   }
 
   private async forecast() {
+    const generation = this.generation;
     const city = this.opts.city!;
     try {
-      this.place ??= await locate(city);
+      const place = this.place ?? await locate(city);
+      if (!this.running || generation !== this.generation) return;
+      this.place = place;
       if (!this.place) {
         console.warn(`agent-office: couldn't find the city "${city}"; the weather is made up instead`);
         this.opts.city = undefined;
@@ -209,12 +223,14 @@ export class Sky {
       }
       const { lat, lon, name } = this.place;
       const f = await getJson(`${FORECAST}?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`);
+      if (!this.running || generation !== this.generation) return;
       const code = Number(f?.current?.weather_code);
       if (!Number.isFinite(code)) throw new Error('no current weather in the forecast');
       const weather = this.opts.weather ? pinned(this.opts.weather) : fromWmo(code);
       const temp = Number(f.current.temperature_2m);
       const utcOffset = Number.isFinite(f.utc_offset_seconds) ? Math.round(f.utc_offset_seconds / 60) : this.state.utcOffset;
-      this.set({ lat, lon, utcOffset, ...weather, city: name, temp: Number.isFinite(temp) ? Math.round(temp) : undefined });
+      this.set({ lat, lon, utcOffset, ...weather, city: name, temp: Number.isFinite(temp) ? Math.round(temp) : undefined,
+        weatherReport: this.opts.weather ? { source: 'pinned' } : { source: 'forecast', status: 'current', fetchedAt: Date.now() } });
       if (this.warned) console.log(`agent-office: the weather for ${name} came through`);
       this.warned = false;
       this.misses = 0;
@@ -227,6 +243,8 @@ export class Sky {
       }
       this.later(FORECAST_MS, () => void this.forecast());
     } catch (err) {
+      if (!this.running || generation !== this.generation) return;
+      if (!this.opts.weather) this.set({ ...this.state, weatherReport: missedForecast(this.state.weatherReport!) });
       const e = err as Error & { cause?: { code?: string; message?: string } };
       const why = [e.message, e.cause?.code ?? e.cause?.message].filter(Boolean).join(': ');
       if (!this.warned) console.warn(`agent-office: no weather for ${city} yet (${why}); trying again shortly`);

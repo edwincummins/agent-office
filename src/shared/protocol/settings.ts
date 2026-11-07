@@ -115,6 +115,8 @@ export const WEATHERS: readonly Weather[] = ['clear', 'cloudy', 'rain', 'storm',
 
 /** What it's like outside the windows. The server decides it, so everyone sees the same sky. */
 export interface SkyState {
+  /** Optional for older servers. A receipt time is not the provider's observation time. */
+  weatherReport?: import('../weather-report.js').WeatherReport;
   /** Where the office is, for the sun: a configured city, or a guess from the host's time zone. */
   lat: number;
   lon: number;

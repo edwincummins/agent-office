@@ -1,5 +1,13 @@
 # Configuration
 
+## Weather reporting
+
+The sky sent to connected clients includes optional `weatherReport` metadata. Older servers may omit it; omission means unknown, not live weather. `source` is `simulated` without a configured city, `pinned` with `--weather`, or `forecast` when using a city's forecast. Forecast `status` starts `pending`, becomes `current` after a successful fetch, `unavailable` if the first fetch fails, and `stale` if a refresh fails after a successful fetch. A successful retry restores `current`. An unresolved city falls back to `simulated` as before.
+
+`fetchedAt` is the Unix receipt time in milliseconds of the last successful fetch, retained across failed refreshes. It is not the provider's observation timestamp. `current` describes the latest successful refresh, not a guarantee of live observations; consumers can compare receipt age with the normal 15-minute refresh interval. Existing rain, snow and lighting behavior stays unchanged during a missed refresh.
+
+This metadata is a foundation for location-aware environment controls; it does not add computer geolocation or a new status display. The existing `--city` selection is server-wide. Without it the sun position is approximated from the server's timezone and weather is simulated. Select real-time sky mode separately when the sky should follow the actual day rather than an accelerated cycle.
+
 ## Mouse sensitivity
 
 Open **Settings → You → Mouse sensitivity** to adjust mouse-look from 10% to 200%. The default is 50% of the original speed (0.0011 radians per pixel with pointer lock). Changes apply immediately in every map, including first-person drag and third-person orbit, and are saved only in this browser. **Reset** restores 50%. The 250-pixel clamp on each locked mouse event is unchanged. If browser storage is unavailable, the setting still works for the current visit.
