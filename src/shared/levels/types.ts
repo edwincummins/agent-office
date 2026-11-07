@@ -4,6 +4,8 @@ export interface Level extends Bounds {
   id: string;
   y: number;
   thickness: number;
+  /** Recess selected rendered slab edges behind authored trim; physical bounds stay unchanged. */
+  visualInset?: Partial<Record<keyof Bounds, number>>;
 }
 export interface Landing {
   x: number;
