@@ -1,3 +1,4 @@
+import type { FramePerformance } from './frame-samples';
 /**
  * The registries every part of the office plugs into, instead of being wired by hand into the middle
  * of main.ts: what happens on each server message, who gets a key press, what runs each frame, what
@@ -175,6 +176,8 @@ export type TickPhase = (typeof TICK_PHASES)[number];
 
 /** What each tick gets about the frame it's in. */
 export interface Frame {
+  /** Raw callback measurements, independent of the intentional render cap. */
+  readonly performance?: FramePerformance;
   /** Seconds since the last frame, as it was. */
   readonly delta: number;
   /** Seconds since the last frame, at most 0.1 (after a stall, the world doesn't leap). */

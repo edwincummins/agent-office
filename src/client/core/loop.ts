@@ -4,6 +4,7 @@
  * else's (see installLoop), so within a phase they come first.
  */
 import * as THREE from 'three';
+import { FrameSamples } from './frame-samples';
 import { SlowFrames } from '../framerate';
 import { EYE_HEIGHT } from '../player';
 import { renderCaffeine } from '../features/coffee/meter';
@@ -183,7 +184,9 @@ export function installLoop(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'stage
 
   /** Draws the frame, through whatever it's drawn through (a few drinks in, the drunk vision: see ctx.view). */
   function drawFrame(f: Frame) {
-    ctx.view.draw(f, drawScene);
+    const start = performance.now();
+    try { ctx.view.draw(f, drawScene); }
+    finally { if (f.performance) f.performance.renderCpuMs = performance.now() - start; }
   }
 
   /** The scene, then your hands on top of it. */
@@ -213,6 +216,7 @@ export function installLoop(ctx: Ctx, core: CoreState, parts: Pick<Parts, 'stage
  */
 export function frameLoop(ctx: Ctx, loading: { drew(): void }): (ts?: number) => void {
   const timer = new THREE.Timer();
+  const samples = new FrameSamples();
   // A frame budget, as games keep one (Fetty, 11-06: the office drew every frame the monitor offered, idle or behind a
   // panel, and Chrome took ~3.7 cores): 60 fps while he's moving, 30 once he's left it alone, 8 behind a full panel such
   // as Cadre. A hidden tab already gets no frames at all.
@@ -222,11 +226,13 @@ export function frameLoop(ctx: Ctx, loading: { drew(): void }): (ts?: number) =>
   function frame(ts?: number) {
     requestAnimationFrame(frame);
     const now = ts ?? performance.now();
-    if (last && now - last < 1000 / budget(now) - 2) return;
+    samples.sample(now, !document.hidden);
+    const targetFps = budget(now);
+    if (last && now - last < 1000 / targetFps - 2) return;
     last = now;
     timer.update(ts);
     const delta = timer.getDelta();
-    ctx.ticks.run({ delta, dt: Math.min(delta, 0.1), t: timer.getElapsed(), now: performance.now() });
+    ctx.ticks.run({ performance: samples.take(delta, targetFps), delta, dt: Math.min(delta, 0.1), t: timer.getElapsed(), now: performance.now() });
     loading.drew();
   }
   return frame;
