@@ -409,6 +409,8 @@ export function planMap(input: unknown): MapPlan {
   const decor = c.decor === undefined ? undefined : checkDecor(c.decor, bounds, height, style);
   if(fixtures.slots.gong&&props.some(p=>p.kind==='gong'))throw new MapError('Use a gong fixture or legacy gong prop, not both');
   if(fixtures.slots.lounge)seating.push(...loungeSeats(fixtures.slots.lounge));
+  // A model map's own seats for people (stools, sofas, guest and meeting chairs): you sit right on the cushion, 2 cm sunk in.
+  for(const s of model?.sitSpots??[])seating.push({id:`sit-${s.id}`,label:sitLabel(s.chairType,s.label),x:s.x,y:s.floor,z:s.z,rotY:s.rotY,places:[0],hips:Math.max(.2,s.y-s.floor-.02),depth:0,out:.75});
   if(fixtures.slots.services){const p=fixtures.slots.services;boards.services={...boards.services,...p.position,rotY:p.rotY,width:p.size.width,height:p.size.height};}
   return attachTravel(attachLevels({
     ...fixtures,
@@ -547,4 +549,12 @@ export function seatOn(plan: MapPlan, key: string): SeatPlace | undefined {
 export function seatHereOn(plan: MapPlan, key: string, onRoof: boolean): SeatPlace | undefined {
   if (plan.style === 'office' || onRoof) return seatHere(key, onRoof);
   return seatOn(plan, key);
+}
+
+/** What the hint calls a model map's sit spot. */
+function sitLabel(chairType?: string, label?: string): string {
+  if (label) return label;
+  const names: Record<string, string> = { barStool: '🪑 Bar stool', executive: '🪑 Your chair', guest: '🪑 Guest chair', lounge: '🛋️ Lounge seat',
+    conference: '🪑 Meeting chair', sofa: '🛋️ Sofa', task: '🪑 Chair' };
+  return names[chairType ?? ''] ?? '🪑 Seat';
 }

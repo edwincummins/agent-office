@@ -36,6 +36,9 @@ export function buildModel(plan: MapPlan): World {
     for(const d of plan.stations){const chair=config.source.stationChairs?.[d.station!];if(chair)authoredChairs.set(d.id,chair);}
   }
   const laptops=new Map(config.seats.flatMap((seat,i)=>seat.laptop?[[[...plan.desks,...plan.overflow][i].id,seat.laptop] as const]:[]));
+  // Each sit spot gets an unseen click target over its cushion: E or double-click sits you on it (see seating).
+  const sitHit=new THREE.MeshBasicMaterial({visible:false});
+  for(const s of plan.seating)if(s.id.startsWith('sit-')){const it:Interactable={kind:'seat',seatId:s.id,x:s.x,y:s.y,z:s.z,radius:1.1};interactables.push(it);const hit=new THREE.Mesh(new THREE.BoxGeometry(.62,.9,.62),sitHit);hit.position.set(s.x,s.y+s.hips*.5+.25,s.z);hit.userData.interact=it;group.add(hit);}
   const desks = furnishings(group,[...plan.desks,...plan.overflow,...plan.stations,...plan.meeting],interactables,config.lounges,authoredChairs,id=>seatFloor(plan,id),config.source?.stations,laptops);
   const face = (p: BoardPlace, kind: Interactable['kind']) => {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(p.width,p.height),new THREE.MeshBasicMaterial({color:'#d9e3e8',toneMapped:false}));

@@ -26,7 +26,12 @@ export interface ModelMapData {
   lounges?: (Required<Place> & {rugLength:number})[];
   screen: BoardPlace | null;
   whiteboard: BoardPlace;
+  /** Seats people (not workers) sit on: stools, sofas, guest and meeting chairs (HQ, 11-06). `y` is the cushion's
+   *  height and `floor` the floor under it, both world heights; double-click or E sits you on it. */
+  sitSpots?: SitSpot[];
 }
+
+export interface SitSpot { id: string; x: number; z: number; y: number; floor: number; rotY: number; chairType?: string; label?: string }
 
 export function checkModel(value: unknown, bounds: Bounds, height: number, seatHeights: readonly number[] = []): ModelMapData {
   if (!isObj(value)) throw new MapError('model needs an asset, 32 seats, walls, screen and whiteboard');
@@ -144,5 +149,25 @@ export function checkModel(value: unknown, bounds: Bounds, height: number, seatH
       if(Math.hypot(s.x-chair.x-Math.sin(chair.rotY)*forward,s.z-chair.z-Math.cos(chair.rotY)*forward)>.02)throw new MapError(`source chair ${i+1} must match its authored sit offset`);
     }
   }
-  return { asset: value.asset, seats, walls, platforms, labels, lounges, source, stationLabelOffsets, screen:value.screen===null?null:surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
+  const sitSpots = value.sitSpots === undefined ? undefined : checkSitSpots(value.sitSpots, bounds, height);
+  return { asset: value.asset, seats, walls, platforms, labels, lounges, source, stationLabelOffsets, ...(sitSpots ? { sitSpots } : {}), screen:value.screen===null?null:surface(value.screen, 'model.screen'), whiteboard: surface(value.whiteboard, 'model.whiteboard') };
+}
+
+/** model.sitSpots: at most 64, each inside the hall, its cushion between 0.15 and 1.2 m above its floor. */
+function checkSitSpots(value: unknown, bounds: Bounds, height: number): SitSpot[] {
+  if (!Array.isArray(value) || value.length > 64) throw new MapError('model.sitSpots must be a list of at most 64 seats');
+  const ids = new Set<string>();
+  return value.map((v, i) => {
+    const what = `model.sitSpots[${i}]`;
+    if (!isObj(v)) throw new MapError(`${what} must be an object`);
+    if (typeof v.id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,47}$/.test(v.id) || ids.has(v.id)) throw new MapError(`${what}.id must be a unique lowercase slug`);
+    ids.add(v.id);
+    const floor = v.floor === undefined ? 0 : num(v.floor, `${what}.floor`, 0, height);
+    const y = num(v.y, `${what}.y`, floor + 0.15, floor + 1.2);
+    const spot: SitSpot = { id: v.id, x: num(v.x, `${what}.x`, bounds.minX, bounds.maxX), z: num(v.z, `${what}.z`, bounds.minZ, bounds.maxZ), y, floor,
+      rotY: num(v.rotY ?? 0, `${what}.rotY`, -7, 7) };
+    if (typeof v.chairType === 'string' && v.chairType.length <= 24) spot.chairType = v.chairType;
+    if (typeof v.label === 'string' && v.label.length <= 48) spot.label = v.label;
+    return spot;
+  });
 }

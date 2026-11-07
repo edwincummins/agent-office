@@ -81,7 +81,8 @@ export function furnishings(group: THREE.Group, defs: DeskDef[], interactables: 
     const stage = new THREE.Object3D(); stage.position.set(.55,0,.85); g.add(stage);
     // An empty desk shows the office's floating green "+" (Fetty, 11-06: "invite anybody who sees it to click"), a little
     // smaller than the stock office's; a station keeps its standing figure instead.
-    const vacancy = def.station ? new THREE.Group() : plusMarker(1.4); if(def.station) vacancy.add(seatAnchor.clone()); else vacancy.scale.setScalar(.75); g.add(vacancy);
+    // Only real desks invite a hire: the sofa and lounge spots (overflow "beanbag" seats) stay plain (Fetty, 11-06: too many "+").
+    const vacancy = def.station || soft ? new THREE.Group() : plusMarker(1.4); if(def.station) vacancy.add(seatAnchor.clone()); else if(!soft) vacancy.scale.setScalar(.75); g.add(vacancy);
     const it: Interactable = {kind:def.station?'station':'desk',deskId:def.id,x:def.x+Math.sin(def.rotY)*1.1,y,z:def.z+Math.cos(def.rotY)*1.1,radius:1.25};
     const hit=new THREE.Mesh(new THREE.BoxGeometry(soft?.81:1.5,soft?.46:1.3,soft?.85:1.8),hitMaterial);hit.position.set(0,soft?.23:.65,soft?.85:.4);g.add(hit);
     g.userData.interact=it; interactables.push(it); group.add(g);
