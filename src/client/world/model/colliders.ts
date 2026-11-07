@@ -14,6 +14,13 @@ export function modelColliders(plan:MapPlan,config:ModelMapData):Collider[]{
    const seatId=plan.meeting[i].id,y=seatFloor(plan,seatId);
    result.push({minX:chair.x-.28,maxX:chair.x+.28,minZ:chair.z-.28,maxZ:chair.z+.28,bottom:y,top:y+.8,seatId} as Collider);
  }
+ // Desk chairs and the lounge's sofa and pouf spots are solid too, like the council chairs (Fetty, 11-06: "I'm going through
+ // chairs"). Sitting places you on the seat directly and standing steps you out in front, clear of the box.
+ if(config.source)for(const [i,chair] of config.source.chairs.entries()){
+   const def=[...plan.desks,...plan.overflow][i];if(!def)continue;
+   const y=seatFloor(plan,def.id);
+   result.push({minX:chair.x-.26,maxX:chair.x+.26,minZ:chair.z-.26,maxZ:chair.z+.26,bottom:y,top:y+.9,seatId:def.id} as Collider);
+ }
  const matching=(c:Collider,r:readonly number[])=>Math.abs(c.minX-r[0])+Math.abs(c.maxX-r[1])+Math.abs(c.minZ-r[2])+Math.abs(c.maxZ-r[3])<1e-5;
  for(const c of result){
    if('seatId' in c || authored.some(w=>matching(c,[w.minX,w.maxX,w.minZ,w.maxZ])))continue;

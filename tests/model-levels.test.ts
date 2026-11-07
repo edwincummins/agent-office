@@ -106,8 +106,11 @@ test('source council chairs remain obstacles, with only the destination exempted
     solids = modelColliders(p, p.config!.model!).map((s) => ({ ...s, bottom: s.bottom ?? 0 }));
   const anchors = new Map(p.meeting.map((d, i) => [d.id, c.model!.source!.council[i]]));
   const nav = new LevelNav(p.bounds, p.levels!, [...solids, ...p.levels!.solids], anchors);
-  assert.equal(solids.filter((s) => 'seatId' in s).length, 5);
+  // The council chairs and, since 11-06, every desk and lounge chair are solid, each excused only for its own seat.
+  assert.equal(solids.filter((s) => 'seatId' in s).length, 5 + c.model!.source!.chairs.length);
+  const navAll = new LevelNav(p.bounds, p.levels!, [...solids, ...p.levels!.solids], new Map([...[...p.desks, ...p.overflow].map((d, i) => [d.id, c.model!.source!.chairs[i]] as const), ...anchors]));
   for (const d of p.meeting) assert.ok(nav.wayTo([p.door.x, p.door.z], d).length, d.id);
+  for (const d of p.desks) assert.ok(navAll.wayTo([p.door.x, p.door.z], d).length, `${d.id} still reachable past the solid chairs`);
   const chair = c.model!.source!.council[0];
   assert.equal(nav.clearLine([chair.x - 1, chair.z], [chair.x + 1, chair.z]), false);
 });
