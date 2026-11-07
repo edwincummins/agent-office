@@ -2,6 +2,7 @@ import { isObj, MapError, num, str } from '../maps/check.js';
 import type { Bounds } from '../nav.js';
 import type { Landing, Level, LevelsPlan, LevelSolid, Lift, Rail, Stair } from './types.js';
 import { slabPortal } from './portals.js';
+import { checkVisualInset } from './visual-inset.js';
 
 const MAX_STEP = 0.3;
 const at = (r: Bounds, x: number, z: number, margin = 0) => x >= r.minX + margin && x <= r.maxX - margin && z >= r.minZ + margin && z <= r.maxZ - margin;
@@ -33,11 +34,12 @@ export function checkLevels(raw: unknown, bounds: Bounds, roof: number, seatIds:
   };
   const floors: Level[] = list(raw.floors, 'levels.floors', 16, true).map((v, i) => {
     const what = `levels.floors[${i}]`;
-    keys(v, ['id', 'y', 'thickness', 'minX', 'maxX', 'minZ', 'maxZ'], what);
+    keys(v, ['id', 'y', 'thickness', 'minX', 'maxX', 'minZ', 'maxZ', 'visualInset'], what);
     const y = num(v.y, `${what}.y`, 0, roof - 2.2),
       thickness = num(v.thickness, `${what}.thickness`, 0.05, 0.6);
     if (y > 0 && y - thickness < 2.2 - 1e-8) throw new MapError(`${what} needs 2.2 m clearance underneath`);
-    return { ...rect(v, what), id: id(v.id, `${what}.id`), y, thickness };
+    const visualInset = checkVisualInset(v.visualInset, y, what);
+    return { ...rect(v, what), id: id(v.id, `${what}.id`), y, thickness, ...(visualInset === undefined ? {} : {visualInset}) };
   });
   if (floors.filter((f) => f.y === 0).length !== 1) throw new MapError('levels needs exactly one ground floor at y=0');
   for (let i = 0; i < floors.length; i++)
@@ -142,7 +144,7 @@ export function checkLevels(raw: unknown, bounds: Bounds, roof: number, seatIds:
     for (const a of floors) for (const b of floors) if (connected.has(a.id) && slabPortal(a, b)) connected.add(b.id);
   }
   for (const f of floors) if (!connected.has(f.id)) throw new MapError(`${f.id} needs a walkable stair route from ground`);
-  const solids: LevelSolid[] = floors.filter((f) => f.y > 0).map((f) => ({ ...f, bottom: f.y - f.thickness, top: f.y }));
+  const solids: LevelSolid[] = floors.filter((f) => f.y > 0).map(({visualInset: _visualInset, ...f}) => ({ ...f, bottom: f.y - f.thickness, top: f.y }));
   for (const s of stairs) solids.push(...stairSolids(s, floor(s.from.level).y, floor(s.to.level).y).map(c=>({...c,stairSurface:true})));
   for (const r of rails) solids.push({ ...r, bottom: floor(r.level).y, top: floor(r.level).y + r.height, fence: true });
   return { floors, stairs, rails, lifts, seats, solids, ...(raw.spawn === undefined ? {} : { spawn: floor(raw.spawn).id }) };

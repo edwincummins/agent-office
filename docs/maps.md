@@ -351,6 +351,8 @@ Invisible movement-only barriers can set `cameraOcclusion: false`; this is indep
 
 ## Multiple levels and lifts
 
+An elevated floor can specify `visualInset: {maxZ: 0.005}` to recess its rendered slab edge behind authored trim. Allowed keys are `minX`, `maxX`, `minZ`, and `maxZ`; each is a finite distance from 0 to 0.02 metres, measured inward. Omitted edges stay unchanged. This alters only the rendered box footprint, including its top and underside edges; collision bounds, walking surfaces, stair connections, camera collision and lift geometry retain their authored dimensions. Use it only where the imported architecture covers the recessed edge. It is rejected on the ground floor, which has no generated slab. Omission preserves existing maps. If the imported model also has coplanar deck and trim faces, those must be corrected separately; this option only addresses the engine-generated slab.
+
 An optional `levels` object adds walking surfaces above the existing ground. Omit it to retain the previous map geometry, navigation and rendering. This is room data, separate from the office's project floors.
 
 ```json

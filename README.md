@@ -32,6 +32,8 @@ curl -fsSL https://raw.githubusercontent.com/AgentSystemLabs/agent-office/main/i
 
 ## What it is
 
+Custom multi-level maps can recess individual rendered slab edges behind imported trim without changing their walking or collision bounds. See the optional floor `visualInset` setting in [map authoring](docs/maps.md#multiple-levels-and-lifts).
+
 Only the locally allow-listed owner can use a **Services | Cadre** view on the Services board, with live seat-screen tiles in engine order and a labeled read-only panel until Cadre Web is connected. An open panel reconnects automatically after Cadre Web restarts and follows its version updates through the owner-authenticated office wrapper. See [Cadre configuration and controls](docs/cadre.md).
 
 - **A floor per project.** Ride the elevator, pick one of your GitHub repos, and the office clones it (showing how far along it is) and opens a floor for it. Every worker, board and queue on that floor works in that checkout.

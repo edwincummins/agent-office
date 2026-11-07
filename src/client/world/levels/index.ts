@@ -5,6 +5,7 @@ import type { MapPlan } from '../../../shared/maps';
 import type { World } from '../world';
 import { mergeByMaterial } from '../toon';
 import { buildLifts } from './lifts';
+import { levelRenderBounds } from '../../../shared/levels/visual-inset';
 
 /** Optional layer over any world builder; maps without levels return unchanged. */
 export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => World {
@@ -19,11 +20,12 @@ export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => 
     const stair = new THREE.MeshStandardMaterial({ color: '#8b9096', roughness: 0.7 });
     const glass = new THREE.MeshStandardMaterial({ color: '#a9bdc1', transparent: true, opacity: 0.22, depthWrite: false, roughness: 0.15 });
     for (const c of levels.solids) {
+      const visual = levelRenderBounds(c, levels.floors);
       const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(c.maxX - c.minX, c.top - c.bottom, c.maxZ - c.minZ),
+        new THREE.BoxGeometry(visual.maxX - visual.minX, c.top - c.bottom, visual.maxZ - visual.minZ),
         c.fence ? glass : levels.floors.some((f) => f.y === c.top) ? concrete : stair,
       );
-      mesh.position.set((c.minX + c.maxX) / 2, (c.top + c.bottom) / 2, (c.minZ + c.maxZ) / 2);
+      mesh.position.set((visual.minX + visual.maxX) / 2, (c.top + c.bottom) / 2, (visual.minZ + visual.maxZ) / 2);
       mesh.userData.outlineParameters = { visible: false };
       group.add(mesh);
       w.colliders.push({ ...c, levelSurface: true });
