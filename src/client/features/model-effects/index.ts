@@ -8,6 +8,8 @@ import { applyModelLights } from './lighting';
 import { EffectsBudget, modelEffects, modelSurface } from './profile';
 import { limitEmission } from './emission';
 
+/** Studio reflections on metal stay under the bloom threshold (see where they're applied). */
+const STUDIO_REFLECTION_CAP = .35, STUDIO_METAL_ROUGHNESS = .55;
 export function installModelEffects(ctx: Ctx) {
   let root: THREE.Object3D | null = null;
   let bloom: ModelBloom | null = null;
@@ -55,14 +57,18 @@ export function installModelEffects(ctx: Ctx) {
         if (!(m instanceof THREE.MeshStandardMaterial) || seen.has(m)) continue;
         seen.add(m);
         const surface = modelSurface(m.userData.officeSurface);
-        const old = { envMap: m.envMap, envMapIntensity: m.envMapIntensity, blending: m.blending, transparent: m.transparent, depthWrite: m.depthWrite, emissiveIntensity: m.emissiveIntensity, opacity: m.opacity };
+        const old = { envMap: m.envMap, envMapIntensity: m.envMapIntensity, blending: m.blending, transparent: m.transparent, depthWrite: m.depthWrite, emissiveIntensity: m.emissiveIntensity, opacity: m.opacity, roughness: m.roughness };
         materialRestores.push(() => { Object.assign(m, old); m.needsUpdate = true; });
         if (surface?.studioIntensity !== undefined) {
           if (!studio) {
             const pmrem = new THREE.PMREMGenerator(renderer), room = new RoomEnvironment();
             studio = pmrem.fromScene(room, .04); room.dispose(); pmrem.dispose();
           }
-          m.envMap = studio.texture; m.envMapIntensity = surface.studioIntensity;
+          // The studio's light panels reflected in polished metal (the lift sign's chrome letters, roughness .28 at full
+          // strength) blew past the bloom threshold and flooded the screen; measured in the engine, 4.72% of the frame white.
+          // Brushed (roughness >= .55) at a 35% reflection keeps the shine and takes it to 0.1% (Fetty, 11-06).
+          m.envMap = studio.texture; m.envMapIntensity = Math.min(surface.studioIntensity, STUDIO_REFLECTION_CAP);
+          if (m.metalness > .5) m.roughness = Math.max(m.roughness, STUDIO_METAL_ROUGHNESS);
         }
         if (surface?.additive) { m.blending = THREE.AdditiveBlending; m.transparent = true; m.depthWrite = false; }
         if (surface?.emissiveIntensity !== undefined) m.emissiveIntensity = surface.emissiveIntensity;
