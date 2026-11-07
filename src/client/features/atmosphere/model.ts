@@ -27,6 +27,8 @@ export function modelAtmosphere(root: THREE.Object3D, profile: { hideMaterials: 
   sky.renderOrder = -.5;
   sky.material.depthWrite = false;
   sky.material.fog = false;
+  sky.material.transparent = true;
+  sky.material.userData.outlineParameters = { visible: false };
   const hidden: { mesh: THREE.Mesh; visible: boolean }[] = [];
   root.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
@@ -46,6 +48,8 @@ export function modelAtmosphere(root: THREE.Object3D, profile: { hideMaterials: 
       for (const [key, value] of [['turbidity', sample.turbidity], ['mieCoefficient', sample.mie], ['rayleigh', sample.rayleigh]] as const)
         u[key].value += (value - u[key].value) * blend;
       u.mieDirectionalG.value = .8;
+      u.cloudCoverage.value += ((state.weather === 'clear' ? .2 : .85) - u.cloudCoverage.value) * blend;
+      u.time.value = now / 1000;
     },
     dispose() {
       for (const entry of hidden) entry.mesh.visible = entry.visible;
