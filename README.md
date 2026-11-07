@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/AgentSystemLabs/agent-office/main/i
 ---
 
 ## What it is
-
+Model authors can opt into a location-driven atmospheric sky with reversible backdrop visibility; see [atmospheric exteriors](docs/maps.md#optional-atmospheric-exterior). Existing city panoramas remain unchanged unless explicitly opted in.
 In **Settings → Building → Outside**, the owner can follow this computer's approximate location or choose a city for the shared sky. Location selection uses real time; the controls identify simulated, pinned and stale weather. See [weather reporting](docs/configuration.md#weather-reporting) for permissions, persistence and fallback behavior.
 
 Custom multi-level maps can recess individual rendered slab edges behind imported trim without changing their walking or collision bounds. See the optional floor `visualInset` setting in [map authoring](docs/maps.md#multiple-levels-and-lifts).

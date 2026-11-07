@@ -283,6 +283,14 @@ A map without a dungeon can still have a script: a guard who walks each worker t
 
 ## Local model maps
 
+### Optional atmospheric exterior
+
+A GLB node can carry `officeAtmosphere: { "enabled": true, "hideMaterials": ["sky-north", "sky-east", "sky-west"] }` in its extras. This opts into the bundled Three.js analytic daylight sky, driven by the office's existing location, clock and weather state. Clear skies and overcast/rain haze transition gradually; existing precipitation remains the sky system's responsibility. It adds one sky draw (12 triangles), with no new image downloads or reflection-map regeneration per frame.
+
+Only meshes whose entire material list is explicitly named are hidden. Their geometry and original visibility are retained and restored when leaving the model or entering the rooftop. Without valid extras nothing changes. Material names must begin `sky-`; a maximum of eight is accepted. This is a sky layer, not replacement city architecture: hiding a photographic city backdrop removes its pictured skyline too. Review window views before opting a map in; do not enable it on an existing city panorama without an agreed exterior treatment.
+
+The implementation uses Three.js's bundled [analytic sky](https://threejs.org/examples/webgl_shaders_sky.html). Indoor model lighting profiles remain authored independently, preserving room readability.
+
 ### Optional model effects
 
 A GLB node can opt its model into ACES Filmic rendering with an `officeEffects` extra:
