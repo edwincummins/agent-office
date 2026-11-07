@@ -4,6 +4,7 @@ import type { Net } from '../net';
 import { store } from '../state';
 import { h } from './dom';
 import { describeSky } from '../world/sky';
+import { skyLocationSetting } from './sky-location';
 
 /**
  * The setting, made by `frame` from what goes in it: the sky now (`outside`, see describeSky), the
@@ -13,6 +14,7 @@ export function outsideSetting(net: Net, outside: { now: string; live: boolean }
   const row = h('div.seg', { role: 'radiogroup', 'aria-label': 'The sky’s clock' });
   const now = h('p.outside-now');
   const note = h('p.setting-note');
+  const location = skyLocationSetting(net);
   const paint = () => {
     const real = !!store.sky?.realTime;
     now.textContent = store.sky ? describeSky(store.sky) : outside.now;
@@ -31,8 +33,9 @@ export function outsideSetting(net: Net, outside: { now: string; live: boolean }
         ),
       ),
     );
-    note.textContent = `Everyone sees the same sky: ${real ? 'the real time of day' : 'a whole day and night every hour'}, and ${outside.live ? 'the live weather where it is.' : 'weather that comes and goes. Start the office with --city to use a real city’s forecast.'}`;
+    note.textContent = `Everyone sees the same sky: ${real ? 'the real time of day' : 'a whole day and night every hour'}.`;
   };
   paint();
-  return { section: frame([now, row, note]), off: store.on('sky', paint) };
+  const off = store.on('sky', paint);
+  return { section: frame([now, row, note, location.section]), off() { off(); location.off(); } };
 }

@@ -1,4 +1,5 @@
 import {installLevels} from './features/levels';
+import { installSkyLocation } from './features/sky-location';
 import { installCrew } from './features/crew';
 import { installTravelMenu } from './features/travel-menu';
 import './style.css';
@@ -200,6 +201,7 @@ installTravelMenu(ctx, parts);
 fitWindow(ctx);
 // Innermost filter: tone-map into any outer view filter's target.
 installModelEffects(ctx);
+installSkyLocation(ctx);
 const frame = frameLoop(ctx, loading);
 
 // ---- Boot ------------------------------------------------------------------------------------------
