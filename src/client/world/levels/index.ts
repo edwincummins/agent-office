@@ -36,7 +36,9 @@ export function withLevels(build: (plan: MapPlan) => World): (plan: MapPlan) => 
     // A map with its own model (the HQ) already draws its floors, stairs and rails; drawing these boxes too put two
     // surfaces in the same place, and they flickered (Fetty, 11-06: the dais edge, the stair opening). There they stay
     // for walking, standing and picking, unseen. Maps without a model still see them.
-    if (plan.style === 'model') merged.visible = false;
+    // Only the floors and glass rails: the model doesn't draw the lower stair treads, so the steps stay (Fetty, 11-07:
+    // "the bottom stairs are missing"); QA measured them 6 cm off the model's own treads, so they don't fight.
+    if (plan.style === 'model') merged.traverse(o => { if (o instanceof THREE.Mesh && (o.material === concrete || o.material === glass)) o.visible = false; });
     w.group.add(merged);
     w.pickables.push(merged);
     const solids = [
