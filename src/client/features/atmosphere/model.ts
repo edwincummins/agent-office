@@ -21,8 +21,10 @@ export function atmosphereSample(state: SkyState, now: number) {
 export function modelAtmosphere(root: THREE.Object3D, profile: { hideMaterials: string[] }) {
   const sky = new Sky();
   sky.name = 'office-atmosphere';
-  sky.scale.setScalar(1000);
-  sky.renderOrder = -1000;
+  // Fit inside the office's 320 m far plane and draw over its gradient dome,
+  // before opaque architecture and the existing transparent weather layers.
+  sky.scale.setScalar(200);
+  sky.renderOrder = -.5;
   sky.material.depthWrite = false;
   sky.material.fog = false;
   const hidden: { mesh: THREE.Mesh; visible: boolean }[] = [];
